@@ -1,0 +1,64 @@
+# Ontologia de sinonimos de tecnologia.
+#
+# Sem isto, "Aurora PostgreSQL" e "postgres" seriam competencias diferentes e o
+# score perderia casamentos obvios. A chave e o termo canonico; a lista sao as
+# formas que aparecem em curriculo e em descricao de vaga.
+#
+# Comece pequeno e cresca com o uso: cada casamento perdido que voce notar no
+# relatorio vira uma linha aqui, sem versao nova de codigo.
+
+[sinonimos]
+postgresql = ["postgres", "pgsql", "aurora postgresql", "aurora postgres", "rds postgres"]
+mysql = ["mariadb", "aurora mysql", "rds mysql"]
+sqlserver = ["sql server", "mssql", "t-sql", "transact-sql"]
+oracle = ["oracle db", "oracle database", "pl/sql", "plsql"]
+mongodb = ["mongo", "documentdb", "mongo atlas", "atlas"]
+redis = ["elasticache", "valkey", "memorystore"]
+kafka = ["msk", "confluent", "event hubs", "pubsub"]
+elasticsearch = ["elastic", "opensearch", "elk"]
+
+kubernetes = ["k8s", "eks", "aks", "gke", "openshift", "rancher"]
+docker = ["containerd", "conteiner", "container", "podman"]
+terraform = ["terragrunt", "opentofu", "hcl"]
+iac = ["infraestrutura como codigo", "infrastructure as code", "pulumi", "cloudformation"]
+ansible = ["chef", "puppet", "saltstack"]
+helm = ["kustomize"]
+
+aws = ["amazon web services", "ec2", "s3", "lambda", "cloudwatch"]
+azure = ["microsoft azure", "aks azure", "azure devops"]
+gcp = ["google cloud", "google cloud platform", "bigquery"]
+
+cicd = ["ci/cd", "jenkins", "argo", "argocd", "tekton", "github actions", "gitlab ci", "harness", "spinnaker", "esteira"]
+observabilidade = ["observability", "dynatrace", "datadog", "grafana", "prometheus", "new relic", "apm", "opentelemetry", "otel", "elastic apm", "zabbix"]
+sre = ["site reliability", "confiabilidade", "slo", "sli", "error budget"]
+finops = ["otimizacao de custo", "cost optimization", "savings plan", "reserved instance", "cloud cost", "custo de nuvem"]
+
+linux = ["unix", "rhel", "centos", "ubuntu server", "debian"]
+redes = ["networking", "tcp/ip", "bgp", "vpc", "firewall", "load balancer"]
+python = ["py", "python3"]
+golang = ["go", "go lang"]
+
+seguranca = ["security", "appsec", "secops", "devsecops", "hardening"]
+compliance_financeiro = ["lgpd", "pci-dss", "pci dss", "bacen", "sox", "resolucao 4658", "iso 27001"]
+
+lideranca = ["gestao de time", "people management", "lideranca tecnica", "gestao de pessoas"]
+ingles = ["english", "ingles fluente", "ingles avancado", "fluent english", "advanced english"]
+
+# Requisitos que, quando exigidos e ausentes do perfil, inviabilizam a
+# candidatura. O score aplica a penalidade configurada para cada um.
+[eliminatorios]
+termos = ["ingles"]
+
+# De qual campo do perfil vem a evidencia de cada termo.
+#
+# Existe porque ausencia de evidencia nao e evidencia de ausencia. O campo
+# `idiomas` sai vazio da extracao com frequencia, e enquanto isso nao era levado
+# em conta o teto afirmava "este candidato nao fala ingles" a partir de um campo
+# que ninguem preencheu. Medido no run 2a292735: **121 das 249 vagas** ficaram
+# travadas em 75 por esse motivo -- metade do relatorio, por um dado que nunca
+# foi coletado.
+#
+# Termo cujo campo esta vazio no perfil nao gera teto. Termo sem campo declarado
+# aqui continua valendo pelas competencias, como antes.
+[eliminatorios.campo]
+ingles = "idiomas"

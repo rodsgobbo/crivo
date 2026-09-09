@@ -1,0 +1,41 @@
+# Coordenadas das cidades usadas no calculo de distancia do pre-filtro.
+#
+# A lista e deliberadamente curta e nao pretende cobrir o pais. Ela cobre as
+# pracas onde ha volume de vaga em tecnologia, que e onde a distancia decide
+# alguma coisa. Cidade fora da lista nao e descartada: ela vira um blocker que
+# declara a distancia como desconhecida, e a decisao volta para o candidato.
+#
+# Acrescentar cidade aqui e mudanca de configuracao, nao de codigo.
+
+[cidades]
+"sao paulo" = { lat = -23.5505, lon = -46.6333, uf = "SP" }
+"osasco" = { lat = -23.5329, lon = -46.7918, uf = "SP" }
+"barueri" = { lat = -23.5107, lon = -46.8761, uf = "SP" }
+"guarulhos" = { lat = -23.4543, lon = -46.5337, uf = "SP" }
+"santo andre" = { lat = -23.6639, lon = -46.5383, uf = "SP" }
+"sao bernardo do campo" = { lat = -23.6914, lon = -46.5646, uf = "SP" }
+"campinas" = { lat = -22.9099, lon = -47.0626, uf = "SP" }
+"sao jose dos campos" = { lat = -23.2237, lon = -45.9009, uf = "SP" }
+"sorocaba" = { lat = -23.5015, lon = -47.4526, uf = "SP" }
+"ribeirao preto" = { lat = -21.1775, lon = -47.8103, uf = "SP" }
+"rio de janeiro" = { lat = -22.9068, lon = -43.1729, uf = "RJ" }
+"niteroi" = { lat = -22.8832, lon = -43.1034, uf = "RJ" }
+"belo horizonte" = { lat = -19.9167, lon = -43.9345, uf = "MG" }
+"uberlandia" = { lat = -18.9186, lon = -48.2772, uf = "MG" }
+"curitiba" = { lat = -25.4284, lon = -49.2733, uf = "PR" }
+"londrina" = { lat = -23.3045, lon = -51.1696, uf = "PR" }
+"porto alegre" = { lat = -30.0346, lon = -51.2177, uf = "RS" }
+"caxias do sul" = { lat = -29.1685, lon = -51.1796, uf = "RS" }
+"florianopolis" = { lat = -27.5954, lon = -48.5480, uf = "SC" }
+"joinville" = { lat = -26.3044, lon = -48.8487, uf = "SC" }
+"blumenau" = { lat = -26.9194, lon = -49.0661, uf = "SC" }
+"recife" = { lat = -8.0476, lon = -34.8770, uf = "PE" }
+"salvador" = { lat = -12.9777, lon = -38.5016, uf = "BA" }
+"fortaleza" = { lat = -3.7319, lon = -38.5267, uf = "CE" }
+"natal" = { lat = -5.7945, lon = -35.2110, uf = "RN" }
+"joao pessoa" = { lat = -7.1195, lon = -34.8450, uf = "PB" }
+"brasilia" = { lat = -15.7939, lon = -47.8828, uf = "DF" }
+"goiania" = { lat = -16.6869, lon = -49.2648, uf = "GO" }
+"vitoria" = { lat = -20.3155, lon = -40.3128, uf = "ES" }
+"manaus" = { lat = -3.1190, lon = -60.0217, uf = "AM" }
+"belem" = { lat = -1.4558, lon = -48.5044, uf = "PA" }

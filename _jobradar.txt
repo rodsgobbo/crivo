@@ -1,0 +1,272 @@
+
+# Job Radar
+Reconstrução passo a passo da varredura de vagas que rodei manualmente no LinkedIn, no nível de detalhe que um time precisa para transformá-la em aplicação: URLs reais, p
+
+## Antes de escrever qualquer linha
+Certo &nbsp;O Contrato do Usuário do LinkedIn proíbe explicitamente coleta automatizada de dados, e a plataforma tem detecção ativa de automação. Existe jurisprudência re
+Isso muda o desenho do produto, não só o disclaimer. Um serviço no servidor, com credenciais dos usuários, coletando em escala, é o modelo de maior risco. Uma extensão de
+Provável &nbsp;Se o objetivo do time for um produto comercial e não uma ferramenta interna, a rota sustentável é combinar dados públicos de agregadores com API própria, e
+
+## O pipeline em nove estágios
+A ordem importa: cada estágio consome a saída do anterior. Só três estágios precisam de um modelo de linguagem — o resto é determinístico e deve ser testável sem LLM.
+
+## Estágio 0 — Sessão do navegador
+
+### Operar dentro da aba que o usuário já autenticou
+Objetivo: chegar ao LinkedIn logado sem nunca tocar em credenciais.
+  - Usei a extensão de navegador controlando a aba ativa do usuário. Nenhuma senha, cookie ou token foi lido, transportado ou armazenado.
+  - Toda chamada exige um tabId ; o primeiro passo é listar as abas do grupo e fixar o alvo.
+  - Regra de produto: se o usuário não estiver logado, a aplicação para e pede login manual. Nunca automatize o formulário de login — é o gatilho mais direto de bloqueio.
+
+## Estágio 1 — Extração do perfil
+
+### Ler o próprio perfil e derivar o modelo do candidato
+Objetivo: montar, só a partir do LinkedIn, um objeto estruturado que descreva o candidato — sem pedir nada a ele.
+
+### Endpoints, na ordem em que naveguei
+Falha real observada. A página de /details/skills/ retornou o cabeçalho e as abas de categoria, mas nenhuma skill — o conteúdo é carregado por virtualização e não renderi
+Mitigação obrigatória: (a) rolar a página e reparsear antes de concluir; (b) se ainda vier vazio, reconstruir a lista a partir dos blocos Skills: … de cada experiência; (
+
+### O que derivar do texto bruto
+ | Campo
+ | Fonte
+ | Método
+ | Senioridade
+ | Títulos + descrições
+ | LLM. O sinal mais forte não é o título: é o escopo declarado ( "6 SREs e 3 DBAs" )
+ | Anos de experiência
+ | Datas
+ | Determinístico — data mais antiga até hoje
+ | Stack técnica
+ | Descrições de cargo
+ | Extração por dicionário + LLM para variantes
+ | Indústria
+ | Empresas
+ | Lookup + LLM
+ | Geografia e modalidade
+ | Bloco Open to work
+ | Determinístico
+ | Conquistas quantificadas
+ | Descrições
+ | Regex de % , R$ , 99,x% — é o que alimenta a coluna "por que combina"
+ | Idiomas
+ | /details/languages/
+ | Determinístico — é filtro eliminatório em ~55% das vagas
+Suposição &nbsp;Perfis mal preenchidos vão gerar buscas ruins. O produto deve mostrar o modelo do candidato que inferiu e deixar corrigir antes de buscar — caso contrário
+
+## Estágio 2 — Geração dos eixos de busca
+
+### Uma query só não cobre o mercado
+Objetivo: cobrir o mesmo cargo sob os nomes diferentes que o mercado usa.
+O mesmo trabalho aparece anunciado em português e inglês, como cargo e como especialidade. Rodei nove queries e cada uma trouxe vagas que as outras não trouxeram:
+A regra que gerou essa lista:
+  - Cargo atual traduzido nos dois idiomas.
+  - Um nível acima (Head, Director, Senior Manager) e um lateral (Coordenador, Team Lead) — o mesmo trabalho tem títulos diferentes por porte de empresa.
+  - Especialidade como query isolada — FinOps sozinho trouxe vagas de gestão que nenhuma query com "Manager" alcançou.
+  - Combinação cargo + duas especialidades — foi assim que apareceu a vaga com maior colisão de palavras-chave do lote.
+Custo de cobertura: cada query adicional é ~3 navegações. Nove queries ainda cabem no orçamento de rate limit; trinta não cabem.
+
+## Estágio 3 — Filtros por query string
+
+### Toda a filtragem é montável na URL — não clique em nada
+Objetivo: aplicar filtros sem interagir com os dropdowns da interface.
+Base: https://www.linkedin.com/jobs/search/?
+ | Parâmetro
+ | Valores
+ | Significado
+ | keywords
+ | URL-encoded
+ | Termo de busca
+ | geoId
+ | 106057199
+ | Brasil. Cada país/região tem o seu — a app precisa de uma tabela de lookup
+ | f_TPR
+ | r86400 · r604800 · r2592000
+ | Publicadas em 24h · 7 dias · 30 dias
+ | f_E
+ | 1,2,3,4,5,6
+ | Estágio · Júnior · Pleno · Sênior/Gestão · Diretor · Executivo. Usei 4,5
+ | f_WT
+ | 1 · 2 · 3
+ | Presencial · Remoto · Híbrido
+ | f_JT
+ | F · P · C · T
+ | Full-time · Part-time · Contrato · Temporário
+ | f_AL
+ | true
+ | Só Easy Apply
+ | sortBy
+ | R · DD
+ | Relevância · Mais recentes
+ | start
+ | 0, 25, 50…
+ | Paginação — 25 resultados por página
+ | currentJobId
+ | &lt;id&gt;
+ | Seleciona a vaga no painel direito. Só funciona se ela estiver no resultado daquela query
+Exemplo exato de uma das minhas chamadas:
+
+## Estágio 4 — Coleta da listagem
+
+### Sem scroll, você só coleta anúncios pagos
+Objetivo: extrair ID, título, empresa, localização e sinais de cada card.
+A armadilha central deste estágio. Ao parsear a lista logo após o carregamento, vieram 7 cards, todos marcados Promoted . As vagas orgânicas — que incluem as melhores do 
+
+### Sequência que funciona
+  - Navegar para a URL com filtros.
+  - Esperar 3 s.
+  - Rolar o painel de resultados: 2 passadas de 10–12 cliques de scroll.
+  - Esperar mais 2 s para o lote seguinte hidratar.
+  - Parsear.
+  - Para páginas seguintes, incrementar start em 25 e repetir.
+
+### Parsing
+Não jogue o resto fora. Eu filtrei estas linhas como ruído para limpar a lista — e foi um erro que a aplicação não deve repetir. Cada uma é um sinal de conversão e deve v
+ | Texto no card
+ | Vira o campo
+ | Por que importa
+ | You'd be a top applicant
+ | match_forte
+ | Avaliação do próprio algoritmo do LinkedIn
+ | N connections work here
+ | conexoes
+ | Canal de indicação — maior alavanca de conversão
+ | Applied / Saved / Viewed
+ | estado_candidato
+ | Impede recomendar o que já foi aplicado
+ | Actively reviewing applicants
+ | recrutador_ativo
+ | Vaga viva vs. anúncio parado
+ | Be an early applicant
+ | baixa_concorrencia
+ | Janela de vantagem
+ | Promoted
+ | patrocinada
+ | Distinguir alcance pago de relevância real
+ | N days ago
+ | idade_anuncio
+ | Vaga com +30 dias costuma estar fria
+
+## Estágio 5 — Leitura da descrição
+
+### Testei três rotas. Duas falham. Use a terceira.
+Objetivo: obter o texto completo do anúncio de forma confiável e rápida.
+ | Rota
+ | Resultado
+ | Latência
+ | A. /jobs/view/&lt;id&gt;/ direto
+ | Falhou sempre. A página abre e o cabeçalho renderiza, mas o corpo fica em skeleton loader indefinidamente. Vagas marcadas "Promoted by hirer / Responses managed off Linke
+ | B. Painel direito via currentJobId
+ | Parcial. Só renderiza se a vaga estiver no resultado daquela query. Fora disso o painel fica vazio e o parser retorna string vazia sem erro — falha silenciosa. Exigiu cli
+ | 8–20 s
+ | C. /jobs-guest/jobs/api/jobPosting/&lt;id&gt;
+ | Funcionou em 100% das tentativas. HTML plano, sem JavaScript, sem virtualização
+ | ~2 s
+Rota C é a especificação. Retorna, em um único documento estático:
+Contrapartida que o time precisa assumir: por ser endpoint de convidado, é também o alvo mais óbvio de rate limiting e o mais fácil de o LinkedIn fechar. Trate como depen
+
+### Campos a extrair da descrição
+  - Requisitos obrigatórios — cabeçalhos Requirements , Requisitos , What you'll need , O que você precisa conhecer .
+  - Diferenciais — Preferred , Nice to have , Diferenciais , O que aumenta suas chances , O que pode alavancar .
+  - Marcadores de eliminação — imprescindível , must have , proven experience , required . Estes recebem tratamento especial no score.
+  - Modelo de trabalho — muitas vezes só no corpo do texto, não no campo estruturado ( "Híbrido 3x presencial" ).
+  - Nº de candidatos — Over 200 applicants vs. 58 applicants muda completamente a estratégia de aplicação.
+
+## Estágio 6 — Deduplicação e corte de ruído
+
+### Palavra-chave certa, domínio errado
+Objetivo: reduzir ~60 resultados brutos para o conjunto realmente avaliável.
+  - Dedup por jobId entre todas as queries. Houve sobreposição real: a mesma vaga apareceu em até quatro eixos diferentes.
+  - Corte semântico. A busca por "Engineering Manager SRE" devolveu Maintenance Area Manager — Amazon Reliability Maintenance Engineering e Supervisor Manutenção (HVAC) . O L
+  - Corte geográfico e de modalidade contra o que o candidato aceita (Estágio 1).
+  - Corte por estado — remover Applied ; sinalizar Saved em vez de remover.
+  - Corte por idade — anúncio com mais de 30 dias entra em lista secundária, não no relatório principal.
+
+## Estágio 7 — Modelo de pontuação
+
+### Aderência 0–100, com teto rígido
+Objetivo: uma nota que o usuário possa confiar, não uma contagem de palavras-chave.
+
+### Base
+O casamento entre requisito e perfil é feito por token técnico normalizado , não por string. O dicionário de sinônimos é infraestrutura do produto, não detalhe:
+
+### Modificadores — é aqui que o score deixa de ser ingênuo
+ | Regra
+ | Efeito
+ | Caso real do relatório
+ | Bloqueador rígido — requisito marcado como imprescindível que o candidato não tem
+ | teto de 75
+ | Azure "imprescindível" numa vaga; candidato é AWS-first
+ | Descasamento de trilha — cargo pertence a outra família de carreira
+ | teto de 65
+ | Vaga pedia EM com base em backend hands-on; candidato é gestor de infra
+ | Barreira de idioma — inglês fluente exigido e não comprovado
+ | −10
+ | Presente em 5 das 9 vagas
+ | top applicant
+ | Sinal do próprio LinkedIn
+ | Conexões na empresa
+ | 13 conexões numa das finalistas
+ | Menos de 60 candidatos
+ | Uma vaga com 58
+ | Mais de 200 candidatos
+ | Três das finalistas
+ | Processo notoriamente longo ou seletivo
+ | Conhecimento de mercado, não do anúncio
+Certo &nbsp; Os tetos rígidos são o que separa este modelo de um contador de palavras-chave. Uma vaga com 90% das palavras batendo e um requisito eliminatório faltando nã
+
+## Estágio 8 — Redação do relatório
+
+### Quatro campos por vaga, e um deles é o produto
+  - Por que combina — precisa citar evidência do perfil contra requisito do anúncio , nomeando os dois. "Você tem experiência em cloud" não vale nada; "eles listam IA aplicad
+  - O que ajustar — só lacunas acionáveis . "Melhore seu inglês" é ruído; "PostgreSQL é requisito e só aparece em experiências de 2020 no seu perfil" é acionável.
+  - Nota de aderência — com a justificativa do teto quando houver.
+  - Recomendação de ação — aplicar agora, pedir indicação antes, ou descartar. Sem isso o usuário recebe uma lista, não uma decisão.
+Fechamento do relatório: mapa de frequência das habilidades no conjunto (contagem determinística, não LLM) e ajustes de posicionamento derivados das lacunas recorrentes.
+
+## Log de falhas — o que quebrou de verdade
+Cada linha aqui custou tempo de sessão. Trate como requisitos de resiliência, não como curiosidades.
+ | Sintoma
+ | Causa
+ | Tratamento na aplicação
+ | Só 7 cards, todos Promoted
+ | Lista virtualizada não hidratada
+ | Scroll obrigatório antes do parse; alertar se todos os resultados forem patrocinados
+ | Página de skills vazia
+ | Carregamento tardio
+ | Retry com scroll; fallback pelas experiências; estado indeterminado
+ | Descrição nunca carrega em /jobs/view/
+ | Anúncio com resposta gerida fora do LinkedIn
+ | Não usar essa rota
+ | Painel de detalhe vazio, sem erro
+ | currentJobId fora do resultado da query
+ | Validar que o ID está na lista antes de tentar; nunca aceitar string vazia como sucesso
+ | Extensão retornou erro em 3 chamadas seguidas
+ | Throttling após ~15 navegações rápidas
+ | Backoff exponencial com jitter ; pausa de 20–30 s; retomar do checkpoint
+ | Extrator de texto trocou de escopo sozinho
+ | Heurística de "conteúdo principal" ora pegava a lista, ora o detalhe
+ | Nunca depender de extração automática de conteúdo — selecionar o nó explicitamente
+ | Coluna de empresa saiu vazia
+ | Erro de índice no split das linhas do card
+ | Testes de contrato sobre HTML fixado, com canário diário
+Certo &nbsp; Seletores CSS do LinkedIn mudam sem aviso. Nenhum dos seletores desta especificação tem garantia de continuar válido. Isole todo parsing em uma camada versio
+
+## Arquitetura sugerida
+  - Extensão de navegador (Manifest V3) com content script restrito a linkedin.com . O usuário roda dentro da própria sessão; nada de credenciais no servidor.
+  - Fila de trabalho com throttle — 3 a 8 segundos entre navegações, com jitter. Nunca rajadas paralelas.
+  - Camada de parsing versionada e isolada — todo seletor num único módulo, com fixtures e canário.
+  - Persistência local (IndexedDB) do que já foi visto, pontuado e apresentado. Permite retomar sem refazer, e é o que sustenta "novidades desde a última varredura".
+  - Chamada de LLM só em quatro pontos: extração semântica do perfil, geração de queries, classificação de domínio no corte de ruído, e pontuação + redação. Todo o resto é de
+  - Checkpoint por estágio — se cair no estágio 5, retomar de lá com a listagem já coletada, não do zero.
+Provável &nbsp;O maior custo de manutenção não será o LLM nem a infraestrutura — será perseguir mudanças de DOM do LinkedIn. Orçar isso como trabalho recorrente desde o p
+
+## Checklist de validação antes de liberar
+  - Uma busca conhecida retorna vagas não patrocinadas — se todas vierem Promoted , o scroll falhou.
+  - Nenhum campo obrigatório vem vazio sem sinalizar erro. Vazio ≠ ausente.
+  - Vagas já aplicadas não aparecem como recomendação.
+  - Uma vaga com bloqueador rígido conhecido pontua abaixo de 75, sempre.
+  - Nº de candidatos e conexões na empresa estão presentes em todas as finalistas.
+  - Rodar duas vezes seguidas produz o mesmo conjunto de IDs — instabilidade aqui é sintoma de scroll insuficiente.
+  - Canário de seletores passa contra a página viva do dia.
+  - O relatório cita, para cada vaga, um requisito do anúncio e a evidência correspondente do perfil. Se não citar, o texto é genérico e não serve.

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>crivo — insights de vaga</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { width: 22rem; margin: 0; padding: 1rem;
+         font: 14px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 1rem; margin: 0 0 .2rem; }
+  .sub { margin: 0 0 1rem; opacity: .7; font-size: .85em; }
+  label { display: block; font-weight: 600; margin-bottom: .3rem; }
+  input { width: 100%; box-sizing: border-box; padding: .5rem;
+          font-family: ui-monospace, monospace; font-size: .85em; }
+  button { margin-top: .7rem; padding: .5rem 1rem; font: inherit; cursor: pointer; }
+  .estado { margin-top: 1rem; padding: .7rem; border-radius: 6px;
+            background: rgba(128,128,128,.14); font-size: .9em; }
+  .erro { background: rgba(180,35,42,.18); }
+  .numero { font-size: 1.5em; font-weight: 700; }
+  .dica { margin-top: .8rem; font-size: .8em; opacity: .75; }
+  code { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <h1>crivo — insights de vaga</h1>
+  <p class="sub">Lê os cards do LinkedIn enquanto você navega.</p>
+
+  <label for="token">Token do extrator</label>
+  <input id="token" type="password" placeholder="cole aqui" autocomplete="off">
+
+  <label for="app" style="margin-top:.7rem">Endereço do app</label>
+  <input id="app" type="text" placeholder="http://localhost:8000">
+
+  <button id="salvar">Salvar</button>
+  <button id="testar">Testar conexão</button>
+
+  <div class="estado" id="estado">carregando…</div>
+
+  <p class="dica">
+    O token sai de <code>/extensao</code> no crivo. Ele escreve insight e nada
+    mais — não abre relatório nem perfil.
+  </p>
+
+  <script src="opcoes.js"></script>
+</body>
+</html>

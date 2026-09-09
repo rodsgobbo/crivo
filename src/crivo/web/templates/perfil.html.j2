@@ -1,0 +1,133 @@
+{# O perfil-alvo consolidado, campo a campo, com a origem de cada valor.
+
+   Mostrar a origem nao e enfeite. Quem ve algo errado precisa saber onde
+   corrigir: nome torto veio do LinkedIn e se conserta reconectando; experiencia
+   torta veio do curriculo e se conserta na conferencia. Sem essa coluna o
+   usuario so pode adivinhar, e adivinhar leva a mexer no lugar errado.
+
+   Os problemas de higiene aparecem com a evidencia que os motivou, pelo mesmo
+   motivo: aviso sem trecho de origem vira opiniao. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crivo — seu perfil</title>
+<link rel="stylesheet" href="/static/crivo.css">
+</head>
+<body>
+<main>
+{% set atual = "perfil" %}
+  {% include "_navegacao.html.j2" %}
+
+  <h1>Seu perfil</h1>
+  <p class="sub">
+    O que a busca usa. Cada campo mostra de qual origem veio o valor vigente.
+  </p>
+
+  {% if ctx.aviso %}
+    <div class="cartao">
+      <div class="linha">
+        <span class="rotulo">{{ ctx.aviso }}</span>
+        <span class="marca ok">feito</span>
+      </div>
+    </div>
+  {% endif %}
+  {% if ctx.erro %}
+    <div class="cartao falhou">
+      <div class="linha">
+        <span class="rotulo">{{ ctx.erro }}</span>
+        <span class="marca erro">erro</span>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="cartao">
+    <div class="linha">
+      <span class="rotulo">Senioridade inferida</span>
+      <span class="marca ok">{{ ctx.versao.nivel_inferido }}</span>
+    </div>
+    <p class="nota">
+      Deduzida das experiências, não declarada. Versão
+      <code>{{ ctx.versao.version_id[:8] }}</code>, criada em
+      {{ ctx.versao.criado_em | local_completo }}{% if ctx.historico > 1 %} —
+      {{ ctx.historico }}ª de {{ ctx.historico }} versões, todas preservadas
+      {%- endif %}.
+    </p>
+  </div>
+
+  <h2>Campos</h2>
+  {% for campo in ctx.campos %}
+    {% set valor = ctx.versao.campos.get(campo) %}
+    {% set origem = ctx.versao.origem_por_campo.get(campo) %}
+    <div class="cartao">
+      <div class="linha">
+        <span class="rotulo">{{ campo }}</span>
+        {% if origem %}
+          <span class="origem {{ origem }}">{{ origem }}</span>
+        {% else %}
+          <span class="origem">nenhuma origem</span>
+        {% endif %}
+      </div>
+
+      {% if not valor %}
+        <p class="valor vazio">nenhuma origem forneceu este campo</p>
+      {% elif campo == 'experiencias' %}
+        {% for exp in valor %}
+          <div class="exp">
+            <div>{{ exp.get('titulo') or 'cargo sem título' }} —
+                 {{ exp.get('empresa') or 'empresa não informada' }}</div>
+            <div class="quando">
+              {{ exp.get('inicio') or '?' }} →
+              {{ exp.get('fim') or 'atual' }}
+            </div>
+          </div>
+        {% endfor %}
+      {% elif valor is string %}
+        <p class="valor">{{ valor }}</p>
+      {% else %}
+        <ul>
+          {% for item in valor %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <h2>Higiene do histórico</h2>
+  {% if ctx.versao.problemas_higiene %}
+    {% for problema in ctx.versao.problemas_higiene %}
+      <div class="cartao">
+        <div class="linha">
+          <span class="rotulo">{{ problema.tipo }}</span>
+          <span class="marca pendente">{{ problema.campo }}</span>
+        </div>
+        <p class="nota">{{ problema.detalhe }}</p>
+        {% if problema.trecho %}
+          <p class="nota"><em>{{ problema.trecho }}</em></p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="cartao">
+      <p class="nota">
+        Nenhum problema encontrado. Lista vazia é resultado, não silêncio:
+        o diagnóstico rodou.
+      </p>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/profile/consolidate">
+    <button class="acao discreta" type="submit">Reconsolidar</button>
+    <p class="nota">
+      Gera uma versão nova em vez de alterar esta. Faça isso depois de corrigir
+      a conferência ou reconectar o LinkedIn.
+    </p>
+  </form>
+
+  <p class="rodape">
+    <a href="/">← página inicial</a> ·
+    <a href="/resume/conferencia">conferência da extração</a>
+  </p>
+</main>
+</body>
+</html>

@@ -1,0 +1,233 @@
+# Eixos de funcao, rotulos de nivel, ancoras de busca e padroes de rejeicao.
+#
+# Este arquivo e a memoria de dominio do sistema. Ele existe separado do codigo
+# porque e a parte que mais muda com a experiencia de uso: um descarte errado ou
+# uma busca improdutiva se corrige aqui, sem versao nova.
+
+# Eixos de funcao reconhecidos no historico do candidato. A chave e o termo
+# canonico e a lista sao as formas que aparecem em titulo de cargo e headline.
+[eixos]
+"SRE" = ["sre", "site reliability", "confiabilidade"]
+"Infraestrutura" = ["infraestrutura", "infrastructure", "infra"]
+"Plataforma" = ["plataforma", "platform"]
+"Cloud" = ["cloud", "nuvem", "aws", "azure", "gcp"]
+"DevOps" = ["devops", "esteira", "ci/cd", "cicd"]
+"Observabilidade" = ["observabilidade", "observability", "monitoracao", "apm"]
+"Banco de Dados" = ["dba", "banco de dados", "database", "postgres", "oracle"]
+"FinOps" = ["finops", "custo de nuvem", "cloud cost"]
+"Seguranca" = ["seguranca", "security", "appsec", "secops"]
+"Dados" = ["engenharia de dados", "data engineering", "pipeline de dados"]
+"Backend" = ["backend", "back-end", "servidor"]
+
+# Traducao de cada eixo para busca em ingles. Metade das vagas boas no Brasil
+# esta anunciada em ingles, e buscar so em portugues perde essa metade.
+[eixos_en]
+"SRE" = "SRE"
+"Infraestrutura" = "Infrastructure"
+"Plataforma" = "Platform Engineering"
+"Cloud" = "Cloud"
+"DevOps" = "DevOps"
+"Observabilidade" = "Observability"
+"Banco de Dados" = "Database"
+"FinOps" = "FinOps"
+"Seguranca" = "Security"
+"Dados" = "Data Engineering"
+"Backend" = "Backend"
+
+# Rotulos de nivel, separados por idioma. A separacao nao e cosmetica: antes
+# havia uma lista so, e o planejador combinava o eixo em ingles com rotulo em
+# portugues. "Database Coordenador" nao existe como cargo em lugar nenhum, e
+# cada busca inutil dessas custa uma requisicao na origem.
+[niveis]
+executive = ["Head", "Diretor", "Diretora"]
+manager = ["Gerente", "Coordenador", "Coordenadora"]
+lead = ["Lider Tecnico", "Especialista"]
+senior = ["Senior", "Pleno Senior"]
+pleno = ["Pleno", "Analista"]
+
+[niveis_en]
+executive = ["Head", "Director", "VP"]
+manager = ["Manager", "Engineering Manager"]
+lead = ["Lead", "Tech Lead", "Staff"]
+senior = ["Senior"]
+pleno = ["Mid-level"]
+
+# Buscas literais que o mercado usa, acrescentadas independentemente dos eixos.
+# Sao as que o produto cartesiano nao produziria e que ainda assim rendem.
+[ancoras]
+manager = [
+  "Engineering Manager Infrastructure",
+  "Site Reliability Engineering Manager",
+  "Gerente de Infraestrutura e Cloud",
+  "Gerente de Plataforma de Engenharia",
+  "SRE Manager",
+]
+executive = [
+  "Head de Infraestrutura",
+  "Head of Platform Engineering",
+  "Diretor de Tecnologia",
+]
+lead = ["Tech Lead SRE", "Staff Site Reliability Engineer"]
+senior = ["Senior Site Reliability Engineer", "Senior Platform Engineer"]
+pleno = ["Analista de Infraestrutura", "Cloud Engineer"]
+
+# Titulos que o pre-filtro descarta. Cada entrada e uma expressao regular
+# aplicada ao titulo da vaga, sem diferenciar maiusculas.
+[rejeicao]
+titulos = [
+  "quality assurance|\\bqa\\b",
+  "product manager|product owner|\\bpo\\b",
+  "delivery manager",
+  "scrum|agile coach",
+  "pre[- ]?sales|comercial|vendas|account executive",
+  "paralegal|tax|fiscal|jur[íi]dic|cont[áa]bil",
+  "estrutur(al|as)\\b|engenheiro civil",
+  "\\bsuporte n[12]\\b|help ?desk",
+  "est[áa]gio|intern\\b|trainee|j[úu]nior|junior",
+  "recrutador|recruiter|talent acquisition",
+  # Infraestrutura predial e fisica, que o casamento difuso da origem
+  # confunde com infraestrutura de TI. Observado em coleta real.
+  "facilit(y|ies)|manuten[çc][ãa]o predial|predial|zelador",
+  # Supervisao de manutencao de campo. Observado em coleta real: uma vaga de
+  # "Supervisor de Manutencao de Rede" numa operadora pontuou 83% porque o
+  # texto dela cita rede, seguranca e confiabilidade -- vocabulario que a
+  # infraestrutura de TI compartilha de verdade. A distincao esta no cargo e
+  # nao na descricao, entao ela precisa acontecer aqui, no titulo.
+  "(gerente|supervisor|coordenador|t[ée]cnico) de manuten[çc][ãa]o",
+  "manuten[çc][ãa]o (industrial|de rede|de campo)",
+  "hotelaria|hospitalidade",
+  "obras|constru[çc][ãa]o civil",
+  # Financas corporativas, que o eixo FinOps atrai. Observado em coleta real:
+  # numa busca de 371 vagas, 31 eram FP&A, planejamento financeiro e
+  # controladoria -- disciplina de orcamento empresarial, e nao engenharia de
+  # custo de nuvem. O eixo continua valendo: "FinOps" e "cloud cost" no titulo
+  # nao casam com nenhum destes termos.
+  "fp&a|planejamento financeiro|analista financeir|controladoria|\\bcontroller\\b",
+  # Engenharia de dados e aprendizado de maquina. Compartilham vocabulario de
+  # nuvem com infraestrutura, mas sao outra carreira. A separacao precisa
+  # acontecer no titulo porque a descricao das duas cita AWS, pipeline e
+  # observabilidade do mesmo jeito.
+  #
+  # O termo "dados" sozinho nao entra aqui de proposito: "Administrador de
+  # Banco de Dados" e cargo de DBA, adjacente a SRE, e descarta-lo custaria
+  # justamente as vagas mais aderentes de quem acumula as duas funcoes.
+  # Medido nas mesmas 371 vagas: estes padroes pegam 20 e nenhum DBA.
+  "engenheir[oa]s? de dados|data engineer|cientista de dados|data scientist",
+  "machine learning|\\bmlops?\\b|intelig[êe]ncia artificial",
+  "analista de dados|data analyst",
+  # Producao industrial e logistica. O casamento difuso da origem as traz pela
+  # palavra "coordenador", que a busca de nivel gerencial usa. Observado em
+  # coleta real: "COORDENADOR DE PRODUCAO CHARQUE" apareceu entre as melhores
+  # pontuadas de um run, porque o titulo sozinho nao diz o setor.
+  "produ[çc][ãa]o|log[íi]stic|almoxarif|frigor[íi]fic|abate|charque",
+  # Gestao de produto em portugues. O ingles ja caia em "product manager", mas
+  # "Coordenador de Produtos" passava inteiro -- e e outra carreira.
+  "(coordenador|gerente|analista)[ae]? de produtos?\\b",
+  # Seguranca do trabalho. Colide com o eixo "Seguranca", cujas formas incluem
+  # "seguranca" solto -- entao a regra de trilha reconhece estes titulos como
+  # tecnologia. Observado em coleta real: "Coordenador Seguranca do Trabalho"
+  # atravessou limpo e pontuou 66%. E outra profissao inteira: NR, CIPA, PPRA.
+  "seguran[çc]a do trabalho|\\bt[ée]cnic[oa] de seguran[çc]a\\b|ergonomia",
+  # As quatro entradas abaixo saem do run e49b12fe, onde 51 vagas empataram na
+  # nota mais alta da passada provisoria. Todas as familias aqui tem uma coisa
+  # em comum, e e ela que justifica descartar em vez de marcar: nao existe
+  # leitura de tecnologia possivel para elas. "Turbina" nao e titulo ambiguo
+  # que a descricao esclareceria -- e outra profissao inteira, e o que trouxe
+  # cada uma foi a palavra de nivel da busca ("gerente", "supervisor",
+  # "diretor"), exatamente como a producao industrial que ja esta acima.
+  #
+  # Energia e industria pesada.
+  "turbina|termel[ée]tric|faixa de dom[íi]nio|subesta[çc][ãa]o",
+  # Financas e compras corporativas. A lista ja tinha FP&A e controladoria, e
+  # ainda assim passaram "Gerente financeiro", "Gerencia Senior de Financas",
+  # "Accounting Senior Manager, Brazil" e "Manager, Costing FTW".
+  "gerente financeir|ger[êe]ncia s[êe]nior de finan[çc]as",
+  "\\baccounting\\b|\\bcosting\\b",
+  "procurement (processes|manager|director)|latam procurement",
+  # Vendas em ingles. "comercial|vendas" cobria so o portugues, e "Regional
+  # Sales Director, Sao Paulo Brazil" atravessou inteiro.
+  "(sales|vendas) (director|manager|executive|representative)",
+  "regional sales|national sales|business development|partner (program|manager)",
+  # Mineracao e seguros: "Gerente - Mining Operations" e "Coordenador
+  # Operacoes de Sinistro", no mesmo run.
+  "\\bmining operations\\b|minera[çc][ãa]o(?! de dados)|sinistro|ap[óo]lice",
+]
+
+# Regra branda: engenharia de software generica sem termo de infraestrutura no
+# titulo NAO e descartada -- e marcada com um blocker e segue para o score.
+#
+# Antes ela eliminava, e numa busca real por "Engineering Manager Platform"
+# cinco vagas de quinze sumiram: "Software Engineering Manager" nao traz
+# "platform" no titulo, mas e exatamente o cargo procurado. O sinal que
+# decidiria esta na descricao, que o pre-filtro ainda nao tem. Marcar deixa a
+# decisao para quem tem esse dado.
+[rejeicao.branda]
+# Cobre a forma de agente ("Engenheiro de Software"), que e a que aparece em
+# titulo de vaga, e nao apenas a forma de area ("Engenharia de Software").
+#
+# E cobre como o mercado de fato nomeia essa familia, que quase nunca e
+# "engenharia de software". Observado no run a6d5a060: sete das trinta melhores
+# eram desenvolvimento puro -- "Coordenador backend (Java/.NET)", "Arquiteto(a)
+# de Software | Java/Node.js", "Tech Lead Fullstack", "Coordenador de
+# Desenvolvimento de Software" -- e nenhuma casava o padrao antigo. Elas
+# ocupavam o topo de um perfil de SRE e Infraestrutura sem nenhum aviso.
+#
+# Nao descarta: marca. Um "Tech Lead Backend" numa empresa de plataforma pode
+# ser a vaga certa, e so a descricao diria. O teto tira do topo sem esconder,
+# e a excecao abaixo protege quem cita as duas coisas no titulo.
+padrao = """
+engenheir[oa]s? de software|(engenharia|engineering) de software|software engineer|\
+\\bback[- ]?end\\b|\\bfront[- ]?end\\b|\\bfull[- ]?stack\\b|\
+arquitet[oa]s?\\b.{0,20}\\bsoftware\\b|desenvolvimento de (software|sistemas)|\
+\\b(java|node\\.?js|\\.net|golang|react|angular|flutter)\\b\
+"""
+excecao = "sre|reliability|infra|platform|cloud|devops|dba|database|observab|finops"
+
+# Termos que sinalizam a trilha certa quando aparecem no titulo.
+#
+# Servem a uma regra invertida em relacao a `[rejeicao]`. Ali a lista diz o que
+# eliminar, e por isso cresce um caso observado por vez: ela tinha
+# "(gerente|supervisor|coordenador|tecnico) de manutencao" e ainda assim deixou
+# passar "LIDER DE MANUTENCAO ELETRICA", que pontuou 76% num run real. Toda
+# lista de negacao perde para a proxima variacao de titulo.
+#
+# Aqui a lista diz o que reconhecer. Titulo que nao traz nenhum destes termos
+# nao e descartado -- recebe um teto de nota, porque a origem casa por palavra
+# solta e um titulo sem nenhuma marca de tecnologia quase sempre veio de
+# casamento acidental. Medido no run 2a292735: 190 das 249 vagas do relatorio
+# nao tinham nenhum termo desta lista no titulo.
+#
+# Os eixos de [eixos] e [eixos_en] ja entram automaticamente. O que esta aqui e
+# o vocabulario generico que nenhum eixo cobre e que ainda assim e a trilha:
+# "Diretor de Tecnologia" e a vaga certa e nao cita infraestrutura nenhuma.
+# Duas listas em vez de uma com expressao regular. Termo curto precisa casar
+# palavra inteira -- "ti" como pedaco aparece em "gestao", "otimizacao" e
+# "logistica", e marcaria como tecnologia justamente o que nao e. Separar por
+# forma de casamento mantem a configuracao livre de escape de regex, que e onde
+# um erro passa despercebido ate alguem ler o relatorio.
+[trilha]
+# Casam como pedaco: cobrem flexao e composto sem precisar lista-los.
+genericos = [
+  "tecnolog", "technolog",
+  "engenharia", "engineering", "engineer", "engenheir",
+  "sistemas", "systems", "software", "hardware",
+  "arquitet", "architect", "computa", "digital",
+  # Acrescentados depois do run e49b12fe. Ali a regra marcou 60 dos 154
+  # titulos e acertou quase todos -- mas o erro passou a custar caro, porque a
+  # marcacao agora tira a vaga do enriquecimento. Os falsos positivos medidos
+  # foram "SysOps Analyst", "Especialista I - Technical Lead", "Gerente DFIR e
+  # Gestao de Vulnerabilidades" e "Gerente Senior - Investigacao Cibernetica e
+  # Resposta Forense": todos tecnologia, nenhum casando "tecnolog",
+  # "engenharia" ou "sistemas". Cada termo abaixo e um deles.
+  #
+  # "tecnico" ficou de fora de proposito. Em ingles "technical" nomeia cargo de
+  # tecnologia; em portugues "tecnico" sozinho nomeia manutencao industrial, e
+  # reconhece-lo desligaria a regra justamente para o ruido que ela pega.
+  "technical", "sysop", "sysadmin", "network",
+  "cyber", "ciber", "linux", "kubernetes",
+]
+# Casam como palavra inteira.
+siglas = [
+  "ti", "it", "cto", "cio", "ciso", "dados", "data", "tech",
+  "dfir", "soc", "noc",
+]

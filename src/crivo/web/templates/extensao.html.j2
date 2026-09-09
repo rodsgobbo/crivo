@@ -1,0 +1,110 @@
+{# Emissao do token do extrator e instalacao da extensao.
+
+   Esta pagina existe porque o token nao pode viajar de outro jeito. Ele e a
+   credencial que a extensao usa para escrever insight, e o cookie de sessao nao
+   serve: `samesite=lax` faz o navegador reter o cookie num POST vindo do
+   LinkedIn, que e cross-site. Ver `store/extractor_tokens.py`.
+
+   O token aparece uma vez. O banco guarda so o hash, entao nem o servidor
+   consegue mostra-lo de novo -- e dizer isso na tela evita que alguem feche a
+   aba supondo que da para voltar aqui e copiar depois. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crivo — extensão do navegador</title>
+<link rel="stylesheet" href="/static/crivo.css">
+<style>
+  .token {
+    display: block; margin: .8rem 0; padding: .9rem 1rem;
+    font-family: ui-monospace, monospace; font-size: 1rem; word-break: break-all;
+    background: rgba(128,128,128,.14); border-radius: 6px; user-select: all;
+  }
+  .passos li { margin-bottom: .6rem; }
+</style>
+</head>
+<body>
+<main>
+{% set atual = "extensao" %}
+  {% include "_navegacao.html.j2" %}
+
+  <h1>Extensão do navegador</h1>
+  <p class="sub">
+    Captura o <em>“You'd be a top applicant”</em> — o sinal que só a sua conta
+    Premium logada enxerga, e que a coleta anônima do crivo nunca vê.
+  </p>
+
+  {% if ctx.token %}
+    <div class="cartao">
+      <div class="linha">
+        <span class="rotulo">Token novo, emitido agora</span>
+        <span class="marca ok">copie</span>
+      </div>
+      <code class="token">{{ ctx.token }}</code>
+      <p class="nota">
+        <strong>Ele aparece uma vez só.</strong> O banco guarda apenas o hash,
+        então nem o servidor consegue mostrá-lo de novo — se perder, emita
+        outro. Emitir um novo invalida o anterior.
+      </p>
+    </div>
+  {% else %}
+    <div class="cartao">
+      <div class="linha">
+        <span class="rotulo">
+          {% if ctx.status %}Já existe um token emitido{% else %}
+          Nenhum token emitido ainda{% endif %}
+        </span>
+        <span class="marca">{% if ctx.status %}ativo{% else %}ausente{% endif %}</span>
+      </div>
+      {% if ctx.status %}
+        <p class="nota">
+          Criado em {{ ctx.status.criado_em | local_completo }}.
+          {% if ctx.status.ultimo_uso_em %}
+            Última vez que a extensão falou com o app:
+            {{ ctx.status.ultimo_uso_em | local_completo }} — está funcionando.
+          {% else %}
+            <strong>Nunca foi usado.</strong> Se a extensão já está instalada,
+            ela não chegou a falar com o app.
+          {% endif %}
+        </p>
+      {% endif %}
+      <form method="post" action="/extensao/token">
+        <button type="submit">
+          {% if ctx.status %}Emitir outro (invalida o atual){% else %}
+          Emitir token{% endif %}
+        </button>
+      </form>
+    </div>
+  {% endif %}
+
+  <h2>Instalar</h2>
+  <ol class="passos">
+    <li>Abra <code>chrome://extensions</code> (ou <code>edge://extensions</code>).</li>
+    <li>Ligue o <strong>Modo do desenvolvedor</strong>, no canto.</li>
+    <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta
+      <code>{{ ctx.caminho_da_extensao }}</code>.</li>
+    <li>Clique no ícone da extensão e cole o token acima.</li>
+    <li>Navegue pelo LinkedIn logado. Ela lê os cards sozinha, sem clique.</li>
+  </ol>
+
+  <h2>O que ela manda, e o que ela não manda</h2>
+  <div class="cartao">
+    <p class="nota">
+      Manda: o id da vaga, a contagem de candidatos, a distribuição de
+      senioridade e quais dos três sinais o card mostra. Números já lidos.
+    </p>
+    <p class="nota">
+      Não manda, e não lê: cookie, token de sessão do LinkedIn, senha, mensagem
+      ou qualquer coisa da sua conta. O app recebe o resultado da leitura que
+      você já estava fazendo com os próprios olhos — nunca o meio de refazer
+      essa leitura sem você.
+    </p>
+    <p class="nota">
+      O token desta página escreve insight e nada mais. Vazado, ele não abre
+      relatório, perfil nem credencial de provedor.
+    </p>
+  </div>
+</main>
+</body>
+</html>

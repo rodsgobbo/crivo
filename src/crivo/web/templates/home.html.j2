@@ -1,0 +1,455 @@
+{# Porta de entrada da aplicacao.
+
+   Existiu um periodo em que `/` devolvia 404: todos os servicos de pe e
+   alcancaveis por HTTP, e quem abria o endereco via `{"detail":"Not Found"}`.
+   Esta pagina existe para que o estado do sistema e o proximo passo sejam
+   visiveis sem que ninguem precise ler o codigo das rotas.
+
+   A ordem foi invertida depois de um percurso cognitivo: o que exige acao vem
+   primeiro, os resultados em seguida, e a instalacao -- feita uma vez e depois
+   nunca mais -- desce para o fim, colapsada. Antes era o contrario, e quem
+   voltava no dia seguinte atravessava quatro cartoes verdes de configuracao
+   antes de alcancar o botao que tinha vindo apertar.
+
+   Cada erro mora dentro do cartao da acao que o causou. Um erro no topo da
+   pagina, a quatrocentas linhas do botao, foi lido como "nao deu nada". #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{# Atualizacao so enquanto ha run correndo. Recarregar uma pagina parada seria
+   gasto sem informacao nova, e atrapalharia quem esta preenchendo formulario. #}
+{% if ctx.run_ativo %}<meta http-equiv="refresh" content="10">{% endif %}
+<title>crivo</title>
+<link rel="stylesheet" href="/static/crivo.css">
+</head>
+<body>
+<main>
+
+{% set atual = "inicio" %}
+  {% include "_navegacao.html.j2" %}
+
+  <h1>crivo</h1>
+  <p class="sub">Triagem de vagas a partir do seu currículo.</p>
+
+  {# O recado do retorno de uma autorizacao vem antes de tudo, porque quem
+     acabou de ser recusado pelo provedor precisa entender isso antes de
+     qualquer outra coisa na pagina. #}
+  {% if ctx.erro %}
+    <div class="cartao falhou">
+      <div class="linha">
+        <span class="rotulo">A autorização não foi concluída</span>
+        <span class="marca erro">erro</span>
+      </div>
+      <p class="nota">{{ ctx.erro }}</p>
+    </div>
+  {% endif %}
+  {% if ctx.aviso %}
+    <div class="cartao andando">
+      <div class="linha">
+        <span class="rotulo">Conectado, com ressalva</span>
+        <span class="marca pendente">atenção</span>
+      </div>
+      <p class="nota">{{ ctx.aviso }}</p>
+    </div>
+  {% endif %}
+
+  {# ============================================================== AGORA === #}
+  {% if ctx.run_ativo %}
+    {% set enr = ctx.run_ativo.enriquecimento %}
+    <div class="cartao agora andando">
+      <div class="linha">
+        <span class="rotulo">
+          <span class="girando" aria-hidden="true"></span>Buscando vagas
+        </span>
+        <span class="marca pendente">
+          etapa {{ ctx.run_ativo.feitos }} de {{ ctx.run_ativo.total }}
+        </span>
+      </div>
+      <p class="nota destacada">
+        <strong>{{ ctx.run_ativo.rotulo }}</strong> — há
+        {{ ctx.run_ativo.decorrido_s // 60 }}min
+        {{ ctx.run_ativo.decorrido_s % 60 }}s.
+      </p>
+      <div class="barra">
+        <div class="barra-cheia"
+             style="width: {{ enr.percentual if enr else
+                     (ctx.run_ativo.feitos * 100 // ctx.run_ativo.total) }}%"></div>
+      </div>
+      {% if enr %}
+        <p class="nota">
+          <strong>{{ enr.prontas }} de {{ enr.total }}</strong> descrições
+          lidas — faltam {{ enr.pendentes }}.
+          {% if enr.pendentes %}
+            Entre uma vaga e outra há 8 a 20 segundos de espera, imposta para
+            não ser barrado pela origem: estime
+            <strong>{{ (enr.pendentes * 8 / 60) | round | int }} a
+            {{ (enr.pendentes * 20 / 60) | round | int }} minutos</strong>.
+          {% endif %}
+        </p>
+        <p class="nota">
+          Pode fechar esta aba: quem trabalha é o processo que lê as vagas, não
+          o navegador.
+        </p>
+      {% else %}
+        <p class="nota">
+          Esta página se atualiza sozinha a cada 10 segundos.
+          {% if ctx.run_ativo.decorrido_s > 900 %}
+            <br><strong>Passou de 15 minutos nesta etapa.</strong> Veja o log
+            na janela onde você subiu o servidor.
+          {% endif %}
+        </p>
+      {% endif %}
+
+      {# Parar e uma acao do usuario, e por isso mora junto do que ela para.
+         A confirmacao vem do proprio texto do botao e da nota abaixo: nao ha
+         JavaScript aqui, e um dialogo de confirmacao exigiria um. #}
+      {% if ctx.run_ativo.cancelando %}
+        <p class="nota destacada">
+          <strong>Parada pedida.</strong> A busca encerra assim que a consulta
+          em curso terminar. As vagas já trazidas ficam guardadas.
+        </p>
+      {% else %}
+        <form method="post"
+              action="/runs/{{ ctx.run_ativo.run_id }}/cancelar">
+          <button class="acao discreta" type="submit">Cancelar esta busca</button>
+        </form>
+        <p class="nota">
+          Cancelar não descarta o que já veio: as vagas coletadas até aqui
+          continuam no seu histórico, e a cota do dia só é cobrada se a busca
+          chegou a trazer alguma coisa.
+        </p>
+      {% endif %}
+    </div>
+
+  {% elif ctx.proximo %}
+    {# Um passo pendente por vez. Mostrar os cinco juntos fazia a pagina
+       parecer uma lista de pendencias em vez de um caminho. #}
+    <div class="cartao agora">
+      <div class="linha">
+        <span class="rotulo">{{ ctx.proximo.rotulo }}</span>
+        <span class="marca pendente">próximo passo</span>
+      </div>
+      <p class="nota destacada">{{ ctx.proximo.porque }}</p>
+
+      {% if ctx.proximo.chave == 'sessao' %}
+        <a class="acao {{ 'avisa' if ctx.google_de_exemplo }}" href="/auth/login">
+          Entrar com Google{{ ' — vai falhar' if ctx.google_de_exemplo }}
+        </a>
+        {% if ctx.google_de_exemplo %}
+          <p class="nota">
+            <code>GOOGLE_CLIENT_ID</code> ainda é um valor de exemplo, então o
+            Google recusa antes de pedir sua senha — a mensagem é
+            <em>“Acesso bloqueado: erro de autorização”</em>. Cadastre um
+            cliente OAuth com o retorno
+            <code>http://127.0.0.1:8000/auth/callback</code>.
+          </p>
+        {% endif %}
+        {% if not ctx.user_id %}
+          <div class="linha">
+            <span class="rotulo">LinkedIn — origem de perfil</span>
+            <span class="marca pendente">exige o passo anterior</span>
+          </div>
+          <p class="nota">
+            É a segunda autorização, e ela
+            entra como
+            <strong>origem de identidade</strong> e não de histórico: os escopos
+            abertos devolvem nome, foto e e-mail, e não devolvem cargos nem
+            competências. Quem alimenta a busca é o currículo.
+          </p>
+          {# Visivel para que se saiba que existe; sem destino para nao
+             despejar um 401 em quem ainda nao tinha como ter sessao. #}
+          <span class="acao travada">Conectar LinkedIn — entre primeiro</span>
+        {% endif %}
+        {% if ctx.entrada_local %}
+          <a class="acao discreta" href="/auth/local">Entrar sem provedor</a>
+          <p class="nota">
+            Sessão local de desenvolvimento, ligada por
+            <code>CRIVO_DEV_LOGIN</code>. Ela cria uma sessão de verdade, pelo
+            mesmo caminho do fluxo real.
+            <strong>Desligue antes de expor este serviço a qualquer rede.</strong>
+          </p>
+        {% endif %}
+      {% elif ctx.proximo.chave == 'curriculo' %}
+        <form method="post" action="/resume/upload"
+              enctype="multipart/form-data" class="envio">
+          <input type="file" name="arquivo" accept=".docx,.pdf" required>
+          <button class="acao" type="submit">Importar currículo</button>
+        </form>
+      {% elif ctx.proximo.metodo == 'post' %}
+        <form method="post" action="{{ ctx.proximo.acao }}">
+          <button class="acao" type="submit">{{ ctx.proximo.botao }}</button>
+        </form>
+      {% else %}
+        <a class="acao" href="{{ ctx.proximo.acao }}">{{ ctx.proximo.botao }}</a>
+      {% endif %}
+
+      {% if ctx.proximo.chave == 'extracao' and not ctx.credenciais %}
+        <p class="nota">
+          Sem credencial de modelo a extração automática não roda, e o
+          preenchimento manual é oferecido no lugar — caminho de primeira
+          classe, não remendo. Cadastre uma em <em>Configuração</em>, abaixo.
+        </p>
+      {% endif %}
+    </div>
+
+  {% else %}
+    {# Tudo pronto: a pagina existe para uma acao so. #}
+    <div class="cartao agora">
+      <div class="linha">
+        <span class="rotulo">Buscar vagas</span>
+        {% if ctx.buscas_restantes %}
+          <span class="marca ok">pronta</span>
+        {% else %}
+          <span class="marca pendente">cota de hoje esgotada</span>
+        {% endif %}
+      </div>
+
+      {% if ctx.buscas_restantes %}
+        <form method="post" action="/runs">
+          <fieldset class="alcance">
+            <legend>Vagas publicadas nos últimos</legend>
+            <label><input type="radio" name="alcance" value="30d" checked> 30 dias</label>
+            <label><input type="radio" name="alcance" value="7d"> 7 dias</label>
+            <label><input type="radio" name="alcance" value="1d"> 1 dia</label>
+          </fieldset>
+          <button class="acao" type="submit">Buscar vagas agora</button>
+        </form>
+        <p class="nota">
+          Restam <strong>{{ ctx.buscas_restantes }}</strong>
+          busca{{ "" if ctx.buscas_restantes == 1 else "s" }} hoje. Janela maior
+          traz mais vagas, e o orçamento diário de descrições é o mesmo: com 30
+          dias, boa parte pode ficar sem descrição lida.
+        </p>
+
+        {# O que sera procurado, antes de gastar a cota. Sem isto, a unica forma
+           de saber por que um cargo nao apareceu era ler o planejador. #}
+        {% if ctx.buscas_previstas and ctx.buscas_previstas.todas %}
+          <details>
+            <summary>
+              {{ ctx.buscas_previstas.todas | length }} termos serão procurados —
+              ajustar
+            </summary>
+
+            {% if ctx.buscas_previstas.minhas %}
+              <p class="nota">Suas buscas:</p>
+              <div class="tags">
+                {% for termo in ctx.buscas_previstas.minhas %}
+                  <form method="post" action="/profile/buscas/remover" class="tag-form">
+                    <input type="hidden" name="texto" value="{{ termo }}">
+                    <span class="tag">{{ termo }}
+                      <button class="tag-x" type="submit"
+                              title="remover {{ termo }}">×</button>
+                    </span>
+                  </form>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <form method="post" action="/profile/buscas" class="envio">
+              <input type="text" name="texto"
+                     placeholder="Head of SRE, Diretor de Infraestrutura…">
+              <button class="acao discreta" type="submit">Acrescentar busca</button>
+            </form>
+            <p class="nota">
+              Ao menos duas palavras: um termo solto devolve o mercado inteiro.
+              As buscas geradas vêm do seu perfil — nível
+              <strong>{{ ctx.buscas_previstas.nivel }}</strong> e o degrau
+              imediatamente acima.
+            </p>
+
+            <p class="nota">Geradas a partir do perfil:</p>
+            <div class="tags">
+              {% for termo in ctx.buscas_previstas.todas %}
+                {% if termo not in ctx.buscas_previstas.minhas %}
+                  <span class="tag">{{ termo }}</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
+      {% else %}
+        {# A acao continua visivel, com o motivo no rotulo. Removê-la fazia a
+           ausencia ser indistinguivel de defeito. #}
+        <span class="acao travada">Buscar vagas — volte amanhã</span>
+        <p class="nota">
+          A cota diária acabou. Tentativas recusadas e buscas interrompidas antes
+          de coletar não contam contra ela.
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if ctx.user_id %}
+    {# ========================================================= RESULTADO === #}
+    {% set concluidos = ctx.runs | selectattr("estado", "equalto", "concluido") | list %}
+    {% if concluidos %}
+      <h2>Relatórios</h2>
+      <div class="cartao">
+        <table>
+          {% for run in concluidos %}
+            <tr>
+              <td>
+                <a href="/reports/{{ run.run_id }}">
+                  {{ run.solicitado_em | local }}
+                </a>
+              </td>
+              <td>{{ run.run_id[:8] }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% endif %}
+
+    {% set recusados = ctx.runs | selectattr("motivo_recusa") | list %}
+    {% if recusados %}
+      <details class="cartao">
+        <summary>{{ recusados | length }} busca{{ "" if recusados | length == 1
+          else "s" }} recusada{{ "" if recusados | length == 1 else "s" }}</summary>
+        {% for run in recusados[:5] %}
+          <p class="nota">
+            {{ run.solicitado_em | local }} — {{ run.motivo_recusa }}
+          </p>
+        {% endfor %}
+      </details>
+    {% endif %}
+
+    {# ============================================================ PERFIL === #}
+    {% if ctx.tem_perfil %}
+      <h2>Seu perfil</h2>
+      <div class="cartao pronto">
+        <div class="linha">
+          <span class="rotulo">Seu perfil está pronto</span>
+          <a href="/profile">ver e reconsolidar</a>
+        </div>
+      </div>
+    {% endif %}
+
+    {# ===================================================== CONFIGURAÇÃO === #}
+    <h2>Configuração</h2>
+
+    <details class="cartao{{ ' pronto' if not ctx.proximo }}">
+      <summary>
+        {% if ctx.proximo %}
+          Instalação — falta {{ ctx.proximo.rotulo | lower }}
+        {% else %}
+          Instalação concluída
+        {% endif %}
+      </summary>
+
+      <div class="linha">
+        <span class="rotulo">Google — sua sessão</span>
+        <span class="marca ok">conectado · {{ ctx.user_id }}</span>
+      </div>
+      {% if ctx.sessao_local %}
+        <p class="nota">
+          Esta é a sessão local de desenvolvimento, sem provedor de
+          identidade. <a href="/auth/login">Trocar por uma sessão real</a>.
+        </p>
+      {% endif %}
+
+      <div class="linha">
+        <span class="rotulo">LinkedIn</span>
+        {% if ctx.linkedin and ctx.linkedin.conectada %}
+          {% if ctx.linkedin.precisa_reconectar %}
+            <span class="marca pendente">reconectar</span>
+          {% else %}
+            <span class="marca ok">conectado</span>
+          {% endif %}
+        {% else %}
+          <span class="marca pendente">opcional, não conectado</span>
+        {% endif %}
+      </div>
+      <p class="nota">
+        Entra como origem de <strong>identidade</strong>, não de histórico: os
+        escopos abertos devolvem nome, foto e e-mail, e não devolvem cargos nem
+        competências.
+        {% if not (ctx.linkedin and ctx.linkedin.conectada) %}
+          <a href="/linkedin/connect">Conectar</a>.
+        {% endif %}
+      </p>
+
+      <div class="linha">
+        <span class="rotulo">Currículo</span>
+        {% if ctx.resumes %}
+          <span class="marca ok">{{ ctx.resumes }} importado{{ "" if
+            ctx.resumes == 1 else "s" }}</span>
+        {% else %}
+          <span class="marca pendente">nenhum</span>
+        {% endif %}
+      </div>
+      <form method="post" action="/resume/upload"
+            enctype="multipart/form-data" class="envio">
+        <input type="file" name="arquivo" accept=".docx,.pdf" required>
+        <button class="acao discreta" type="submit">
+          {{ "Substituir" if ctx.resumes else "Importar" }}
+        </button>
+      </form>
+      {% if ctx.resume_atual %}
+        <div class="envio">
+          <a class="acao discreta" href="/resume/conferencia">Conferir extração</a>
+          <form method="post" action="/resume/{{ ctx.resume_atual }}/extract">
+            <button class="acao discreta" type="submit">Extrair de novo</button>
+          </form>
+        </div>
+      {% endif %}
+
+      <div class="linha">
+        <span class="rotulo">Credencial de modelo</span>
+        {% if ctx.credenciais %}
+          <span class="marca ok">{{ ctx.credenciais }} cadastrada{{ "" if
+            ctx.credenciais == 1 else "s" }}</span>
+        {% else %}
+          <span class="marca pendente">nenhuma</span>
+        {% endif %}
+      </div>
+      <p class="nota">
+        Sem ela o produto funciona em modo manual: você digita os campos e o
+        relatório sai sem a síntese em texto. Score, lacunas e ranking de
+        competências não dependem de modelo.
+      </p>
+      {% if ctx.provedores %}
+        <form method="post" action="/credentials/cadastrar" class="envio">
+          <select name="provedor" required>
+            {% for p in ctx.provedores %}
+              <option value="{{ p.id }}">
+                {{ p.rotulo }} — dados vão para {{ p.destino_dos_dados }}
+              </option>
+            {% endfor %}
+          </select>
+          <input type="password" name="chave" placeholder="chave da API"
+                 autocomplete="off">
+          <button class="acao discreta" type="submit">Cadastrar</button>
+        </form>
+        <p class="nota">
+          O destino dos dados aparece em cada opção: é para lá que o currículo
+          vai. <code>Ollama na máquina do operador</code> não pede chave e não
+          manda nada para fora.
+        </p>
+      {% endif %}
+
+      <form method="post" action="/auth/logout">
+        <button class="sair" type="submit">Sair</button>
+      </form>
+    </details>
+  {% endif %}
+
+  {# ============================================================= SISTEMA === #}
+  <p class="rodape">
+    {% if ctx.user_id %}
+      {{ ctx.vagas }} vagas coletadas · {{ ctx.na_fila }} na fila ·
+    {% endif %}
+    leitura de vagas {{ "ativa" if ctx.enricher_ativo else "não está de pé" }} ·
+    <a href="/docs">rotas</a> · <a href="/health">estado</a>
+  </p>
+  {% if not ctx.enricher_ativo %}
+    <p class="nota">
+      A leitura das descrições roda num processo separado. Sem ele, as buscas
+      coletam e pontuam por título, e param antes de ler as vagas. Suba os três de uma
+      vez com <code>python -m crivo tudo</code>.
+    </p>
+  {% endif %}
+</main>
+</body>
+</html>

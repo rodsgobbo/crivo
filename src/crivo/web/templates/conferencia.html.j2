@@ -1,0 +1,188 @@
+{# Conferencia da extracao: o portao que protege o pipeline.
+
+   Uma extracao ruim contamina tudo o que vem depois -- perfil-alvo, busca,
+   pontuacao e relatorio -- e o custo de descobrir isso no relatorio final e
+   muito maior do que o de conferir aqui. Por isso a pagina mostra, lado a lado,
+   o valor extraido e o trecho do curriculo que o originou: confirmar sem poder
+   comparar seria assinar em branco.
+
+   O caminho manual nao e tratamento de erro. Quem nao tem credencial de modelo
+   chega aqui pelo mesmo endereco e preenche os mesmos campos. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crivo — conferência</title>
+<link rel="stylesheet" href="/static/crivo.css">
+</head>
+<body>
+<main>
+{% set atual = "conferencia" %}
+  {% include "_navegacao.html.j2" %}
+
+  <h1>Conferência da extração</h1>
+  <p class="sub">
+    O que for confirmado aqui vira o seu perfil, e é dele que sai toda a busca.
+  </p>
+
+  {% if ctx.aviso %}
+    <div class="cartao andando">
+      <div class="linha">
+        <span class="rotulo">{{ ctx.aviso }}</span>
+        <span class="marca ok">gravado</span>
+      </div>
+    </div>
+  {% endif %}
+  {% if ctx.erro %}
+    <div class="cartao falhou">
+      <div class="linha">
+        <span class="rotulo">Não deu para gravar</span>
+        <span class="marca erro">erro</span>
+      </div>
+      <p class="nota">{{ ctx.erro }}</p>
+    </div>
+  {% endif %}
+
+  {% if ctx.manual %}
+    {# ------------------------------------------------ preenchimento manual #}
+    <div class="cartao">
+      <div class="linha">
+        <span class="rotulo">Preenchimento manual</span>
+        <span class="marca pendente">sem extração automática</span>
+      </div>
+      <p class="nota">
+        {% if ctx.motivo %}
+          {{ ctx.motivo }}
+        {% else %}
+          Nenhuma extração disponível para conferir.
+        {% endif %}
+      </p>
+    </div>
+
+    {% if ctx.resume_id %}
+      <form method="post" action="/resume/conferencia/{{ ctx.resume_id }}/manual">
+        {% for campo in ctx.campos %}
+          <div class="cartao">
+            <label class="rotulo" for="m-{{ campo }}">{{ campo }}</label>
+            {% if campo == 'experiencias' %}
+              <p class="nota">
+                Lista JSON. Cada item aceita <code>titulo</code>,
+                <code>empresa</code>, <code>inicio</code>, <code>fim</code> e
+                <code>descricao</code>. Datas como <code>2019-03</code>;
+                <code>fim</code> nulo significa cargo atual.
+              </p>
+              <textarea class="json" id="m-{{ campo }}" name="{{ campo }}"
+                        placeholder='[{"titulo": "", "empresa": "", "inicio": "2019-03", "fim": null, "descricao": ""}]'></textarea>
+            {% elif campo == 'formacao' %}
+              <p class="nota">Um item por linha.</p>
+              <textarea id="m-{{ campo }}" name="{{ campo }}"></textarea>
+            {% elif campo in ('competencias', 'idiomas') %}
+              <p class="nota">Separe por vírgula.</p>
+              <input type="text" id="m-{{ campo }}" name="{{ campo }}">
+            {% else %}
+              <input type="text" id="m-{{ campo }}" name="{{ campo }}">
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button class="acao" type="submit">Salvar e confirmar</button>
+        <p class="nota">
+          Preencher a mão já confirma: o ato de digitar é a própria conferência.
+          Sem <strong>experiências</strong> nenhuma busca começa.
+        </p>
+      </form>
+    {% else %}
+      <p class="nota">
+        Nenhum currículo importado ainda. <a href="/">Volte à página inicial</a>
+        para enviar um.
+      </p>
+    {% endif %}
+
+  {% elif ctx.extracao %}
+    {# --------------------------------------------------- conferir extracao #}
+    <div class="cartao">
+      <div class="linha">
+        <span class="rotulo">
+          Extraído por {{ ctx.extracao.provedor or "origem não registrada" }}
+          {%- if ctx.extracao.modelo %} — {{ ctx.extracao.modelo }}{% endif %}
+        </span>
+        {% if ctx.confirmada %}
+          <span class="marca ok">confirmada</span>
+        {% else %}
+          <span class="marca pendente">aguardando conferência</span>
+        {% endif %}
+      </div>
+      {% if ctx.extracao.lacunas %}
+        <p class="nota">
+          O texto não afirmou: {{ ctx.extracao.lacunas | join(", ") }}. Campo
+          vazio aqui não é erro de extração — é ausência no currículo.
+        </p>
+      {% endif %}
+    </div>
+
+    {# Um formulario so para os sete campos. Antes cada um tinha o seu, e
+       corrigir tudo custava sete recarregamentos -- custo que empurrava para
+       confirmar sem revisar, que e justamente o que este portao existe para
+       impedir. #}
+    <form method="post"
+          action="/resume/conferencia/{{ ctx.extracao.extraction_id }}/campos">
+      {% for campo in ctx.campos %}
+        {% set valor = ctx.extracao.efetivo.get(campo) %}
+        {% set corrigido = campo in ctx.extracao.correcoes %}
+        <div class="cartao">
+          <div class="linha">
+            <label class="rotulo" for="c-{{ campo }}">{{ campo }}</label>
+            {% if corrigido %}
+              <span class="marca ok">corrigido à mão</span>
+            {% endif %}
+          </div>
+
+          {% if campo == 'experiencias' %}
+            <textarea class="json" id="c-{{ campo }}"
+                      name="{{ campo }}">{{ para_formulario(campo, valor) }}</textarea>
+          {% elif campo == 'formacao' %}
+            <textarea id="c-{{ campo }}"
+                      name="{{ campo }}">{{ para_formulario(campo, valor) }}</textarea>
+          {% else %}
+            <input type="text" id="c-{{ campo }}" name="{{ campo }}"
+                   value="{{ para_formulario(campo, valor) }}">
+          {% endif %}
+
+          {% if ctx.extracao.trechos_origem.get(campo) %}
+            <p class="origem-trecho">{{ ctx.extracao.trechos_origem[campo] }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="envio">
+        {% if not ctx.confirmada %}
+          {# `name` no botao diz ao servidor qual dos dois foi apertado, sem
+             precisar de duas rotas nem de JavaScript. #}
+          <button class="acao" type="submit" name="confirmar" value="1">
+            Salvar e confirmar
+          </button>
+          <button class="acao discreta" type="submit">Salvar sem confirmar</button>
+        {% else %}
+          <button class="acao" type="submit">Salvar correções</button>
+        {% endif %}
+      </div>
+      {% if not ctx.confirmada %}
+        <p class="nota">
+          Confirmar abre o portão: a partir daí seu perfil pode ser montado e a
+          busca pode começar. Só o que você alterar é gravado.
+        </p>
+      {% endif %}
+    </form>
+
+    {% if ctx.confirmada %}
+      <p class="nota">
+        Já conferido. Corrigir um campo acima grava a correção sem reabrir a
+        conferência.
+      </p>
+    {% endif %}
+  {% endif %}
+
+  <p class="rodape"><a href="/">← página inicial</a></p>
+</main>
+</body>
+</html>

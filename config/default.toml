@@ -1,0 +1,110 @@
+# Valores padrao de todo parametro que os requisitos descrevem como configurado.
+# Segredos nao vivem aqui: eles sao lidos exclusivamente de variaveis de ambiente.
+
+[collection]
+# Janela de publicacao do run recorrente e do run imediato, em horas.
+janela_incremental_horas = 24
+janela_ampla_horas = 720
+# Faixa de espera entre dois enriquecimentos consecutivos, em segundos.
+intervalo_enriquecimento_min_s = 8
+intervalo_enriquecimento_max_s = 20
+# Espera imposta a todos os usuarios apos um bloqueio de coleta, em segundos.
+intervalo_recuperacao_s = 3600
+# Orcamento diario de enriquecimentos, para todo o sistema.
+#
+# Historico das medicoes, porque este numero so deve mudar contra evidencia:
+#
+# 1. Dimensionado em 120 quando o desenho supunha uma sessao de conta
+#    operacional em risco a cada requisicao.
+# 2. A rota publica aceitou 30 requisicoes seguidas a cada 4s, latencia
+#    mediana de 0,3s, nenhuma recusa. Media, mas insuficiente para subir: 30
+#    nao autoriza afirmar nada sobre 120.
+# 3. 2026-08-24, uso real: 120 requisicoes de descricao e 69 buscas de coleta
+#    no mesmo dia, espacadas pelos 8 a 20s do governador, com ZERO bloqueios
+#    registrados. E a primeira medicao no proprio teto.
+#
+# 400 fica acima do que foi medido, e isto precisa estar dito. O que sustenta
+# a mudanca nao e a medicao ter alcancado 400, e sim a taxa continuar a mesma:
+# o intervalo entre requisicoes e o que protege, e ele nao mudou. Subir o teto
+# diario estende a duracao da exposicao, nao a intensidade dela.
+#
+# O risco residual e coberto pelo governador, que grava bloqueio ao terceiro
+# fracasso consecutivo e passa a recusar toda chamada por uma hora. Se 400 for
+# demais, o sistema para sozinho e o bloqueio fica registrado -- e ai esta
+# linha volta para 120 com uma medicao nova a favor.
+#
+# 400 foi escolhido por cobrir um run inteiro: a coleta real trouxe 403 vagas
+# sobreviventes, e um orcamento menor que isso deixa a maior parte do run sem
+# descricao, que e o dado do qual o score depende.
+orcamento_diario_coleta = 400
+
+# Teto de buscas distintas por run.
+#
+# O planejador combina eixo por rotulo de nivel, e isso cresce como produto
+# cartesiano: um perfil com onze eixos detectados gerou noventa buscas, cada
+# uma valendo de uma a tres requisicoes a origem. Perto de duzentas requisicoes
+# em rajada -- exatamente o que o governador existe para impedir, e que ele nao
+# impedia porque a coleta era o unico caminho que nao passava por ele.
+#
+# 25 cobre as ancoras do nivel e do nivel acima mais as combinacoes de eixo mais
+# proximas, e cabe em cerca de seis minutos no intervalo de 8 a 20s. As buscas
+# escritas pelo proprio usuario nunca entram no corte.
+max_buscas_por_run = 25
+
+[run]
+duracao_maxima_s = 21600
+runs_imediatos_por_dia = 3
+
+[session]
+duracao_maxima_s = 604800
+
+[retention]
+# Tempo sem sessao apos o qual curriculos e extracoes do usuario sao expurgados.
+periodo_sem_sessao_dias = 365
+
+[resume]
+tamanho_maximo_bytes = 5242880
+comprimento_minimo_texto = 400
+importacoes_por_dia = 5
+formatos_aceitos = ["gdoc", "docx", "pdf"]
+
+[synthesis]
+limite_vagas_enviadas = 12
+limite_caracteres_texto_externo = 8000
+modo_deterministico = false
+
+[report]
+limiar_destaque = 70
+
+[profile]
+# Precedencia entre origens: a primeira vence em caso de conflito.
+precedencia_origens = ["manual", "resume", "linkedin"]
+raio_deslocamento_km = 60
+
+[scoring.pesos]
+competencias = 0.40
+nivel = 0.20
+dominio = 0.15
+escopo_gestao = 0.15
+geografia = 0.10
+
+[scoring.bonus]
+top_applicant = 10
+early_applicant = 5
+conexoes_na_empresa = 5
+actively_reviewing = 5
+
+[scoring.penalidades]
+# Vaga presencial fora do raio de deslocamento. O peso do componente geografico
+# sozinho nao afunda uma vaga impossivel de aceitar: numa simulacao real, uma
+# vaga a 846 km ficou em primeiro lugar porque a descricao dela era curta e o
+# candidato cobria tudo que ela citava.
+fora_do_raio = 25
+muitos_candidatos = 5
+repostada_antiga = 10
+requisito_eliminatorio = 15
+
+[providers]
+# Ordem padrao de tentativa, usada para semear a ordem de cada usuario no
+# primeiro cadastro de credencial. O registro em si vive em providers.toml.
+ordem_padrao = []

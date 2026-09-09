@@ -1,0 +1,30 @@
+[project]
+name = "crivo"
+version = "0.1.0"
+description = "Triagem automatizada de vagas do LinkedIn"
+# Teto de 3.13: python-jobspy fixa NUMPY==1.26.3, cujo ultimo wheel e
+# cp312. O teto sai quando esse pin for relaxado a montante.
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi",
+  "python-multipart",
+  "uvicorn",
+  "jinja2",
+  "httpx",
+  "cryptography",
+  "python-jobspy==1.1.82",
+  "litellm",
+  "python-docx",
+  "pypdf",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

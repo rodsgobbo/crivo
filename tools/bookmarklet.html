@@ -1,0 +1,109 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Extrator de insights — crivo</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 46rem; margin: 3rem auto; padding: 0 1.5rem;
+    font: 16px/1.6 system-ui, sans-serif;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: .25rem; }
+  .sub { opacity: .7; margin-top: 0; }
+  .arraste {
+    display: inline-block; margin: 1rem 0; padding: .7rem 1.2rem;
+    border-radius: 8px; background: #1c6b3f; color: #fff;
+    text-decoration: none; font-weight: 600; cursor: grab;
+  }
+  code, pre {
+    background: rgba(128,128,128,.14); border-radius: 4px; padding: .1em .35em;
+    font-family: ui-monospace, monospace; font-size: .9em;
+  }
+  pre { padding: .8rem; overflow-x: auto; }
+  .nota {
+    border-left: 3px solid #8a6d1f; padding: .6rem 0 .6rem 1rem;
+    margin: 1.5rem 0; opacity: .92;
+  }
+  ol li { margin-bottom: .5rem; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; vertical-align: top; padding: .5rem .8rem; }
+  th { white-space: nowrap; font-family: ui-monospace, monospace; }
+  tr + tr th, tr + tr td { border-top: 1px solid rgba(128,128,128,.3); }
+</style>
+
+<h1>Extrator de insights</h1>
+<p class="sub">Lê o que a sua conta Premium enxerga e manda para o app local.</p>
+
+<p><strong>Arraste este botão para a barra de favoritos:</strong></p>
+<p><a class="arraste" id="alvo" href="#">insights → crivo</a></p>
+
+<h2>Como usar</h2>
+<ol>
+  <li>Suba o app local (<code>python -m crivo web</code>) e entre nele, para ter sessão.</li>
+  <li>Abra o LinkedIn logado na sua conta Premium — a lista de resultados
+    <em>ou</em> uma vaga específica.</li>
+  <li>Na lista, <strong>role até o fim antes de clicar</strong>: o LinkedIn só
+    monta o card quando ele entra na tela, e o que não foi montado não tem texto
+    para ler.</li>
+  <li>Clique no favorito. Aparece uma caixa no canto dizendo o que foi gravado.</li>
+</ol>
+
+<h2>Dois modos, escolhidos pela página</h2>
+<table>
+  <tr>
+    <th>lista</th>
+    <td>Resultados de busca ou vagas salvas. Varre todos os cards de uma vez.
+      É o modo que colhe o <em>“You'd be a top applicant”</em>, que aparece no
+      próprio card — um run traz perto de cem vagas, e uma por vez seria uma aba
+      por vaga.</td>
+  </tr>
+  <tr>
+    <th>vaga</th>
+    <td>Uma vaga só. Lê também a contagem de candidatos e a distribuição de
+      senioridade do quadro Premium, que o card da lista não mostra.</td>
+  </tr>
+</table>
+
+<p>
+  Vaga que você ainda não coletou é <strong>ignorada</strong>, não é erro: a
+  varredura passa por tudo o que o LinkedIn mostrar. Rode a busca no crivo antes,
+  para que os cards tenham onde pousar.
+</p>
+
+<div class="nota">
+  <strong>Ele não toca em credencial.</strong> Não lê, não copia e não envia cookie
+  nem token. O app recebe números já extraídos — o resultado da leitura que você
+  está fazendo com os próprios olhos, nunca o meio de refazer essa leitura sem você.
+</div>
+
+<h2>Se não reconhecer nada</h2>
+<p>
+  O LinkedIn não publica contrato de marcação, e a parte Premium da página só
+  aparece para quem tem Premium — eu não consigo verificar esses seletores daqui.
+  Por isso a leitura é por padrão de texto, não por classe CSS.
+</p>
+<p>
+  Quando nada casa, a caixa mostra o trecho que ele leu em vez de falhar calado.
+  <strong>Me mande esse trecho</strong> e eu ajusto os padrões.
+</p>
+
+<h2>Porta diferente</h2>
+<p>Se o app não estiver em <code>localhost:8000</code>, edite o favorito e troque a URL no começo, ou defina antes:</p>
+<pre>window.CRIVO_URL = "http://localhost:9000"</pre>
+
+<script>
+// Uma fonte só: o bookmarklet é gerado a partir de tools/extrator.js.
+fetch("extrator.js")
+  .then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.text();
+  })
+  .then(function (fonte) {
+    document.getElementById("alvo").href =
+      "javascript:" + encodeURIComponent(fonte);
+  })
+  .catch(function (e) {
+    var a = document.getElementById("alvo");
+    a.textContent = "não consegui ler extrator.js (" + e.message + ")";
+    a.style.background = "#b4232a";
+  });
+</script>

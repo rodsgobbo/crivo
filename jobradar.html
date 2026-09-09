@@ -1,0 +1,614 @@
+<title>Job Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#F2F5F4;
+  --surface:#FFFFFF;
+  --surface-2:#E8EDEC;
+  --ink:#0F2529;
+  --ink-2:#3A5257;
+  --muted:#65797C;
+  --line:#D3DCDB;
+  --line-strong:#B4C2C1;
+  --accent:#0C6E77;
+  --accent-soft:#DCEDEC;
+  --warn:#8A5D06;
+  --warn-soft:#F6EBD3;
+  --danger:#8E2C28;
+  --danger-soft:#F7E2E0;
+  --ok:#2C6B41;
+  --code-bg:#EAEFEE;
+
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono","SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0B1618;
+    --surface:#111F22;
+    --surface-2:#182A2D;
+    --ink:#E2EBE9;
+    --ink-2:#B3C4C3;
+    --muted:#82989A;
+    --line:#24393C;
+    --line-strong:#345053;
+    --accent:#45B3BC;
+    --accent-soft:#123336;
+    --warn:#D9A441;
+    --warn-soft:#33280F;
+    --danger:#E08A84;
+    --danger-soft:#331A18;
+    --ok:#68B583;
+    --code-bg:#0E2024;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0B1618;
+  --surface:#111F22;
+  --surface-2:#182A2D;
+  --ink:#E2EBE9;
+  --ink-2:#B3C4C3;
+  --muted:#82989A;
+  --line:#24393C;
+  --line-strong:#345053;
+  --accent:#45B3BC;
+  --accent-soft:#123336;
+  --danger:#E08A84;
+  --danger-soft:#331A18;
+  --warn:#D9A441;
+  --warn-soft:#33280F;
+  --ok:#68B583;
+  --code-bg:#0E2024;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:16.5px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px}
+
+/* ---------- header ---------- */
+header.top{
+  border-bottom:1px solid var(--line);
+  background:var(--surface);
+}
+.top-inner{max-width:1180px;margin:0 auto;padding:44px 24px 38px;display:flex;flex-direction:column;gap:18px}
+.eyebrow{
+  font-family:var(--f-mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);display:flex;gap:10px;align-items:center;flex-wrap:wrap
+}
+.eyebrow span.dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block}
+h1{
+  font-family:var(--f-display);font-weight:700;font-size:clamp(34px,5.2vw,54px);
+  line-height:1.02;letter-spacing:-.025em;margin:0;text-wrap:balance;
+}
+.lede{max-width:62ch;color:var(--ink-2);font-size:17.5px;margin:0}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tag{
+  font-family:var(--f-mono);font-size:11.5px;padding:4px 9px;border:1px solid var(--line-strong);
+  border-radius:3px;color:var(--muted);background:var(--paper)
+}
+
+/* ---------- layout ---------- */
+.cols{display:grid;grid-template-columns:200px 1fr;gap:52px;align-items:start;margin-top:48px}
+@media(max-width:900px){.cols{grid-template-columns:1fr;gap:32px}}
+nav.rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:2px}
+@media(max-width:900px){nav.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:6px}}
+nav.rail a{
+  font-family:var(--f-mono);font-size:12.5px;color:var(--muted);text-decoration:none;
+  padding:5px 8px;border-left:2px solid var(--line);line-height:1.4
+}
+@media(max-width:900px){nav.rail a{border-left:none;border:1px solid var(--line);border-radius:3px}}
+nav.rail a:hover,nav.rail a:focus-visible{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+
+/* ---------- sections ---------- */
+section{margin-bottom:56px;scroll-margin-top:20px}
+h2{
+  font-family:var(--f-display);font-weight:600;font-size:26px;letter-spacing:-.015em;
+  margin:0 0 6px;text-wrap:balance
+}
+h3{font-family:var(--f-display);font-weight:600;font-size:17px;letter-spacing:-.005em;margin:26px 0 8px}
+p{margin:0 0 14px;max-width:68ch}
+.sub{color:var(--muted);font-size:14.5px;margin:0 0 22px;max-width:68ch}
+
+/* ---------- phase blocks ---------- */
+.phase{
+  background:var(--surface);border:1px solid var(--line);border-radius:5px;
+  padding:24px 26px;margin-bottom:16px
+}
+.phase-head{display:flex;gap:14px;align-items:baseline;margin-bottom:10px}
+.pnum{
+  font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--accent);
+  background:var(--accent-soft);border-radius:3px;padding:3px 7px;white-space:nowrap;
+  font-variant-numeric:tabular-nums
+}
+.phase h3{margin:0;font-size:19px}
+.phase p{font-size:15.5px}
+.goal{color:var(--ink-2);font-size:15px;margin-bottom:16px}
+
+ol.steps,ul.plain{margin:0 0 4px;padding-left:20px}
+ol.steps li,ul.plain li{margin-bottom:9px;font-size:15.5px;max-width:66ch}
+ol.steps li::marker{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+
+code{
+  font-family:var(--f-mono);font-size:.855em;background:var(--code-bg);
+  padding:1.5px 5px;border-radius:3px;color:var(--ink);word-break:break-word
+}
+pre{
+  font-family:var(--f-mono);font-size:12.8px;line-height:1.65;background:var(--code-bg);
+  border:1px solid var(--line);border-radius:4px;padding:14px 16px;overflow-x:auto;margin:12px 0 16px
+}
+pre code{background:none;padding:0}
+
+/* ---------- callouts ---------- */
+.note{
+  border-left:3px solid var(--line-strong);padding:12px 0 12px 16px;margin:16px 0;
+  font-size:15px;color:var(--ink-2)
+}
+.note.warn{border-color:var(--warn);background:var(--warn-soft);padding:14px 16px;border-radius:0 4px 4px 0}
+.note.stop{border-color:var(--danger);background:var(--danger-soft);padding:14px 16px;border-radius:0 4px 4px 0}
+.note.win{border-color:var(--ok);background:var(--accent-soft);padding:14px 16px;border-radius:0 4px 4px 0}
+.note strong{color:var(--ink)}
+.note p:last-child{margin-bottom:0}
+
+.claim{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.c-certo{background:var(--accent-soft);color:var(--accent)}
+.c-prov{background:var(--warn-soft);color:var(--warn)}
+.c-sup{background:var(--surface-2);color:var(--muted)}
+
+/* ---------- tables ---------- */
+.tbl-wrap{overflow-x:auto;margin:14px 0 20px;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;background:var(--surface-2);border-bottom:1px solid var(--line-strong)
+}
+tr:last-child td{border-bottom:none}
+td code{font-size:12.5px}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- pipeline strip ---------- */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:22px 0 8px}
+.stage{
+  background:var(--surface);border:1px solid var(--line);border-top:2px solid var(--accent);
+  border-radius:3px;padding:11px 12px
+}
+.stage .n{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);letter-spacing:.08em}
+.stage .t{font-family:var(--f-display);font-weight:600;font-size:14px;margin-top:3px;line-height:1.25}
+.stage .k{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4}
+.stage.det{border-top-color:var(--line-strong)}
+.stage.llm{border-top-color:var(--warn)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:6px}
+
+footer{border-top:1px solid var(--line);margin-top:20px;padding-top:22px;color:var(--muted);font-size:13.5px}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="eyebrow"><span class="dot"></span>Especificação de engenharia · v1 · 24 ago 2026</div>
+    <h1>Job Radar</h1>
+    <p class="lede">Reconstrução passo a passo da varredura de vagas que rodei manualmente no LinkedIn, no nível de detalhe que um time precisa para transformá-la em aplicação: URLs reais, parâmetros de filtro, seletores, o que quebrou e por quê.</p>
+    <div class="meta-row">
+      <span class="tag">9 queries</span>
+      <span class="tag">~60 vagas brutas</span>
+      <span class="tag">9 finalistas</span>
+      <span class="tag">3 rotas de leitura testadas</span>
+      <span class="tag">1 rota que funciona</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="cols">
+
+<nav class="rail" aria-label="Seções">
+  <a href="#conformidade">Conformidade</a>
+  <a href="#pipeline">Pipeline</a>
+  <a href="#f0">0 · Sessão</a>
+  <a href="#f1">1 · Perfil</a>
+  <a href="#f2">2 · Queries</a>
+  <a href="#f3">3 · Filtros</a>
+  <a href="#f4">4 · Listagem</a>
+  <a href="#f5">5 · Descrição</a>
+  <a href="#f6">6 · Dedup</a>
+  <a href="#f7">7 · Score</a>
+  <a href="#f8">8 · Relatório</a>
+  <a href="#falhas">Log de falhas</a>
+  <a href="#arquitetura">Arquitetura</a>
+  <a href="#validacao">Validação</a>
+</nav>
+
+<main>
+
+<section id="conformidade">
+  <h2>Antes de escrever qualquer linha</h2>
+  <div class="note stop">
+    <p><span class="claim c-certo">Certo</span> &nbsp;O Contrato do Usuário do LinkedIn proíbe explicitamente coleta automatizada de dados, e a plataforma tem detecção ativa de automação. Existe jurisprudência relevante nos dois sentidos (<em>hiQ v. LinkedIn</em>), mas nada disso protege a conta do usuário — <strong>o risco imediato e concreto é banimento da conta que roda o robô</strong>, não processo judicial.</p>
+    <p style="margin-top:10px">Isso muda o desenho do produto, não só o disclaimer. Um serviço no servidor, com credenciais dos usuários, coletando em escala, é o modelo de maior risco. Uma <strong>extensão de navegador que age dentro da sessão que o próprio usuário já abriu</strong>, no ritmo de um humano, é o modelo de menor risco — e foi exatamente o que eu usei aqui.</p>
+  </div>
+  <p><span class="claim c-prov">Provável</span> &nbsp;Se o objetivo do time for um produto comercial e não uma ferramenta interna, a rota sustentável é combinar dados públicos de agregadores com API própria, e usar o LinkedIn apenas como camada de enriquecimento acionada pelo usuário. Vale decidir isso antes da arquitetura, não depois.</p>
+</section>
+
+<section id="pipeline">
+  <h2>O pipeline em nove estágios</h2>
+  <p class="sub">A ordem importa: cada estágio consome a saída do anterior. Só três estágios precisam de um modelo de linguagem — o resto é determinístico e deve ser testável sem LLM.</p>
+  <div class="strip">
+    <div class="stage det"><div class="n">00</div><div class="t">Sessão</div><div class="k">Aba logada, sem credenciais</div></div>
+    <div class="stage llm"><div class="n">01</div><div class="t">Perfil</div><div class="k">Extração + inferência</div></div>
+    <div class="stage llm"><div class="n">02</div><div class="t">Queries</div><div class="k">Eixos de busca</div></div>
+    <div class="stage det"><div class="n">03</div><div class="t">Filtros</div><div class="k">Query string</div></div>
+    <div class="stage det"><div class="n">04</div><div class="t">Listagem</div><div class="k">Scroll + parse</div></div>
+    <div class="stage det"><div class="n">05</div><div class="t">Descrição</div><div class="k">Fetch por ID</div></div>
+    <div class="stage det"><div class="n">06</div><div class="t">Dedup</div><div class="k">Corte de ruído</div></div>
+    <div class="stage llm"><div class="n">07</div><div class="t">Score</div><div class="k">Aderência 0–100</div></div>
+    <div class="stage llm"><div class="n">08</div><div class="t">Relatório</div><div class="k">Redação</div></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--line-strong)"></i>Determinístico — teste unitário cobre</span>
+    <span><i style="background:var(--warn)"></i>Precisa de LLM</span>
+  </div>
+</section>
+
+<section id="f0">
+  <h2>Estágio 0 — Sessão do navegador</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">00</span><h3>Operar dentro da aba que o usuário já autenticou</h3></div>
+    <p class="goal">Objetivo: chegar ao LinkedIn logado sem nunca tocar em credenciais.</p>
+    <ul class="plain">
+      <li>Usei a extensão de navegador controlando a aba ativa do usuário. Nenhuma senha, cookie ou token foi lido, transportado ou armazenado.</li>
+      <li>Toda chamada exige um <code>tabId</code>; o primeiro passo é listar as abas do grupo e fixar o alvo.</li>
+      <li><strong>Regra de produto:</strong> se o usuário não estiver logado, a aplicação para e pede login manual. Nunca automatize o formulário de login — é o gatilho mais direto de bloqueio.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="f1">
+  <h2>Estágio 1 — Extração do perfil</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">01</span><h3>Ler o próprio perfil e derivar o modelo do candidato</h3></div>
+    <p class="goal">Objetivo: montar, só a partir do LinkedIn, um objeto estruturado que descreva o candidato — sem pedir nada a ele.</p>
+
+    <h3>Endpoints, na ordem em que naveguei</h3>
+    <pre><code>1. https://www.linkedin.com/in/me/
+   → redireciona para /in/&lt;vanity&gt;/  (capture o vanity aqui)
+   Retorna: nome, headline, localização, empresa atual, formação,
+            nº de conexões, URL pública, bloco "Open to work"
+            (status, cidade, modalidades aceitas: On-site/Hybrid/Remote)
+
+2. https://www.linkedin.com/in/&lt;vanity&gt;/details/experience/
+   Retorna: todos os cargos — empresa, título, tipo de contrato,
+            datas, duração, localização, modalidade, descrição
+            completa e "Skills: X, +N skills" por cargo
+
+3. https://www.linkedin.com/in/&lt;vanity&gt;/details/skills/       ← FALHOU
+4. .../details/education/      .../details/certifications/
+   .../details/languages/      .../details/recommendations/</code></pre>
+
+    <div class="note warn">
+      <p><strong>Falha real observada.</strong> A página de <code>/details/skills/</code> retornou o cabeçalho e as abas de categoria, mas nenhuma skill — o conteúdo é carregado por virtualização e não renderizou. Como skills são requisito de filtro de recrutador, isso não pode ser silencioso.</p>
+      <p style="margin-top:8px"><strong>Mitigação obrigatória:</strong> <em>(a)</em> rolar a página e reparsear antes de concluir; <em>(b)</em> se ainda vier vazio, reconstruir a lista a partir dos blocos <code>Skills: …</code> de cada experiência; <em>(c)</em> marcar o campo como <code>indeterminado</code>, nunca como <code>vazio</code>. A diferença entre "não tem skills" e "não consegui ler" muda a recomendação que o produto dá.</p>
+    </div>
+
+    <h3>O que derivar do texto bruto</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Campo</th><th>Fonte</th><th>Método</th></tr></thead>
+        <tbody>
+          <tr><td>Senioridade</td><td>Títulos + descrições</td><td>LLM. O sinal mais forte não é o título: é o escopo declarado (<code>"6 SREs e 3 DBAs"</code>)</td></tr>
+          <tr><td>Anos de experiência</td><td>Datas</td><td>Determinístico — data mais antiga até hoje</td></tr>
+          <tr><td>Stack técnica</td><td>Descrições de cargo</td><td>Extração por dicionário + LLM para variantes</td></tr>
+          <tr><td>Indústria</td><td>Empresas</td><td>Lookup + LLM</td></tr>
+          <tr><td>Geografia e modalidade</td><td>Bloco Open to work</td><td>Determinístico</td></tr>
+          <tr><td>Conquistas quantificadas</td><td>Descrições</td><td>Regex de <code>%</code>, <code>R$</code>, <code>99,x%</code> — é o que alimenta a coluna "por que combina"</td></tr>
+          <tr><td>Idiomas</td><td>/details/languages/</td><td>Determinístico — <strong>é filtro eliminatório em ~55% das vagas</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><span class="claim c-sup">Suposição</span> &nbsp;Perfis mal preenchidos vão gerar buscas ruins. O produto deve mostrar o modelo do candidato que inferiu e deixar corrigir antes de buscar — caso contrário o usuário culpa a busca por um erro do perfil dele.</p>
+  </div>
+</section>
+
+<section id="f2">
+  <h2>Estágio 2 — Geração dos eixos de busca</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">02</span><h3>Uma query só não cobre o mercado</h3></div>
+    <p class="goal">Objetivo: cobrir o mesmo cargo sob os nomes diferentes que o mercado usa.</p>
+    <p>O mesmo trabalho aparece anunciado em português e inglês, como cargo e como especialidade. Rodei nove queries e cada uma trouxe vagas que as outras não trouxeram:</p>
+    <pre><code>Engineering Manager SRE
+Engineering Manager Infrastructure
+Engineering Manager Cloud
+FinOps
+SRE
+Gerente de Infraestrutura Cloud SRE DevOps
+Gerente de infraestrutura de TI FinOps AIOps
+Gerente de Sistemas
+Platform Engineering Manager</code></pre>
+    <p>A regra que gerou essa lista:</p>
+    <ol class="steps">
+      <li><strong>Cargo atual</strong> traduzido nos dois idiomas.</li>
+      <li><strong>Um nível acima</strong> (Head, Director, Senior Manager) e <strong>um lateral</strong> (Coordenador, Team Lead) — o mesmo trabalho tem títulos diferentes por porte de empresa.</li>
+      <li><strong>Especialidade como query isolada</strong> — <code>FinOps</code> sozinho trouxe vagas de gestão que nenhuma query com "Manager" alcançou.</li>
+      <li><strong>Combinação cargo + duas especialidades</strong> — foi assim que apareceu a vaga com maior colisão de palavras-chave do lote.</li>
+    </ol>
+    <div class="note"><p>Custo de cobertura: cada query adicional é ~3 navegações. Nove queries ainda cabem no orçamento de rate limit; trinta não cabem.</p></div>
+  </div>
+</section>
+
+<section id="f3">
+  <h2>Estágio 3 — Filtros por query string</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">03</span><h3>Toda a filtragem é montável na URL — não clique em nada</h3></div>
+    <p class="goal">Objetivo: aplicar filtros sem interagir com os dropdowns da interface.</p>
+    <p>Base: <code>https://www.linkedin.com/jobs/search/?</code></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Parâmetro</th><th>Valores</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td><code>keywords</code></td><td class="num">URL-encoded</td><td>Termo de busca</td></tr>
+          <tr><td><code>geoId</code></td><td class="num">106057199</td><td>Brasil. Cada país/região tem o seu — a app precisa de uma tabela de lookup</td></tr>
+          <tr><td><code>f_TPR</code></td><td class="num">r86400 · r604800 · r2592000</td><td>Publicadas em 24h · 7 dias · 30 dias</td></tr>
+          <tr><td><code>f_E</code></td><td class="num">1,2,3,4,5,6</td><td>Estágio · Júnior · Pleno · Sênior/Gestão · Diretor · Executivo. Usei <code>4,5</code></td></tr>
+          <tr><td><code>f_WT</code></td><td class="num">1 · 2 · 3</td><td>Presencial · Remoto · Híbrido</td></tr>
+          <tr><td><code>f_JT</code></td><td class="num">F · P · C · T</td><td>Full-time · Part-time · Contrato · Temporário</td></tr>
+          <tr><td><code>f_AL</code></td><td class="num">true</td><td>Só Easy Apply</td></tr>
+          <tr><td><code>sortBy</code></td><td class="num">R · DD</td><td>Relevância · Mais recentes</td></tr>
+          <tr><td><code>start</code></td><td class="num">0, 25, 50…</td><td>Paginação — 25 resultados por página</td></tr>
+          <tr><td><code>currentJobId</code></td><td class="num">&lt;id&gt;</td><td>Seleciona a vaga no painel direito. <strong>Só funciona se ela estiver no resultado daquela query</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Exemplo exato de uma das minhas chamadas:</p>
+    <pre><code>https://www.linkedin.com/jobs/search/
+  ?keywords=Engineering%20Manager%20SRE
+  &amp;geoId=106057199
+  &amp;f_TPR=r604800
+  &amp;f_E=4%2C5
+  &amp;sortBy=R</code></pre>
+  </div>
+</section>
+
+<section id="f4">
+  <h2>Estágio 4 — Coleta da listagem</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">04</span><h3>Sem scroll, você só coleta anúncios pagos</h3></div>
+    <p class="goal">Objetivo: extrair ID, título, empresa, localização e sinais de cada card.</p>
+
+    <div class="note warn">
+      <p><strong>A armadilha central deste estágio.</strong> Ao parsear a lista logo após o carregamento, vieram <strong>7 cards, todos marcados <code>Promoted</code></strong>. As vagas orgânicas — que incluem as melhores do relatório final — só apareceram depois de rolar o painel esquerdo. Uma aplicação que parseia direto entrega ao usuário uma lista de anúncios pagos e chama isso de resultado da busca.</p>
+    </div>
+
+    <h3>Sequência que funciona</h3>
+    <ol class="steps">
+      <li>Navegar para a URL com filtros.</li>
+      <li>Esperar 3 s.</li>
+      <li>Rolar o painel de resultados: 2 passadas de 10–12 cliques de scroll.</li>
+      <li>Esperar mais 2 s para o lote seguinte hidratar.</li>
+      <li>Parsear.</li>
+      <li>Para páginas seguintes, incrementar <code>start</code> em 25 e repetir.</li>
+    </ol>
+
+    <h3>Parsing</h3>
+    <pre><code>// seletores dos cards
+'a.job-card-container__link, a.job-card-list__title--link'
+
+// id da vaga
+href.match(/view\/(\d+)/)[1]
+
+// contêiner e campos
+const li = anchor.closest('li');
+const linhas = li.innerText.split('\n').map(s =&gt; s.trim()).filter(Boolean);
+// linhas[0] = título   linhas[1] = empresa   linhas[2] = local + modalidade</code></pre>
+
+    <div class="note win">
+      <p><strong>Não jogue o resto fora.</strong> Eu filtrei estas linhas como ruído para limpar a lista — e foi um erro que a aplicação não deve repetir. Cada uma é um sinal de conversão e deve virar campo próprio:</p>
+      <div class="tbl-wrap" style="margin-top:12px">
+        <table>
+          <thead><tr><th>Texto no card</th><th>Vira o campo</th><th>Por que importa</th></tr></thead>
+          <tbody>
+            <tr><td><code>You'd be a top applicant</code></td><td>match_forte</td><td>Avaliação do próprio algoritmo do LinkedIn</td></tr>
+            <tr><td><code>N connections work here</code></td><td>conexoes</td><td>Canal de indicação — maior alavanca de conversão</td></tr>
+            <tr><td><code>Applied</code> / <code>Saved</code> / <code>Viewed</code></td><td>estado_candidato</td><td>Impede recomendar o que já foi aplicado</td></tr>
+            <tr><td><code>Actively reviewing applicants</code></td><td>recrutador_ativo</td><td>Vaga viva vs. anúncio parado</td></tr>
+            <tr><td><code>Be an early applicant</code></td><td>baixa_concorrencia</td><td>Janela de vantagem</td></tr>
+            <tr><td><code>Promoted</code></td><td>patrocinada</td><td>Distinguir alcance pago de relevância real</td></tr>
+            <tr><td><code>N days ago</code></td><td>idade_anuncio</td><td>Vaga com +30 dias costuma estar fria</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="f5">
+  <h2>Estágio 5 — Leitura da descrição</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">05</span><h3>Testei três rotas. Duas falham. Use a terceira.</h3></div>
+    <p class="goal">Objetivo: obter o texto completo do anúncio de forma confiável e rápida.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Rota</th><th>Resultado</th><th>Latência</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>A.</strong> <code>/jobs/view/&lt;id&gt;/</code> direto</td>
+            <td><strong style="color:var(--danger)">Falhou sempre.</strong> A página abre e o cabeçalho renderiza, mas o corpo fica em <em>skeleton loader</em> indefinidamente. Vagas marcadas "Promoted by hirer / Responses managed off LinkedIn" nunca carregaram a descrição</td>
+            <td class="num">∞</td>
+          </tr>
+          <tr>
+            <td><strong>B.</strong> Painel direito via <code>currentJobId</code></td>
+            <td><strong style="color:var(--warn)">Parcial.</strong> Só renderiza se a vaga estiver no resultado <em>daquela</em> query. Fora disso o painel fica vazio e o parser retorna string vazia sem erro — falha silenciosa. Exigiu clicar no card e esperar até 20 s</td>
+            <td class="num">8–20 s</td>
+          </tr>
+          <tr>
+            <td><strong>C.</strong> <code>/jobs-guest/jobs/api/jobPosting/&lt;id&gt;</code></td>
+            <td><strong style="color:var(--ok)">Funcionou em 100% das tentativas.</strong> HTML plano, sem JavaScript, sem virtualização</td>
+            <td class="num">~2 s</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Rota C é a especificação.</strong> Retorna, em um único documento estático:</p>
+    <pre><code>título · empresa · localização · idade do anúncio · nº de candidatos
+descrição completa (requisitos, diferenciais, benefícios)
+seniority level · employment type · job function · industries</code></pre>
+
+    <div class="note warn">
+      <p><strong>Contrapartida que o time precisa assumir:</strong> por ser endpoint de convidado, é também o alvo mais óbvio de rate limiting e o mais fácil de o LinkedIn fechar. Trate como dependência frágil: backoff exponencial, circuit breaker, e a rota B como <em>fallback</em> degradado — nunca como caminho principal.</p>
+    </div>
+
+    <h3>Campos a extrair da descrição</h3>
+    <ul class="plain">
+      <li><strong>Requisitos obrigatórios</strong> — cabeçalhos <code>Requirements</code>, <code>Requisitos</code>, <code>What you'll need</code>, <code>O que você precisa conhecer</code>.</li>
+      <li><strong>Diferenciais</strong> — <code>Preferred</code>, <code>Nice to have</code>, <code>Diferenciais</code>, <code>O que aumenta suas chances</code>, <code>O que pode alavancar</code>.</li>
+      <li><strong>Marcadores de eliminação</strong> — <code>imprescindível</code>, <code>must have</code>, <code>proven experience</code>, <code>required</code>. Estes recebem tratamento especial no score.</li>
+      <li><strong>Modelo de trabalho</strong> — muitas vezes só no corpo do texto, não no campo estruturado (<em>"Híbrido 3x presencial"</em>).</li>
+      <li><strong>Nº de candidatos</strong> — <code>Over 200 applicants</code> vs. <code>58 applicants</code> muda completamente a estratégia de aplicação.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="f6">
+  <h2>Estágio 6 — Deduplicação e corte de ruído</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">06</span><h3>Palavra-chave certa, domínio errado</h3></div>
+    <p class="goal">Objetivo: reduzir ~60 resultados brutos para o conjunto realmente avaliável.</p>
+    <ol class="steps">
+      <li><strong>Dedup por <code>jobId</code></strong> entre todas as queries. Houve sobreposição real: a mesma vaga apareceu em até quatro eixos diferentes.</li>
+      <li><strong>Corte semântico.</strong> A busca por <em>"Engineering Manager SRE"</em> devolveu <code>Maintenance Area Manager — Amazon Reliability Maintenance Engineering</code> e <code>Supervisor Manutenção (HVAC)</code>. O LinkedIn casa "Engineering", "Manager" e "Reliability" sem entender o domínio. <strong>Isso exige LLM ou um classificador — regex não resolve.</strong></li>
+      <li><strong>Corte geográfico e de modalidade</strong> contra o que o candidato aceita (Estágio 1).</li>
+      <li><strong>Corte por estado</strong> — remover <code>Applied</code>; sinalizar <code>Saved</code> em vez de remover.</li>
+      <li><strong>Corte por idade</strong> — anúncio com mais de 30 dias entra em lista secundária, não no relatório principal.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="f7">
+  <h2>Estágio 7 — Modelo de pontuação</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">07</span><h3>Aderência 0–100, com teto rígido</h3></div>
+    <p class="goal">Objetivo: uma nota que o usuário possa confiar, não uma contagem de palavras-chave.</p>
+
+    <h3>Base</h3>
+    <pre><code>score_bruto = Σ(requisito_obrigatório_atendido × 3)
+            + Σ(diferencial_atendido × 1)
+            ÷ Σ(peso_total_possível)</code></pre>
+
+    <p>O casamento entre requisito e perfil é feito por <strong>token técnico normalizado</strong>, não por string. O dicionário de sinônimos é infraestrutura do produto, não detalhe:</p>
+    <pre><code>k8s | K8S | Kubernetes                  → kubernetes
+IaC | Terraform | Ansible | CloudFormation → infra_as_code
+RDS | Aurora | PostgreSQL | Postgres    → postgres_family
+Datadog | Dynatrace | New Relic | Grafana → observabilidade
+SLO | SLA | error budget                → confiabilidade</code></pre>
+
+    <h3>Modificadores — é aqui que o score deixa de ser ingênuo</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Regra</th><th>Efeito</th><th>Caso real do relatório</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Bloqueador rígido</strong> — requisito marcado como imprescindível que o candidato não tem</td><td class="num">teto de 75</td><td>Azure "imprescindível" numa vaga; candidato é AWS-first</td></tr>
+          <tr><td><strong>Descasamento de trilha</strong> — cargo pertence a outra família de carreira</td><td class="num">teto de 65</td><td>Vaga pedia EM com base em backend hands-on; candidato é gestor de infra</td></tr>
+          <tr><td><strong>Barreira de idioma</strong> — inglês fluente exigido e não comprovado</td><td class="num">−10</td><td>Presente em 5 das 9 vagas</td></tr>
+          <tr><td><code>top applicant</code></td><td class="num">+5</td><td>Sinal do próprio LinkedIn</td></tr>
+          <tr><td>Conexões na empresa</td><td class="num">+3</td><td>13 conexões numa das finalistas</td></tr>
+          <tr><td>Menos de 60 candidatos</td><td class="num">+5</td><td>Uma vaga com 58</td></tr>
+          <tr><td>Mais de 200 candidatos</td><td class="num">−5</td><td>Três das finalistas</td></tr>
+          <tr><td>Processo notoriamente longo ou seletivo</td><td class="num">−5</td><td>Conhecimento de mercado, não do anúncio</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <p><span class="claim c-certo">Certo</span> &nbsp;<strong>Os tetos rígidos são o que separa este modelo de um contador de palavras-chave.</strong> Uma vaga com 90% das palavras batendo e um requisito eliminatório faltando não é uma vaga de 90%. Sem teto, o produto recomenda com confiança vagas onde o usuário será filtrado no primeiro corte — e perde credibilidade na primeira rodada de rejeições.</p>
+    </div>
+  </div>
+</section>
+
+<section id="f8">
+  <h2>Estágio 8 — Redação do relatório</h2>
+  <div class="phase">
+    <div class="phase-head"><span class="pnum">08</span><h3>Quatro campos por vaga, e um deles é o produto</h3></div>
+    <ul class="plain">
+      <li><strong>Por que combina</strong> — precisa citar <em>evidência do perfil</em> contra <em>requisito do anúncio</em>, nomeando os dois. "Você tem experiência em cloud" não vale nada; "eles listam IA aplicada a performance de dados como diferencial, e você reduziu tempo de resolução em 57% com agentes de IA" é o produto.</li>
+      <li><strong>O que ajustar</strong> — só lacunas <em>acionáveis</em>. "Melhore seu inglês" é ruído; "PostgreSQL é requisito e só aparece em experiências de 2020 no seu perfil" é acionável.</li>
+      <li><strong>Nota de aderência</strong> — com a justificativa do teto quando houver.</li>
+      <li><strong>Recomendação de ação</strong> — aplicar agora, pedir indicação antes, ou descartar. Sem isso o usuário recebe uma lista, não uma decisão.</li>
+    </ul>
+    <p>Fechamento do relatório: mapa de frequência das habilidades no conjunto (contagem determinística, não LLM) e ajustes de posicionamento derivados das lacunas recorrentes.</p>
+  </div>
+</section>
+
+<section id="falhas">
+  <h2>Log de falhas — o que quebrou de verdade</h2>
+  <p class="sub">Cada linha aqui custou tempo de sessão. Trate como requisitos de resiliência, não como curiosidades.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Sintoma</th><th>Causa</th><th>Tratamento na aplicação</th></tr></thead>
+      <tbody>
+        <tr><td>Só 7 cards, todos <code>Promoted</code></td><td>Lista virtualizada não hidratada</td><td>Scroll obrigatório antes do parse; alertar se todos os resultados forem patrocinados</td></tr>
+        <tr><td>Página de skills vazia</td><td>Carregamento tardio</td><td>Retry com scroll; fallback pelas experiências; estado <code>indeterminado</code></td></tr>
+        <tr><td>Descrição nunca carrega em <code>/jobs/view/</code></td><td>Anúncio com resposta gerida fora do LinkedIn</td><td>Não usar essa rota</td></tr>
+        <tr><td>Painel de detalhe vazio, sem erro</td><td><code>currentJobId</code> fora do resultado da query</td><td>Validar que o ID está na lista antes de tentar; nunca aceitar string vazia como sucesso</td></tr>
+        <tr><td>Extensão retornou erro em 3 chamadas seguidas</td><td>Throttling após ~15 navegações rápidas</td><td>Backoff exponencial com <em>jitter</em>; pausa de 20–30 s; retomar do checkpoint</td></tr>
+        <tr><td>Extrator de texto trocou de escopo sozinho</td><td>Heurística de "conteúdo principal" ora pegava a lista, ora o detalhe</td><td>Nunca depender de extração automática de conteúdo — selecionar o nó explicitamente</td></tr>
+        <tr><td>Coluna de empresa saiu vazia</td><td>Erro de índice no split das linhas do card</td><td>Testes de contrato sobre HTML fixado, com canário diário</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note warn">
+    <p><span class="claim c-certo">Certo</span> &nbsp;<strong>Seletores CSS do LinkedIn mudam sem aviso.</strong> Nenhum dos seletores desta especificação tem garantia de continuar válido. Isole todo parsing em uma camada versionada, com <em>fixtures</em> de HTML real e um teste de canário que roda todo dia contra a página viva. Sem isso a aplicação vai falhar silenciosamente — e falha silenciosa em busca de vagas significa dizer ao usuário "não há vagas para você".</p>
+  </div>
+</section>
+
+<section id="arquitetura">
+  <h2>Arquitetura sugerida</h2>
+  <ul class="plain">
+    <li><strong>Extensão de navegador (Manifest V3)</strong> com content script restrito a <code>linkedin.com</code>. O usuário roda dentro da própria sessão; nada de credenciais no servidor.</li>
+    <li><strong>Fila de trabalho com throttle</strong> — 3 a 8 segundos entre navegações, com jitter. Nunca rajadas paralelas.</li>
+    <li><strong>Camada de parsing versionada e isolada</strong> — todo seletor num único módulo, com fixtures e canário.</li>
+    <li><strong>Persistência local</strong> (IndexedDB) do que já foi visto, pontuado e apresentado. Permite retomar sem refazer, e é o que sustenta "novidades desde a última varredura".</li>
+    <li><strong>Chamada de LLM só em quatro pontos:</strong> extração semântica do perfil, geração de queries, classificação de domínio no corte de ruído, e pontuação + redação. Todo o resto é determinístico e coberto por teste unitário.</li>
+    <li><strong>Checkpoint por estágio</strong> — se cair no estágio 5, retomar de lá com a listagem já coletada, não do zero.</li>
+  </ul>
+  <div class="note">
+    <p><span class="claim c-prov">Provável</span> &nbsp;O maior custo de manutenção não será o LLM nem a infraestrutura — será perseguir mudanças de DOM do LinkedIn. Orçar isso como trabalho recorrente desde o primeiro sprint, e não como bug.</p>
+  </div>
+</section>
+
+<section id="validacao">
+  <h2>Checklist de validação antes de liberar</h2>
+  <ul class="plain">
+    <li>Uma busca conhecida retorna vagas <strong>não patrocinadas</strong> — se todas vierem <code>Promoted</code>, o scroll falhou.</li>
+    <li>Nenhum campo obrigatório vem vazio sem sinalizar erro. Vazio ≠ ausente.</li>
+    <li>Vagas já aplicadas não aparecem como recomendação.</li>
+    <li>Uma vaga com bloqueador rígido conhecido pontua abaixo de 75, sempre.</li>
+    <li>Nº de candidatos e conexões na empresa estão presentes em todas as finalistas.</li>
+    <li>Rodar duas vezes seguidas produz o mesmo conjunto de IDs — instabilidade aqui é sintoma de scroll insuficiente.</li>
+    <li>Canário de seletores passa contra a página viva do dia.</li>
+    <li>O relatório cita, para cada vaga, um requisito do anúncio e a evidência correspondente do perfil. Se não citar, o texto é genérico e não serve.</li>
+  </ul>
+</section>
+
+<footer>
+  Reconstruído a partir da execução manual de 24 ago 2026 — 9 queries, ~60 vagas coletadas, 9 finalistas, 3 rotas de leitura testadas.
+  Classificações <span class="claim c-certo">Certo</span> <span class="claim c-prov">Provável</span> <span class="claim c-sup">Suposição</span> indicam o grau de confiança de cada afirmação.
+</footer>
+
+</main>
+</div>
+</div>

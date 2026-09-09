@@ -1,0 +1,44 @@
+{# Navegacao compartilhada pelas quatro paginas.
+
+   Ela existe porque o relatorio era um beco sem saida -- nenhum link de volta,
+   nenhum caminho para o perfil -- e as outras paginas so ofereciam um "voltar"
+   no rodape, alcancavel depois de rolar tudo. Numa aplicacao de quatro telas,
+   estar em uma delas nao pode custar a rolagem inteira para sair.
+
+   O nome do produto e o caminho de volta. E a convencao que todo site web usa,
+   e ela dispensa um botao dedicado em cada pagina.
+
+   `atual` diz qual secao esta aberta, para que o link dela nao finja levar a
+   outro lugar. Quem passa o gabarito sem definir `atual` nao marca nenhuma. #}
+<nav class="navegacao">
+  <a class="marca-produto" href="/">crivo</a>
+  <span class="trilha">
+    {% if atual == 'inicio' %}
+      <span class="aqui">início</span>
+    {% else %}
+      <a href="/">início</a>
+    {% endif %}
+
+    {% if atual == 'perfil' %}
+      <span class="aqui">perfil</span>
+    {% else %}
+      <a href="/profile">perfil</a>
+    {% endif %}
+
+    {% if atual == 'conferencia' %}
+      <span class="aqui">currículo</span>
+    {% else %}
+      <a href="/resume/conferencia">currículo</a>
+    {% endif %}
+
+    {% if atual == 'extensao' %}
+      <span class="aqui">extensão</span>
+    {% else %}
+      <a href="/extensao">extensão</a>
+    {% endif %}
+
+    {% if atual == 'relatorio' %}
+      <span class="aqui">relatório</span>
+    {% endif %}
+  </span>
+</nav>

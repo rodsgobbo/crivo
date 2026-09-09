@@ -1,0 +1,287 @@
+{# Gabarito do relatorio. O escape automatico esta ligado no motor: nao existe
+   aqui nenhum uso de `safe`, e e isso que impede marcacao vinda da origem de
+   alcancar a pagina. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triagem de vagas — {{ ctx.gerado_em[:10] }}</title>
+<link rel="stylesheet" href="/static/crivo.css">
+</head>
+<body class="relatorio">
+<main>
+
+{% set atual = "relatorio" %}
+  {% include "_navegacao.html.j2" %}
+
+<h1>Triagem de vagas</h1>
+<p class="sub">
+  Run {{ ctx.run_id }} · gerado em {{ ctx.gerado_em | local_completo }} ·
+  {{ ctx.contagens.brutos }} coletadas, {{ ctx.contagens.filtrados }} após o pré-filtro,
+  {{ ctx.contagens.novos }} novas
+</p>
+
+{# ---------------------------------------------------- estados degradados #}
+{% if ctx.modo_deterministico %}
+<p class="aviso">
+  Modo determinístico ativo: nenhuma chamada a modelo de linguagem foi feita.
+  A leitura estratégica das vagas não está neste relatório.
+</p>
+{% elif ctx.falha_sintese %}
+<p class="aviso">
+  A síntese não pôde ser produzida: {{ ctx.falha_sintese }}.
+  O restante do relatório vale normalmente.
+</p>
+{% endif %}
+
+{# A origem nao cumpre o filtro de recencia que a busca envia. Quem pediu 24
+   horas precisa ver isso aqui, e nao descobrir pelo anúncio depois de clicar. #}
+{% if ctx.fora_da_janela %}
+<p class="aviso">
+  <strong>{{ ctx.fora_da_janela | length }} vaga(s) têm data anterior às
+  últimas {{ ctx.janela_horas }} horas</strong> que você pediu — a mais antiga
+  em {{ ctx.fora_da_janela | map(attribute='publicada_em') | min }}.
+  Elas estão marcadas na lista.
+  {% set sem_data = ctx.vagas | rejectattr('publicada_em') | list | length %}
+  {% if sem_data %}
+    Outras {{ sem_data }} chegaram sem data pela busca. O anúncio tem a data —
+    ela aparece na página da vaga — mas a leitura da lista não a capturou, e
+    sobre essas não dá para afirmar nada.
+  {% endif %}
+  A data é a que a origem informou na última vez que a vaga apareceu; anúncio
+  republicado pode carregar data antiga.
+</p>
+{% endif %}
+
+{% if ctx.sem_descricao_por_cota %}
+<p class="aviso">
+  {{ ctx.sem_descricao_por_cota }} vaga(s) ficaram sem descrição porque a cota de
+  coleta do dia se esgotou, e não por falha. Elas voltam no próximo run.
+</p>
+{% endif %}
+
+{% if not ctx.houve_sobrevivente %}
+<p class="aviso">
+  Nenhuma vaga sobreviveu ao pré-filtro nesta execução.
+  Foram {{ ctx.contagens.brutos }} coletadas e todas descartadas — os motivos estão abaixo.
+</p>
+{% endif %}
+
+{# ------------------------------------------------------------- sintese #}
+{% if ctx.sintese %}
+<h2>Leitura estratégica</h2>
+<pre class="descricao">{{ ctx.sintese }}</pre>
+{% endif %}
+
+{# --------------------------------------------------------------- vagas #}
+{# Filtro por GET: o endereco filtrado continua sendo um endereco, entao pode
+   ser guardado, compartilhado e reaberto -- e a pagina segue sem JavaScript. #}
+<h2>Vagas
+  {%- if ctx.filtros and ctx.vagas|length != ctx.total_sem_filtro %}
+    ({{ ctx.vagas|length }} de {{ ctx.total_sem_filtro }})
+  {%- else %}
+    ({{ ctx.vagas|length }}{% if ctx.destaques %}, {{ ctx.destaques|length }} em destaque{% endif %})
+  {%- endif %}
+</h2>
+
+<form method="get" class="filtro">
+  <label class="cargo">
+    Cargo
+    <input type="search" name="cargo" placeholder="gerente, SRE, manager…"
+           value="{{ ctx.filtros.get('cargo') or '' }}">
+  </label>
+  <label>
+    Score mínimo
+    <select name="score">
+      <option value="">qualquer</option>
+      {% for corte in [50, 60, 70, 80] %}
+        <option value="{{ corte }}"
+          {{ 'selected' if ctx.filtros.get('score_minimo')|string == corte|string }}>
+          {{ corte }}%
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    <input type="checkbox" name="descricao" value="1"
+           {{ 'checked' if ctx.filtros.get('so_com_descricao') }}>
+    só com descrição lida
+  </label>
+  <label>
+    <input type="checkbox" name="remoto" value="1"
+           {{ 'checked' if ctx.filtros.get('so_remoto') }}>
+    só remoto
+  </label>
+  <label>
+    <input type="checkbox" name="no_raio" value="1"
+           {{ 'checked' if ctx.filtros.get('ocultar_fora_do_raio') }}>
+    esconder fora do raio
+  </label>
+  <button class="acao discreta" type="submit">Filtrar</button>
+  {% if ctx.vagas|length != ctx.total_sem_filtro %}
+    <a class="acao discreta" href="?">Limpar</a>
+  {% endif %}
+</form>
+
+{% if ctx.total_sem_filtro and not ctx.vagas %}
+  <p class="vazio">
+    Nenhuma vaga sobrevive a estes filtros — as {{ ctx.total_sem_filtro }}
+    continuam aqui, é só afrouxá-los.
+  </p>
+{% endif %}
+
+{% if ctx.vagas %}
+{% for vaga in ctx.vagas %}
+<article class="vaga{% if vaga in ctx.destaques %} destaque{% endif %}">
+  <div class="cabeca">
+    <h3><a href="{{ vaga.url }}">{{ vaga.titulo }}</a>{% if vaga.empresa %} — {{ vaga.empresa }}{% endif %}</h3>
+    <span class="score">
+      {%- if vaga.nota_do_modelo is not none -%}
+        {{ vaga.nota_do_modelo }}%
+        <span class="relida" title="nota do modelo; o cálculo deu {{ vaga.score }}%">·
+          relida</span>
+      {%- else -%}
+        {{ vaga.score }}%
+      {%- endif -%}
+      {% if vaga.tetos %}
+      <span class="teto" title="nota limitada por requisito eliminatório ou trilha">·
+        teto</span>{% endif %}</span>
+  </div>
+  <p class="meta">
+    {{ vaga.local or "local não informado" }} ·
+    {{ vaga.modelo or "modelo não informado" }} ·
+    {% if vaga.fora_da_janela %}
+      <strong class="atrasada">{{ vaga.publicada_em }} — fora da janela</strong>
+    {% else %}
+      {{ vaga.publicada_em or "data não informada" }}
+    {% endif %} ·
+    {{ vaga.estado }}
+    {% if vaga.candidatos %} · {{ vaga.candidatos }} candidatos{% endif %}
+    {# A busca que a trouxe. Sem isto, "por que esta vaga apareceu?" só tinha
+       resposta lendo o código do planejador -- e um termo que só traz ruído
+       ficava impossível de identificar a partir do relatório. #}
+    {% if vaga.busca %} · achada por <strong>{{ vaga.busca }}</strong>{% endif %}
+  </p>
+
+  <p class="acao-recomendada acao-{{ vaga.acao | replace(' ', '-') }}">
+    <strong>{{ vaga.acao }}</strong> — {{ vaga.acao_porque }}
+  </p>
+
+  {# O que o modelo viu que o cálculo não vê. Só aparece onde houve releitura,
+     e diz que a nota mudou de origem -- senão o usuário compara dois números
+     que não medem a mesma coisa. #}
+  {% if vaga.motivo_do_modelo %}
+  <p class="meta">
+    Releitura: {{ vaga.motivo_do_modelo }}
+    {% if vaga.nota_do_modelo != vaga.score %}
+      <em>(o cálculo por competências dava {{ vaga.score }}%)</em>
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if vaga.blocker %}
+  <p class="bloqueio">Blocker: {{ vaga.blocker }}</p>
+  {% endif %}
+
+  {% if not vaga.descricao_disponivel %}
+  <p class="bloqueio">
+    Avaliada por título, empresa e sinais, sem leitura da descrição.
+  </p>
+  {% endif %}
+
+  {% if vaga.diferenciais %}
+  <div class="tags">
+    {% for termo in vaga.diferenciais %}<span class="tag">✓ {{ termo }}</span>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if vaga.lacunas %}
+  <div class="tags">
+    {% for termo in vaga.lacunas %}<span class="tag">falta {{ termo }}</span>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if vaga.emails %}
+  <p class="meta">Contato: {% for e in vaga.emails %}{{ e }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+
+  {% if vaga.descricao %}
+  <details>
+    <summary>Descrição completa</summary>
+    <pre class="descricao">{{ vaga.descricao }}</pre>
+  </details>
+  {% endif %}
+</article>
+{% endfor %}
+{% endif %}
+
+{# ---------------------------------------------------- rendimento da busca #}
+{# Pior primeiro, ao contrário do resto do relatório: esta tabela não serve
+   para escolher vaga, serve para escolher o que tirar da busca. #}
+{% if ctx.rendimento_das_buscas %}
+<h2>Rendimento das buscas</h2>
+<p class="sub">
+  O que cada termo trouxe, do que mais atrapalha para o que menos. Termo com
+  muita vaga fora da trilha está casando por palavra solta — vale removê-lo
+  na tela inicial.
+</p>
+<table>
+  <tr>
+    <th>Busca</th><th>Vagas</th><th>Melhor</th><th>Mediana</th>
+    <th>Fora da trilha</th>
+  </tr>
+  {% for linha in ctx.rendimento_das_buscas %}
+  <tr>
+    <td>{{ linha.termo }}</td>
+    <td>{{ linha.vagas }}</td>
+    <td>{{ linha.melhor }}%</td>
+    <td>{{ linha.mediana }}%</td>
+    <td>{{ linha.fora_da_trilha or "—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{# ------------------------------------------------------------- higiene #}
+<h2>Higiene do seu perfil</h2>
+{% if ctx.problemas_higiene %}
+<table>
+  <tr><th>Problema</th><th>Onde</th><th>Por que importa</th></tr>
+  {% for p in ctx.problemas_higiene %}
+  <tr><td>{{ p.tipo }}</td><td>{{ p.trecho }}</td><td>{{ p.detalhe }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="vazio">Nenhum problema detectado no histórico.</p>
+{% endif %}
+
+{# -------------------------------------------------------- competencias #}
+<h2>Competências mais pedidas</h2>
+{% if ctx.ranking_competencias %}
+<table>
+  <tr><th>Competência</th><th>Vagas que pedem</th></tr>
+  {% for termo, quantas in ctx.ranking_competencias %}
+  <tr><td>{{ termo }}</td><td>{{ quantas }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="vazio">Nenhuma vaga com descrição disponível neste run.</p>
+{% endif %}
+
+{# --------------------------------------------------------- descartadas #}
+<h2>Descartadas ({{ ctx.descartadas|length }})</h2>
+{% if ctx.descartadas %}
+<table>
+  <tr><th>Vaga</th><th>Empresa</th><th>Motivo</th></tr>
+  {% for d in ctx.descartadas %}
+  <tr><td>{{ d.titulo }}</td><td>{{ d.empresa or "—" }}</td><td>{{ d.motivo }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="vazio">Nenhuma vaga descartada nesta execução.</p>
+{% endif %}
+
+</main>
+</body>
+</html>

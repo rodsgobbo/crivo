@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "crivo — insights de vaga",
+  "version": "1.0.0",
+  "description": "Le os sinais que a sua conta Premium enxerga nos cards de vaga do LinkedIn e manda para o crivo local. Nao le nem envia credencial.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/jobs*", "https://www.linkedin.com/my-items*"],
+      "js": ["conteudo.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "opcoes.html",
+    "default_title": "crivo — insights de vaga"
+  }
+}

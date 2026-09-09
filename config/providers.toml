@@ -1,0 +1,66 @@
+# Registro de provedores de modelo habilitados pelo operador.
+#
+# Este arquivo e configuracao e nao codigo por um motivo pratico: ofertas
+# gratuitas mudam de limite e desaparecem em prazos curtos, e uma lista fixa no
+# codigo nasceria desatualizada.
+#
+# `formato_credencial` so aceita "chave_estatica" ou "nenhuma". Provedor que
+# exigisse registrar uma aplicacao seria recusado na carga, e nao por disciplina
+# de quem edita este arquivo.
+#
+# Os valores de `limite_declarado` sao o que cada provedor anuncia e precisam ser
+# reconferidos: eles envelhecem.
+
+[[provedor]]
+id = "google-ai-studio"
+rotulo = "Google AI Studio"
+endereco = "https://generativelanguage.googleapis.com"
+formato_credencial = "chave_estatica"
+execucao = "rede_externa"
+# O Google aposentou a familia 2.5 para contas novas em agosto de 2026, e a
+# propria recusa nomeia o substituto. Apenas o flash esta confirmado pela
+# mensagem do provedor; nao ha aqui um "pro" adivinhado, porque um modelo
+# inexistente na lista so apareceria como falha em tempo de uso.
+modelos = ["gemini-3.6-flash"]
+limite_declarado = "cota gratuita por minuto e por dia"
+destino_dos_dados = "servidores do Google"
+
+[[provedor]]
+id = "groq"
+rotulo = "Groq"
+endereco = "https://api.groq.com/openai/v1"
+formato_credencial = "chave_estatica"
+execucao = "rede_externa"
+modelos = ["llama-3.3-70b-versatile"]
+limite_declarado = "cota gratuita por minuto e por dia"
+destino_dos_dados = "servidores da Groq"
+
+[[provedor]]
+id = "mistral"
+rotulo = "Mistral"
+endereco = "https://api.mistral.ai/v1"
+formato_credencial = "chave_estatica"
+execucao = "rede_externa"
+modelos = ["mistral-large-latest", "mistral-small-latest"]
+limite_declarado = "cota gratuita da plataforma"
+destino_dos_dados = "servidores da Mistral"
+
+[[provedor]]
+id = "openrouter"
+rotulo = "OpenRouter"
+endereco = "https://openrouter.ai/api/v1"
+formato_credencial = "chave_estatica"
+execucao = "rede_externa"
+modelos = ["openrouter/auto"]
+limite_declarado = "varia por modelo; ha modelos sem custo"
+destino_dos_dados = "OpenRouter e o provedor de destino que ele escolher"
+
+[[provedor]]
+id = "ollama-local"
+rotulo = "Ollama na maquina do operador"
+endereco = "http://127.0.0.1:11434"
+formato_credencial = "nenhuma"
+execucao = "maquina_do_operador"
+modelos = ["llama3.1", "qwen2.5"]
+limite_declarado = "limitado apenas pelo hardware do operador"
+destino_dos_dados = "nao sai da maquina do operador"
