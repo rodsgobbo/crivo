@@ -14,3 +14,9 @@ data/
 # `python demo/run_demo.py`. Publicar o artefato exporia o dado sem entregar
 # nada que o script nao refaca.
 demo/saida/
+
+# Arvore intermediaria do setuptools, criada por `python -m build`. E copia do
+# que ja esta em src/ -- versionar as duas faz o repositorio carregar cada
+# modulo em duplicata e divergir na primeira edicao que esquecer uma delas.
+build/
+dist/
