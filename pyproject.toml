@@ -2,6 +2,13 @@
 name = "crivo"
 version = "0.1.0"
 description = "Triagem automatizada de vagas do LinkedIn"
+# Expressao SPDX, e nao a tabela `{text = ...}`: esta e a forma que o
+# empacotamento adotou (PEP 639) e a antiga esta a caminho da remocao. Ela exige
+# setuptools 77, e por isso o piso do build subiu junto -- declarar a licenca na
+# forma nova com um piso que nao a entende faria o build falhar em quem tem
+# setuptools antigo, que e exatamente quem o piso existe para proteger.
+license = "MIT"
+license-files = ["LICENSE"]
 # Teto de 3.13: python-jobspy fixa NUMPY==1.26.3, cujo ultimo wheel e
 # cp312. O teto sai quando esse pin for relaxado a montante.
 requires-python = ">=3.12,<3.13"
@@ -19,7 +26,7 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

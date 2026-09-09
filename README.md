@@ -211,6 +211,14 @@ enriquecer. Ligar outros portais é mudança de desenho, não de configuração.
 necessários, mas o design os descreve em prosa sem listá-los. Alinhar os
 documentos é uma emenda curta na Fase 2.
 
+### A licença não diz nada sobre os Termos de Serviço
+
+O código é [MIT](LICENSE) — use, modifique e redistribua à vontade. Isso concede
+direitos sobre **este código** e não sobre a atividade: raspar o LinkedIn
+contraria os Termos de Serviço da plataforma, e essa relação é entre quem opera e
+ela. A isenção de garantia do MIT existe justamente porque o risco recai sobre
+quem executa, não sobre quem escreveu.
+
 ### A assinatura do testemunho de identidade não é verificada
 
 Ele chega pelo canal direto com o provedor, sob transporte cifrado e autenticado
