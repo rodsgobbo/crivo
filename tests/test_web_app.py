@@ -397,6 +397,35 @@ def _com_perfil(cliente):
     return user_id
 
 
+def _preferencia(cliente, user_id):
+    from crivo.profile.merger import ProfileMerger
+
+    _c, _i, banco = cliente
+    return ProfileMerger(banco(), load_config()).current(user_id).campos[
+        "dias_escritorio_max"
+    ]
+
+
+def test_the_office_preference_is_saved_kept_and_clearable(cliente):
+    """O botao de reconsolidar nao carrega o seletor, e nao pode apagar a escolha."""
+    c, _i, _banco = cliente
+    user_id = _com_perfil(cliente)
+
+    c.post("/profile/consolidate", data={"dias_escritorio_max": "1"})
+    assert _preferencia(cliente, user_id) == 1
+
+    c.post("/profile/consolidate")
+    assert _preferencia(cliente, user_id) == 1
+
+    # Zero e resposta -- "so remoto" --, e nao ausencia de resposta.
+    c.post("/profile/consolidate", data={"dias_escritorio_max": "0"})
+    assert _preferencia(cliente, user_id) == 0
+
+    # Vazio e a unica forma de voltar a "sem preferencia".
+    c.post("/profile/consolidate", data={"dias_escritorio_max": ""})
+    assert _preferencia(cliente, user_id) is None
+
+
 @pytest.mark.parametrize("alcance,horas", [("30d", 720), ("7d", 168), ("1d", 24)])
 def test_the_reach_chosen_in_the_form_reaches_the_run(cliente, alcance, horas):
     """O radio da pagina precisa chegar ate a linha do run.

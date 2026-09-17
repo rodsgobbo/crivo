@@ -36,6 +36,9 @@ CAMPOS = (
     "competencias",
     "formacao",
     "idiomas",
+    # Preferencia do candidato, nao fato do historico: so a origem manual a
+    # preenche, e vazia significa que o crivo nao avalia presenca.
+    "dias_escritorio_max",
 )
 
 #: Campos sem os quais nao ha o que buscar.
@@ -96,7 +99,11 @@ class ProfileMerger:
         for campo in CAMPOS:
             for origem in self._precedencia:
                 valor = por_origem.get(origem, {}).get(campo)
-                if valor:
+                # `0` e resposta, e nao ausencia: quem aceita zero dia de
+                # escritorio esta dizendo "so remoto". Sem esta guarda a
+                # preferencia mais restritiva de todas era a unica que o
+                # consolidador jogava fora.
+                if valor or valor == 0:
                     campos[campo] = valor
                     origem_por_campo[campo] = origem
                     break

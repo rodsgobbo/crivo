@@ -40,6 +40,9 @@ class ReportContext:
     descartadas: list[dict] = field(default_factory=list)
     problemas_higiene: list[dict] = field(default_factory=list)
     ranking_competencias: list[tuple[str, int]] = field(default_factory=list)
+    #: Das mais pedidas, as que o perfil nao tem. `None` quando nao ha perfil
+    #: para comparar, e nao lista vazia: vazia afirmaria que nada falta.
+    competencias_ausentes: list[str] | None = None
     sintese: str | None = None
     falha_sintese: str | None = None
     modo_deterministico: bool = False
@@ -52,6 +55,10 @@ class ReportContext:
     total_sem_filtro: int = 0
     #: Quanto cada termo de busca rendeu neste run.
     rendimento_das_buscas: list[dict] = field(default_factory=list)
+    #: Empresas com mais de um titulo distinto coletado na janela.
+    empresas_contratando: list[dict] = field(default_factory=list)
+    #: Tamanho dessa janela, em dias, para a pagina poder dize-lo.
+    dias_de_contratacao: int = 30
     #: Janela de publicacao que o usuario pediu, em horas.
     janela_horas: int | None = None
 
@@ -335,6 +342,7 @@ class ReportRenderer:
         ranking_competencias=None,
         problemas_higiene=None,
         filtros: dict | None = None,
+        competencias_ausentes=None,
     ) -> ReportContext:
         """Le o run, as vagas pontuadas e os descartes ja gravados."""
         scope = self._repository.for_user(user_id)
@@ -365,6 +373,10 @@ class ReportRenderer:
             descartadas=descartes,
             problemas_higiene=list(problemas_higiene or []),
             ranking_competencias=list(ranking_competencias or []),
+            competencias_ausentes=(
+                None if competencias_ausentes is None
+                else list(competencias_ausentes)
+            ),
             # O texto vem do proprio run. Antes era um parametro que ninguem
             # preenchia, e a secao mais cara do relatorio abria vazia mesmo
             # depois de o modelo ter sido pago para produzi-la.
@@ -381,8 +393,47 @@ class ReportRenderer:
             filtros=filtros,
             total_sem_filtro=len(todas),
             rendimento_das_buscas=_rendimento(todas),
+            empresas_contratando=self._empresas_contratando(
+                user_id, self._config.report.dias_de_contratacao
+            ),
+            dias_de_contratacao=self._config.report.dias_de_contratacao,
             janela_horas=janela,
         )
+
+    #: Uma vaga sozinha nao e sinal de nada: e a vaga que voce ja esta lendo.
+    MINIMO_DE_VAGAS_DA_EMPRESA = 2
+
+    def _empresas_contratando(self, user_id: str, dias: int) -> list[dict]:
+        """Empresas que abriram mais de um titulo distinto na janela.
+
+        Sai inteiro do que ja esta no banco -- cada vaga guarda a empresa e a
+        data em que foi vista pela primeira vez --, entao nao custa requisicao
+        nem depende de pesquisar a empresa em lugar nenhum.
+
+        Conta titulo distinto, e nao vaga: anuncio republicado chega com
+        identificador novo, e sem isso a empresa que repete a mesma vaga toda
+        semana lideraria a tabela sem ter aberto coisa alguma.
+
+        Atravessa runs de proposito. Contratacao e um movimento de semanas, e
+        uma tabela presa ao run de hoje mostraria sempre o mesmo numero baixo.
+        """
+        corte = (
+            datetime.now(timezone.utc) - timedelta(days=dias)
+        ).isoformat(timespec="seconds")
+        linhas = self._repository.execute(
+            """
+            SELECT empresa, COUNT(DISTINCT titulo) AS vagas,
+                   MAX(primeira_vez_em) AS mais_recente
+            FROM jobs
+            WHERE user_id = ? AND empresa IS NOT NULL AND empresa <> ''
+              AND primeira_vez_em >= ?
+            GROUP BY empresa
+            HAVING vagas >= ?
+            ORDER BY vagas DESC, empresa
+            """,
+            (user_id, corte, self.MINIMO_DE_VAGAS_DA_EMPRESA),
+        ).fetchall()
+        return [dict(linha) for linha in linhas]
 
     def render(self, contexto: ReportContext) -> str:
         """Devolve a pagina montada a partir do contexto."""

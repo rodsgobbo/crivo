@@ -91,6 +91,7 @@ COVERAGE: dict[str, list[str]] = {
     ],
     "5.6": ["test_profile::test_each_consolidation_creates_a_new_immutable_version"],
     "5.7": ["test_profile::test_the_current_version_is_reused_while_no_source_changed"],
+    "5.8": ["test_web_app::test_the_office_preference_is_saved_kept_and_clearable"],
 
     # ------------------------------------------------------- REQ-6 higiene
     "6.1": [
@@ -193,6 +194,28 @@ COVERAGE: dict[str, list[str]] = {
     "14.2": ["test_scoring::test_differentials_are_the_overlap"],
     "14.3": ["test_scoring::test_gaps_and_differentials_never_intersect"],
     "14.4": ["test_scoring::test_frequency_ranks_the_most_asked_first"],
+    "14.5": [
+        "test_stages::test_a_skill_proven_by_the_history_is_not_a_gap",
+        "test_scoring::test_a_skill_proven_by_the_history_is_not_reported_missing",
+    ],
+    "14.6": [
+        "test_report::test_the_ranking_marks_what_the_profile_lacks",
+        "test_report::test_without_a_profile_the_ranking_accuses_nothing",
+    ],
+
+    "13.11": [
+        "test_stages::test_a_hybrid_job_stops_counting_as_remote",
+        "test_stages::test_without_a_declared_preference_a_hybrid_job_is_left_alone",
+        "test_presenca::test_the_number_of_office_days_is_read",
+        "test_presenca::test_hybrid_without_a_number_says_hybrid_and_not_a_number",
+    ],
+
+    # ------------------------------------------- REQ-18.14 quem esta contratando
+    "18.14": [
+        "test_report::test_a_company_with_several_openings_is_listed",
+        "test_report::test_an_opening_outside_the_window_is_not_hiring_today",
+        "test_report::test_the_report_shows_who_is_hiring",
+    ],
 
     # ----------------------------------------------------- REQ-15 sintese
     "15.1": ["test_synthesis::test_one_logical_request_per_run"],
@@ -353,5 +376,99 @@ COVERAGE: dict[str, list[str]] = {
     "26.11": ["test_credential_vault::test_the_user_can_reorder_the_chain"],
     "26.12": [
         "test_credential_vault::test_the_first_credential_is_seeded_from_the_operator_default"
+    ],
+
+    # --------------------------------------------- REQ-27 insights da extensao
+    "27.1": ["test_web_app::test_insights_from_the_browser_are_recorded"],
+    "27.2": ["test_web_app::test_an_unknown_signal_is_dropped_instead_of_scored"],
+    "27.3": ["test_web_app::test_signals_from_the_browser_join_the_ones_from_collection"],
+    "27.4": ["test_web_app::test_an_envelope_with_nothing_recognizable_is_refused"],
+    "27.5": [
+        "test_web_app::test_a_sweep_collects_the_job_the_crivo_never_found",
+        "test_web_app::test_the_applicant_count_of_a_brand_new_job_is_not_lost",
+        "test_web_app::test_a_known_job_is_not_recreated_by_a_sweep",
+    ],
+    "27.6": ["test_web_app::test_a_card_without_title_or_url_is_still_refused"],
+    "27.7": [
+        "test_web_app::test_a_sweep_records_every_card_at_once",
+        "test_web_app::test_an_uncollected_card_is_skipped_instead_of_failing_the_sweep",
+    ],
+    "27.8": ["test_web_app::test_an_empty_or_oversized_sweep_is_refused"],
+    "27.9": [
+        "test_web_app::test_insights_for_a_job_of_another_user_are_refused",
+        "test_web_app::test_a_sweep_of_another_users_jobs_records_nothing",
+    ],
+    "27.10": [
+        "test_web_app::test_insights_require_a_session",
+        "test_web_app::test_a_sweep_requires_a_session",
+        "test_web_app::test_a_wrong_token_is_refused",
+    ],
+    "27.11": [
+        "test_web_app::test_a_sweep_authenticates_by_header_without_any_cookie",
+        "test_web_app::test_the_preflight_announces_the_token_header",
+    ],
+    "27.12": ["test_web_app::test_the_extractor_token_opens_nothing_but_the_insight_routes"],
+    "27.13": ["test_web_app::test_issuing_a_token_invalidates_the_previous_one"],
+    "27.14": [
+        "test_web_app::test_the_extension_page_issues_a_token_only_by_post",
+        "test_web_app::test_the_extension_page_requires_a_session",
+    ],
+    "27.15": [
+        "test_web_app::test_only_the_extractor_origin_may_reach_the_insights_route",
+        "test_web_app::test_the_sweep_route_carries_the_same_origin_allowance",
+        "test_web_app::test_the_broad_origin_is_never_allowed",
+        "test_web_app::test_other_routes_do_not_carry_the_origin_allowance",
+    ],
+    "27.16": ["test_stages::test_a_top_applicant_goes_first_in_the_enrichment_queue"],
+    "27.17": [
+        "test_report::test_being_a_top_applicant_sends_you_straight_to_the_application",
+        "test_report::test_a_top_applicant_outranks_a_crowded_queue",
+    ],
+    "27.18": ["test_report::test_a_top_applicant_does_not_override_a_mandatory_gap"],
+
+    # ----------------------------------------------- REQ-28 releitura do topo
+    "28.1": [
+        "test_judge::test_only_the_top_reaches_the_model",
+        "test_judge::test_the_request_names_the_profile_and_every_job",
+        "test_judge::test_the_job_id_carries_no_brackets",
+    ],
+    "28.2": [
+        "test_judge::test_the_request_uses_the_judgement_task_and_not_the_synthesis_one",
+        "test_judge::test_the_judgement_task_has_a_system_prompt",
+    ],
+    "28.3": [
+        "test_judge::test_the_whole_request_fits_the_budget",
+        "test_judge::test_every_job_gets_the_same_slice_of_description",
+    ],
+    "28.4": [
+        "test_judge::test_a_job_without_a_description_says_so_instead_of_omitting",
+        "test_judge::test_a_list_too_long_for_any_description_says_so",
+    ],
+    "28.5": [
+        "test_judge::test_a_well_formed_answer_becomes_scores",
+        "test_judge::test_the_shape_a_real_model_actually_returned_is_read",
+        "test_judge::test_a_markdown_table_row_is_read",
+        "test_judge::test_a_bulleted_line_is_read",
+        "test_judge::test_prose_around_the_lines_is_skipped",
+    ],
+    "28.6": [
+        "test_judge::test_an_invented_job_is_ignored",
+        "test_judge::test_the_identifier_is_never_loosened",
+        "test_judge::test_a_score_outside_the_range_is_refused",
+    ],
+    "28.7": [
+        "test_judge::test_without_a_model_nothing_happens_and_the_run_survives",
+        "test_report::test_without_any_reread_the_deterministic_order_is_untouched",
+    ],
+    "28.8": [
+        "test_judge::test_an_exhausted_chain_is_a_recorded_failure_not_a_crash",
+        "test_judge::test_a_model_error_is_a_recorded_failure_not_a_crash",
+        "test_judge::test_an_unreadable_answer_does_not_invent_an_order",
+    ],
+    "28.9": ["test_report::test_the_report_shows_where_the_score_came_from"],
+    "28.10": [
+        "test_report::test_the_model_score_decides_the_order_where_it_exists",
+        "test_report::test_a_reread_job_comes_before_one_never_considered",
+        "test_report::test_the_description_rule_survives_below_the_reread_tier",
     ],
 }

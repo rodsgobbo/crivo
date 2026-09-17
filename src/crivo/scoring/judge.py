@@ -181,7 +181,7 @@ class Judge:
         # Montar o pedido maior que isso faz o corte cair nas instrucoes.
         self._orcamento = config.synthesis.limite_caracteres_texto_externo
         self._deterministico = config.synthesis.modo_deterministico
-        self._topo = getattr(config.report, "vagas_relidas", TOPO_PADRAO)
+        self._topo = config.report.vagas_relidas
 
     def judge(self, user_id: str, perfil: dict, vagas: list[dict]) -> JudgementResult:
         """Reavalia o topo. Sem modelo, devolve vazio sem falhar o run."""

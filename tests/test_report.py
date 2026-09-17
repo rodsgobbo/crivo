@@ -34,16 +34,17 @@ def env(tmp_path):
 def add_vaga(
     repo, job_id="li-1", score=82, estado="novo", titulo="SRE Manager",
     descricao="Sobre a vaga: Kubernetes", blocker=None, emails=("rh@fintech.br",),
-    lacunas=("observabilidade",), busca=None,
+    lacunas=("observabilidade",), busca=None, empresa="Fintech",
+    primeira_vez_em="2026-08-20",
 ):
     repo.for_user("ana").insert(
         "jobs",
         {
-            "job_id": job_id, "titulo": titulo, "empresa": "Fintech",
+            "job_id": job_id, "titulo": titulo, "empresa": empresa,
             "url": f"https://exemplo.br/{job_id}", "local": "Sao Paulo, SP",
             "modelo_trabalho": "remote", "publicada_em": "2026-08-20",
             "flags": json.dumps(["top_applicant"]), "blocker": blocker,
-            "estado": estado, "primeira_vez_em": "2026-08-20",
+            "estado": estado, "primeira_vez_em": primeira_vez_em,
             "ultima_vez_em": "2026-08-21", "busca": busca,
         },
     )
@@ -275,6 +276,32 @@ def test_the_skill_ranking_is_shown(env):
     add_vaga(repo)
     pagina = render(env, ranking_competencias=[("kubernetes", 8), ("terraform", 5)])
     assert "kubernetes" in pagina and "8" in pagina
+
+
+def _linha_da_competencia(pagina, termo):
+    return pagina.split(f"<td>{termo}</td>", 1)[1].split("</tr>", 1)[0]
+
+
+def test_the_ranking_marks_what_the_profile_lacks(env):
+    connection, repo = env
+    add_vaga(repo)
+    pagina = render(
+        env,
+        ranking_competencias=[("kubernetes", 8), ("terraform", 5)],
+        competencias_ausentes=["terraform"],
+    )
+    assert "falta" in _linha_da_competencia(pagina, "terraform")
+    assert "falta" not in _linha_da_competencia(pagina, "kubernetes")
+    assert "1 de 2" in pagina
+
+
+def test_without_a_profile_the_ranking_accuses_nothing(env):
+    """Sem perfil para comparar, "falta" seria acusacao sem pergunta."""
+    connection, repo = env
+    add_vaga(repo)
+    pagina = render(env, ranking_competencias=[("terraform", 5)])
+    assert "falta" not in _linha_da_competencia(pagina, "terraform")
+    assert "No seu perfil" not in pagina
 
 
 def test_an_empty_ranking_says_why(env):
@@ -516,6 +543,63 @@ def test_an_already_applied_job_is_never_recommended_again():
     from crivo.report.renderer import JA_APLICADA, recomendar
 
     assert recomendar(_vaga(score=95, estado="aplicado"), limiar=70)[0] == JA_APLICADA
+
+
+# --------------------------------------------------- empresas contratando
+def _dias_atras(dias):
+    from datetime import datetime, timedelta, timezone
+
+    return (
+        datetime.now(timezone.utc) - timedelta(days=dias)
+    ).isoformat(timespec="seconds")
+
+
+def _empresas(connection, dias=30):
+    return ReportRenderer(connection, load_config())._empresas_contratando(
+        "ana", dias
+    )
+
+
+def test_a_company_with_several_openings_is_listed(env):
+    connection, repo = env
+    add_vaga(repo, job_id="li-1", titulo="SRE Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(1))
+    add_vaga(repo, job_id="li-2", titulo="Platform Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(2))
+    # Mesmo cargo republicado: identificador novo, vaga que ja existia.
+    add_vaga(repo, job_id="li-3", titulo="SRE Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(3))
+    # Uma vaga so nao e sinal de contratacao.
+    add_vaga(repo, job_id="li-4", titulo="Head de Dados", empresa="Solo",
+             primeira_vez_em=_dias_atras(1))
+
+    linhas = _empresas(connection)
+
+    assert [linha["empresa"] for linha in linhas] == ["Acme"]
+    assert linhas[0]["vagas"] == 2
+
+
+def test_an_opening_outside_the_window_is_not_hiring_today(env):
+    connection, repo = env
+    add_vaga(repo, job_id="li-1", titulo="SRE Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(40))
+    add_vaga(repo, job_id="li-2", titulo="Platform Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(45))
+
+    assert _empresas(connection) == []
+
+
+def test_the_report_shows_who_is_hiring(env):
+    connection, repo = env
+    add_vaga(repo, job_id="li-1", titulo="SRE Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(1))
+    add_vaga(repo, job_id="li-2", titulo="Platform Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(2))
+
+    pagina = render(env)
+
+    assert "Empresas contratando" in pagina
+    assert "Acme" in pagina
 
 
 # ------------------------------------------------- rendimento das buscas

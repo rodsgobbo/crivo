@@ -145,6 +145,38 @@ class WebContext:
 
 
 # ---------------------------------------------------------------- rotas
+#: Preferencia opcional: quantos dias de escritorio por semana o candidato
+#: aceita. Fora do curriculo e fora do LinkedIn -- so o proprio usuario sabe.
+CAMPO_DE_PRESENCA = "dias_escritorio_max"
+
+#: A semana acaba em cinco.
+MAXIMO_DE_DIAS = 5
+
+
+def _preferencias(formulario, vigente) -> dict:
+    """As preferencias que o formulario manda, ou as que ja estavam gravadas.
+
+    Campo ausente significa "nao mexi nisto": o botao de reconsolidar nao
+    carrega o seletor, e sem essa distincao cada clique nele apagaria a
+    preferencia do usuario. Campo presente e vazio e escolha de apagar, e a
+    unica forma de voltar a "sem preferencia".
+
+    Valor ilegivel e tratado como ausente em vez de derrubar a consolidacao: o
+    perfil inteiro e caro de refazer para punir um campo opcional.
+    """
+    anterior = (vigente.campos.get(CAMPO_DE_PRESENCA) if vigente else None)
+    if CAMPO_DE_PRESENCA not in formulario:
+        return {CAMPO_DE_PRESENCA: anterior} if anterior is not None else {}
+    bruto = str(formulario.get(CAMPO_DE_PRESENCA) or "").strip()
+    if not bruto:
+        return {}
+    try:
+        dias = int(bruto)
+    except ValueError:
+        return {CAMPO_DE_PRESENCA: anterior} if anterior is not None else {}
+    return {CAMPO_DE_PRESENCA: max(0, min(MAXIMO_DE_DIAS, dias))}
+
+
 def build_profile_router(context: WebContext) -> APIRouter:
     router = APIRouter(prefix="/profile", tags=["perfil-alvo"])
 
@@ -186,7 +218,7 @@ def build_profile_router(context: WebContext) -> APIRouter:
         }
 
     @router.post("/consolidate")
-    def consolidar(request: Request):
+    async def consolidar(request: Request):
         user_id = context.guard().require(request)
         confirmada = context.resume_parser(user_id).confirmed(user_id)
         conexao = context.linkedin_connector().connection_for(user_id)
@@ -198,6 +230,9 @@ def build_profile_router(context: WebContext) -> APIRouter:
             user_id,
             resume_fields=confirmada.efetivo() if confirmada else None,
             linkedin_fields=linkedin_fields,
+            manual_fields=_preferencias(
+                await request.form(), context.profile_merger().current(user_id)
+            ),
         )
         if auth_module.de_navegador(request):
             return RedirectResponse(
@@ -965,8 +1000,18 @@ def _extras_do_relatorio(context: WebContext, user_id: str, run_id: str) -> dict
         ).fetchall()
     ]
     versao = context.profile_merger().current(user_id)
+    ontologia = load_ontology()
     return {
-        "ranking_competencias": gaps.aggregate(load_ontology(), descricoes),
+        "ranking_competencias": gaps.aggregate(ontologia, descricoes),
+        # Sem perfil nao ha com o que comparar, e marcar tudo como ausente
+        # acusaria o candidato do que nunca foi perguntado.
+        "competencias_ausentes": (
+            [
+                termo for termo, _ in
+                gaps.missing_for_profile(ontologia, versao.campos, descricoes)
+            ]
+            if versao else None
+        ),
         "problemas_higiene": versao.problemas_higiene if versao else [],
     }
 

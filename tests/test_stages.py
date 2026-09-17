@@ -287,6 +287,97 @@ def test_the_final_pass_uses_the_collected_description(env):
     assert any("azure" in linha["lacunas"] for linha in linhas)
 
 
+def test_a_hybrid_job_stops_counting_as_remote(env):
+    """A origem so responde remoto ou presencial; a descricao e quem sabe.
+
+    Vaga remota nunca e avaliada geograficamente, entao o deslocamento que esta
+    vaga exige sumia do sistema inteiro ate a descricao chegar.
+    """
+    connection, fila, config = env
+    consolidar(
+        connection, config, localizacao="Recife, PE", dias_escritorio_max=1
+    )
+    run_id = fila.enqueue(USUARIO)
+    Runner(connection, config, montar(connection, config)).run_once()
+    atender_enriquecimento(
+        connection, run_id,
+        texto="Modelo hibrido, 3 dias por semana no escritorio. Python e AWS.",
+    )
+    connection.execute(
+        "UPDATE runs SET estado = 'enfileirado' WHERE run_id = ?", (run_id,)
+    )
+    connection.commit()
+
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    blockers = [
+        linha["blocker"] or ""
+        for linha in connection.execute(
+            "SELECT blocker FROM jobs WHERE user_id = ? AND modelo_trabalho = ?",
+            (USUARIO, REMOTO),
+        ).fetchall()
+    ]
+    assert blockers, "a vaga remota precisa existir para o teste dizer algo"
+    assert any("presenca:" in b for b in blockers)
+    # Deixou de ser remota: a distancia ate o escritorio volta a contar.
+    assert any("geografia:" in b for b in blockers)
+
+
+def test_without_a_declared_preference_a_hybrid_job_is_left_alone(env):
+    """Não saber quantos dias alguém aceita não autoriza supor que aceita zero."""
+    connection, fila, config = env
+    consolidar(connection, config, localizacao="Recife, PE")
+    run_id = fila.enqueue(USUARIO)
+    Runner(connection, config, montar(connection, config)).run_once()
+    atender_enriquecimento(
+        connection, run_id,
+        texto="Modelo hibrido, 3 dias por semana no escritorio. Python e AWS.",
+    )
+    connection.execute(
+        "UPDATE runs SET estado = 'enfileirado' WHERE run_id = ?", (run_id,)
+    )
+    connection.commit()
+
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    blockers = [
+        linha["blocker"] or ""
+        for linha in connection.execute(
+            "SELECT blocker FROM jobs WHERE user_id = ? AND modelo_trabalho = ?",
+            (USUARIO, REMOTO),
+        ).fetchall()
+    ]
+    assert not any("presenca:" in b for b in blockers)
+
+
+def test_a_skill_proven_by_the_history_is_not_a_gap(env):
+    """O curriculo afirma e a lista de competencias omite: continua sendo dele."""
+    connection, fila, config = env
+    consolidar(
+        connection, config,
+        experiencias=[{
+            "titulo": "Engenheira de Software", "empresa": "Acme",
+            "inicio": "2015-01", "fim": None, "descricao": "Python e Azure",
+        }],
+    )
+    run_id = fila.enqueue(USUARIO)
+    Runner(connection, config, montar(connection, config)).run_once()
+    atender_enriquecimento(connection, run_id)
+    connection.execute(
+        "UPDATE runs SET estado = 'enfileirado' WHERE run_id = ?", (run_id,)
+    )
+    connection.commit()
+
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    linhas = connection.execute(
+        "SELECT lacunas FROM scores WHERE run_id = ? AND passada = 'final'",
+        (run_id,),
+    ).fetchall()
+    assert linhas
+    assert not any("azure" in linha["lacunas"] for linha in linhas)
+
+
 def test_without_a_model_the_run_finishes_in_deterministic_mode(env):
     connection, fila, config = env
     consolidar(connection, config)

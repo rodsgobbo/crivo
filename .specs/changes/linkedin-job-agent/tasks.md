@@ -15,6 +15,8 @@ This implementation is organized into 6 phases:
 
 As tarefas 4.23 a 4.32 foram acrescentadas depois do checkpoint final da primeira passada. Elas cobrem a superfície de entrega — endpoints e pontos de entrada dos processos — que o desenho sempre previu e que esta decomposição não havia coberto. A omissão passou por toda a validação porque nenhum critério de aceitação exige endereço HTTP: os requisitos falam de serviços, e serviços podem ser satisfeitos sem que ninguém consiga alcançá-los.
 
+As tarefas 4.33 a 4.36 e 5.67 a 5.70 foram registradas depois de implementadas. A releitura do topo e a extensão de navegador nasceram do uso real — o score premiava anúncio vago, e o sinal que mais importava só existia na sessão Premium — e entraram no código antes de entrar aqui. REQ-27, REQ-28, DES-20 e DES-21 descrevem o que foi construído, e o mesmo mapa de cobertura dos demais critérios os verifica.
+
 A segunda lição veio da mesma direção. O scorer devolve `0,5` no componente de competências quando não consegue ler a vaga — um valor neutro que significa *"não sei"*. Com descrição, ele devolve a proporção real, e uma vaga exigente fica abaixo de `0,5`. O relatório ordenava por score puro, então o desconhecido passava à frente do medido e as vagas em que gastamos requisição para saber a verdade caíam para o rodapé. Contra dado real isso ficou evidente: todas as vagas não lidas empataram em 78%, porque um número idêntico repetido não é ranking, é a ausência de medição aparecendo. A ordenação agora separa os dois regimes antes de comparar números. O mesmo defeito reapareceu um nível abaixo, dentro do próprio componente: uma descrição lida por inteiro sem um único termo técnico reconhecido também devolvia o valor neutro, como se não tivesse sido lida. Uma vaga de planejamento financeiro pontuava 78% sem uma lacuna sequer, acima de uma vaga de infraestrutura em que o perfil casava 4 de 10 requisitos. Ler e não achar nada é evidência; não ter lido é ausência de evidência. Agora são valores diferentes, e a vaga caiu para 59% contra o dado real.
 
 A terceira não foi encontrada por ninguém: foi encontrada pelo relógio. Às 21h locais a sessão cruzou a meia-noite UTC e três testes de limite diário começaram a falhar sozinhos. A causa estava em produção, não nos testes — todo carimbo é gravado em UTC, mas `quota.py`, `scheduler.py` e `resume/importer.py` contavam "hoje" com `date.today()`, em hora local. No horário de Brasília isso fazia **todo limite diário deixar de valer das 21h à meia-noite**: cota de coleta, limite de importação e limite de runs imediatos zeravam três horas antes da virada. O mesmo `quota.py` já continha a versão correta em UTC, numa função ao lado da errada. Um quarto defeito acompanhava: um teste fixava `HOJE = "2026-08-21"` como literal enquanto a linha que ele contava era carimbada pelo relógio real, então ele só podia passar no dia em que foi escrito.
@@ -582,7 +584,7 @@ A ordem das fases segue a direção das dependências de dados, não a ordem de 
   - _Implements: DES-16, DES-18, REQ-18.1, REQ-21.3, REQ-22.6_
 
 - [x] 4.31 Adicionar o processo de enriquecimento executável
-  - Criar o laço do processo único que detém a sessão operacional, consumindo a fila de enriquecimento e devolvendo o run à fila ao esgotá-la.
+  - Criar o laço do processo único que segura a trava de instância, consumindo a fila de enriquecimento e devolvendo o run à fila ao esgotá-la.
   - _Depends: 3.13, 3.19_
   - _Implements: DES-1, DES-12, REQ-11.1_
 
@@ -590,6 +592,41 @@ A ordem das fases segue a direção das dependências de dados, não a ordem de 
   - Criar o comando único que sobe o processo web, o worker de runs, o processo de enriquecimento ou um ciclo de agendamento, conforme o modo pedido.
   - _Depends: 4.24, 4.31, 4.12_
   - _Implements: DES-1, DES-19, REQ-24.3_
+
+- [x] 4.33 Adicionar o registro de insights lidos no navegador
+  - Validar e gravar contagem, senioridade e sinais aceitos, unir sinais aos da coleta, criar a vaga desconhecida com origem `extensao` e expor as rotas por vaga e em lote com liberação de origem nominal.
+  - _Depends: 4.23, 4.30_
+  - _Implements: DES-20, REQ-27.1, REQ-27.2, REQ-27.3, REQ-27.4, REQ-27.5, REQ-27.6, REQ-27.7, REQ-27.8, REQ-27.9, REQ-27.15_
+
+- [x] 4.34 Adicionar o token do extrator
+  - Emitir por POST numa página que exige sessão, guardar só o hash, revogar o anterior ao reemitir e aceitar o cabeçalho apenas nas rotas de insight (esquema v9).
+  - _Depends: 4.33_
+  - _Implements: DES-20, REQ-27.10, REQ-27.11, REQ-27.12, REQ-27.13, REQ-27.14_
+
+- [x] 4.35 Adicionar a extensão de navegador e o efeito dos sinais
+  - Ler os cards por padrão de texto nas telas de busca, recomendação e vaga, enviar em lote com o token, adiantar `top_applicant` na fila de enriquecimento e na recomendação do relatório.
+  - _Depends: 4.34_
+  - _Implements: DES-20, REQ-27.16, REQ-27.17, REQ-27.18_
+
+- [x] 4.36 Adicionar o estágio de releitura do topo
+  - Montar o pedido dentro do teto com fatia igual por vaga, ler a resposta tolerando pontuação sem afrouxar o identificador, gravar nota e motivo ao lado do score (esquema v8) e ordenar o relatório pela nota do modelo onde ela existe.
+  - _Depends: 4.30_
+  - _Implements: DES-21, REQ-28.1, REQ-28.2, REQ-28.3, REQ-28.4, REQ-28.5, REQ-28.6, REQ-28.7, REQ-28.8, REQ-28.9, REQ-28.10_
+
+- [x] 4.37 Comparar lacunas e ranking com as competências evidenciadas no histórico
+  - Usar o mesmo conjunto — declaradas mais as reconhecidas no headline e nas experiências — nas lacunas de cada vaga e na marcação do que falta no ranking do relatório, que só aparece quando há perfil consolidado.
+  - _Depends: 4.30_
+  - _Implements: DES-14, REQ-14.5, REQ-14.6_
+
+- [x] 4.38 Acrescentar a tabela de empresas contratando
+  - Agregar, sobre as vagas já coletadas do usuário e atravessando runs, os títulos distintos por empresa dentro da janela configurada, exigindo mais de um título, e exibir a contagem com a data da coleta mais recente.
+  - _Depends: 4.30_
+  - _Implements: DES-16, REQ-18.14, REQ-24.1_
+
+- [x] 4.39 Acrescentar a preferência de presença e o efeito dela na passada final
+  - Aceitar no perfil, por origem manual e como campo opcional, o número máximo de dias de escritório; ler na descrição quantos dias a vaga exige; extrair o cálculo de deslocamento do pré-filtro e aplicá-lo à vaga anunciada como remota que exige mais dias que o declarado.
+  - _Depends: 4.29, 3.14_
+  - _Implements: DES-8, DES-11, DES-14, REQ-5.8, REQ-13.11_
 
 ## Phase 5: Acceptance Criteria Testing
 
@@ -988,6 +1025,48 @@ A ordem das fases segue a direção das dependências de dados, não a ordem de 
   - Test type: integration
   - _Depends: 4.32_
   - _Implements: REQ-24.3_
+
+- [x] 5.67 Test: insight do navegador é validado, unido e isolado
+  - Verificar gravação de contagem, senioridade e sinais aceitos, descarte de sinal desconhecido, união aos sinais da coleta, recusa de envio vazio, criação da vaga desconhecida, gravação independente por item do lote e recusa de vaga de outro usuário.
+  - Test type: integration
+  - _Depends: 4.33_
+  - _Implements: REQ-27.1, REQ-27.2, REQ-27.3, REQ-27.4, REQ-27.5, REQ-27.6, REQ-27.7, REQ-27.8, REQ-27.9_
+
+- [x] 5.68 Test: o token do extrator atravessa e não abre mais nada
+  - Verificar recusa sem sessão nem token, aceitação pelo cabeçalho sem cookie, escopo restrito às rotas de insight, revogação ao reemitir, emissão só por POST com sessão e liberação de origem nominal.
+  - Test type: integration
+  - _Depends: 4.34_
+  - _Implements: REQ-27.10, REQ-27.11, REQ-27.12, REQ-27.13, REQ-27.14, REQ-27.15_
+
+- [x] 5.69 Test: top applicant adianta a fila e a recomendação
+  - Verificar a prioridade na fila de enriquecimento, a candidatura imediata mesmo com muitos candidatos e o requisito eliminatório prevalecendo sobre o sinal.
+  - Test type: unit
+  - _Depends: 4.35_
+  - _Implements: REQ-27.16, REQ-27.17, REQ-27.18_
+
+- [x] 5.70 Test: releitura cabe no teto e nunca inventa ordem
+  - Verificar o envio só do topo com tarefa própria, o pedido dentro do teto com fatia igual, a marcação de vaga sem descrição, a leitura tolerante sem afrouxar o identificador, a ordem determinística preservada nas falhas e a ordenação do relatório pela nota do modelo.
+  - Test type: unit
+  - _Depends: 4.36_
+  - _Implements: REQ-28.1, REQ-28.2, REQ-28.3, REQ-28.4, REQ-28.5, REQ-28.6, REQ-28.7, REQ-28.8, REQ-28.9, REQ-28.10_
+
+- [x] 5.71 Test: o que o histórico prova não vira lacuna nem "falta"
+  - Verificar que competência presente só no histórico não entra como lacuna da vaga nem como ausente no ranking, e que sem perfil o ranking não marca nada.
+  - Test type: integration
+  - _Depends: 4.37_
+  - _Implements: REQ-14.5, REQ-14.6_
+
+- [x] 5.72 Test: a tabela de contratação conta cargo, e não anúncio
+  - Verificar que título repetido conta uma vez, que empresa com um título só fica de fora, que vaga fora da janela não entra e que a página mostra a tabela.
+  - Test type: integration
+  - _Depends: 4.38_
+  - _Implements: REQ-18.14_
+
+- [x] 5.73 Test: presença declarada muda a vaga híbrida, e só ela
+  - Verificar a leitura do número de dias nas formas que o anúncio usa, que "híbrido" sem número não vira número, que a vaga híbrida acima do limite perde a condição de remota e recebe o aviso de deslocamento, que sem preferência declarada nada muda, e que a preferência é salva, preservada e apagável pela tela.
+  - Test type: integration
+  - _Depends: 4.39_
+  - _Implements: REQ-5.8, REQ-13.11_
 
 ## Phase 6: Final Checkpoint
 

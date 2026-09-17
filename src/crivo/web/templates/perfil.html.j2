@@ -116,6 +116,30 @@
     </div>
   {% endif %}
 
+  {% set dias = ctx.versao.campos.get("dias_escritorio_max") %}
+  <form method="post" action="/profile/consolidate" class="cartao">
+    <label for="dias_escritorio_max">
+      Dias de escritório que você aceita por semana
+    </label>
+    <select id="dias_escritorio_max" name="dias_escritorio_max">
+      <option value="" {% if dias is none %}selected{% endif %}>
+        sem preferência
+      </option>
+      {% for n in [0, 1, 2, 3, 4, 5] %}
+      <option value="{{ n }}" {% if dias == n %}selected{% endif %}>
+        {{ n }}{% if n == 0 %} (só remoto){% endif %}
+      </option>
+      {% endfor %}
+    </select>
+    <button class="acao discreta" type="submit">Salvar preferência</button>
+    <p class="nota">
+      Opcional. Sem preferência, o crivo não avalia presença. Com ela, a vaga
+      anunciada como remota cuja descrição exige mais dias do que você aceita
+      deixa de contar como remota e entra na conta de distância, como qualquer
+      presencial.
+    </p>
+  </form>
+
   <form method="post" action="/profile/consolidate">
     <button class="acao discreta" type="submit">Reconsolidar</button>
     <p class="nota">

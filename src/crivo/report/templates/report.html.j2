@@ -243,6 +243,27 @@
 </table>
 {% endif %}
 
+{# -------------------------------------------------- empresas contratando #}
+{% if ctx.empresas_contratando %}
+<h2>Empresas contratando</h2>
+<p class="sub">
+  Quantos cargos diferentes cada empresa abriu nos últimos
+  {{ ctx.dias_de_contratacao }} dias. Conta o que as suas buscas trouxeram, e não
+  o mercado inteiro; título repetido conta uma vez só, porque anúncio
+  republicado chega como vaga nova.
+</p>
+<table>
+  <tr><th>Empresa</th><th>Cargos distintos</th><th>Vaga mais recente</th></tr>
+  {% for linha in ctx.empresas_contratando %}
+  <tr>
+    <td>{{ linha.empresa }}</td>
+    <td>{{ linha.vagas }}</td>
+    <td>{{ linha.mais_recente[:10] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
 {# ------------------------------------------------------------- higiene #}
 <h2>Higiene do seu perfil</h2>
 {% if ctx.problemas_higiene %}
@@ -259,10 +280,14 @@
 {# -------------------------------------------------------- competencias #}
 <h2>Competências mais pedidas</h2>
 {% if ctx.ranking_competencias %}
+{% set ausentes = ctx.competencias_ausentes %}
+{% if ausentes is not none %}
+<p>{{ ausentes|length }} de {{ ctx.ranking_competencias|length }} não aparecem no seu currículo, nem nas competências declaradas nem no histórico.</p>
+{% endif %}
 <table>
-  <tr><th>Competência</th><th>Vagas que pedem</th></tr>
+  <tr><th>Competência</th><th>Vagas que pedem</th>{% if ausentes is not none %}<th>No seu perfil</th>{% endif %}</tr>
   {% for termo, quantas in ctx.ranking_competencias %}
-  <tr><td>{{ termo }}</td><td>{{ quantas }}</td></tr>
+  <tr><td>{{ termo }}</td><td>{{ quantas }}</td>{% if ausentes is not none %}<td>{{ "falta" if termo in ausentes else "tem" }}</td>{% endif %}</tr>
   {% endfor %}
 </table>
 {% else %}

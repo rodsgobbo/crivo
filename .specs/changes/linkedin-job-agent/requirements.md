@@ -4,13 +4,15 @@
 
 Um profissional de tecnologia que procura vaga gasta horas repetindo a mesma triagem manual: rodar buscas no LinkedIn, abrir dezenas de anúncios, ler descrições, descartar o que não serve e tentar lembrar o que já viu ontem. O trabalho é repetitivo, o critério de corte é inconsistente entre um dia e outro, e as vagas boas expiram antes de serem vistas.
 
-Este sistema automatiza a triagem como aplicação web multiusuário. Cada candidato entra com a conta Google, conecta a conta LinkedIn e importa o próprio currículo do Google Drive, de um arquivo Word ou de um PDF. O sistema consolida essas origens em um perfil-alvo estruturado, deriva buscas a partir dele, coleta anúncios, descarta o que não se aplica antes de gastar requisições caras, pontua a aderência de forma determinística e apresenta um relatório com as vagas ordenadas, os links, os contatos e as descrições completas. Uma única chamada de modelo de linguagem por execução acrescenta a camada de julgamento, e o sistema continua funcionando sem essa chamada quando ela é desativada.
+Este sistema automatiza a triagem como aplicação web multiusuário. Cada candidato entra com a conta Google, conecta a conta LinkedIn e importa o próprio currículo do Google Drive, de um arquivo Word ou de um PDF. O sistema consolida essas origens em um perfil-alvo estruturado, deriva buscas a partir dele, coleta anúncios, descarta o que não se aplica antes de gastar requisições caras, pontua a aderência de forma determinística e apresenta um relatório com as vagas ordenadas, os links, os contatos e as descrições completas. Duas chamadas de modelo de linguagem por execução acrescentam a camada de julgamento — uma relê as vagas do topo, a outra escreve a síntese —, e o sistema continua funcionando sem elas quando são desativadas.
 
 A camada de julgamento é alimentada por credencial do próprio usuário. Cada candidato escolhe um provedor de modelo de linguagem entre os que o operador habilitou e cola a chave que ele mesmo gerou no console daquele provedor. Isso mantém a cota gratuita de cada usuário sob o teto dele, em vez de dividir uma cota única entre todos, e mantém o custo do operador em zero. A lista de provedores vive em configuração e não no código, porque ofertas gratuitas mudam de limite e desaparecem em prazos curtos. Um usuário sem credencial não fica sem serviço: o run inteiro roda em modo determinístico.
 
 A divisão de origens do perfil é assimétrica por limitação da plataforma, não por escolha de projeto. Os escopos abertos do LinkedIn devolvem identidade, foto e endereço de e-mail, e não devolvem histórico profissional, cargos nem competências. O currículo importado é, portanto, a origem substantiva do perfil, e a conexão LinkedIn é a origem de identidade. Nenhum usuário entrega senha ou sessão do LinkedIn ao sistema.
 
 A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sessão autenticada de qualquer conta, e nunca pela conta de um usuário. A capacidade de coleta continua sendo um recurso compartilhado e limitado — a origem impõe limite de requisição independentemente de haver sessão — e por isso segue distribuída entre os usuários de forma explícita.
+
+Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top applicant", sobretudo — não existem na rota pública. Eles chegam por uma extensão que roda no navegador do próprio usuário, na página que ele já está vendo, e envia apenas o que leu. O sistema recebe o resultado da leitura, nunca a sessão que a faz.
 
 ## Glossary
 
@@ -42,6 +44,10 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 | Credencial de provedor | Chave estática que o usuário gera no console do provedor e informa ao sistema. |
 | Registro de provedores | Lista de provedores habilitados, definida em configuração e não em código. |
 | Requisição de síntese | Unidade lógica de uma síntese por run. Tentativas sucessivas em provedores diferentes após recusa por limite de uso pertencem à mesma requisição de síntese. |
+| Extensão | Código que roda no navegador do próprio usuário, dentro da página do LinkedIn, e envia ao sistema os insights que leu nos cards. |
+| Insight | Dado de concorrência lido pela extensão: contagem de candidatos, distribuição de senioridade ou sinal do card. |
+| Token do extrator | Credencial de escopo único emitida ao usuário para que a extensão grave insights sem sessão de navegador. |
+| Releitura | Segunda avaliação das vagas do topo por modelo de linguagem, gravada ao lado do score de aderência sem substituí-lo. |
 
 ## Assumptions
 
@@ -49,7 +55,7 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 - O sistema nunca solicita, recebe nem armazena senha, cookie ou sessão de LinkedIn, seja de um usuário ou do operador. Não existe sessão LinkedIn no sistema.
 - A coleta automatizada de dados de vaga contraria os Termos de Serviço do LinkedIn mesmo por rota pública e sem sessão. O operador do serviço assume esse risco de forma consciente, e os requisitos de contenção existem para reduzi-lo, não para eliminá-lo. Sem conta autenticada envolvida, não há credencial a ser suspensa: a exposição é de bloqueio por endereço, não de perda de conta.
 - O currículo é escrito em português ou em inglês e descreve experiência profissional em prosa ou em tópicos. Currículo em imagem digitalizada sem camada de texto está fora do escopo.
-- A extração estruturada do currículo é uma operação por documento, executada uma vez e armazenada. Ela não conta contra o limite de uma chamada de modelo por run definido em REQ-15.
+- A extração estruturada do currículo é uma operação por documento, executada uma vez e armazenada. Ela não conta contra a requisição de síntese por run definida em REQ-15 nem contra a releitura definida em REQ-28.
 - Os provedores de modelo habilitados aceitam chave estática gerada pelo próprio usuário no console do provedor. Provedor que exija o registro de uma aplicação ou um fluxo de autorização por login está fora do escopo, porque o registro de aplicação é responsabilidade do operador e anularia o modelo de credencial por usuário.
 - Assume-se que ao menos tres provedores atendem simultaneamente ao criterio de chave self-service sem registro de aplicacao. Essa premissa foi aceita por decisao explicita, sem verificacao nesta fase, e sustenta a cadeia de fallback de REQ-26. Se na implementacao apenas um provedor se confirmar viavel, a cadeia perde funcao e o modo deterministico deixa de ser excecao.
 - A oferta gratuita de cada provedor tem limite próprio, muda sem aviso e pode ser encerrada. Por isso a lista de provedores é configuração, nenhum provedor é nomeado nestes requisitos, e o sistema precisa continuar útil quando todos recusarem a requisição.
@@ -167,6 +173,8 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 5.6 THE Profile Merger SHALL store cada versão do perfil-alvo sob o identificador de usuário.
 
 5.7 WHILE a versão vigente do perfil-alvo é mais recente que a última alteração de origem, the Profile Merger SHALL reuse essa versão sem recalcular a consolidação.
+
+5.8 THE Profile Merger SHALL accept, como campo opcional de origem manual, o número máximo de dias de escritório por semana que o candidato aceita, incluindo o valor zero.
 
 ### REQ-6: Diagnóstico de higiene do perfil
 
@@ -312,6 +320,8 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 
 13.10 THE Scorer SHALL store o score final limitado ao intervalo de 0 a 100 após a aplicação de todos os bônus e penalidades.
 
+13.11 WHERE o perfil-alvo declara um número máximo de dias de escritório, IF a descrição de uma vaga anunciada como remota exige mais dias que esse número, THEN the Scorer SHALL treat a vaga como presencial na passada final e record o aviso de presença junto ao aviso de deslocamento correspondente.
+
 ### REQ-14: Detecção de lacunas e diferenciais
 
 **User Story:** As a candidato, I want saber quais palavras-chave da vaga faltam no meu perfil, so that eu tenha uma ação concreta para executar hoje.
@@ -325,6 +335,10 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 14.3 THE Scorer SHALL create as listas de gaps e de diferenciais sem emitir chamada a modelo de linguagem.
 
 14.4 THE Scorer SHALL aggregate a frequência de cada competência exigida entre todas as vagas com descrição disponível do run corrente.
+
+14.5 THE Scorer SHALL treat como competência do perfil-alvo tanto a competência declarada quanto a evidenciada no headline ou no título ou descrição de uma experiência.
+
+14.6 WHERE existe perfil-alvo consolidado, the Report Renderer SHALL mark, na agregação de 14.4, as competências ausentes do perfil-alvo.
 
 ### REQ-15: Síntese estratégica por modelo de linguagem
 
@@ -415,6 +429,8 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 18.12 THE Report Renderer SHALL display em destaque as vagas cujo estado é novo e cujo score de aderência atinge ou supera o limiar configurado.
 
 18.13 IF a cota de coleta do usuário se esgotou durante o run, THEN the Report Renderer SHALL display a quantidade de vagas que ficaram sem descrição por esse motivo.
+
+18.14 THE Report Renderer SHALL display, para cada empresa com mais de um título distinto coletado dentro da janela de contratação configurada, a quantidade de títulos distintos e a data da coleta mais recente.
 
 ### REQ-19: Isolamento entre usuários
 
@@ -511,7 +527,7 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 
 #### Acceptance Criteria
 
-24.1 THE Job Agent SHALL read de uma fonte de configuração externa todo parâmetro descrito como configurado nestes requisitos, incluindo a janela de publicação, a faixa de intervalo entre enriquecimentos, o intervalo de recuperação, a duração máxima de um run, a duração máxima de sessão, o período de retenção, o orçamento diário de coleta, o limite de tamanho de arquivo, o comprimento mínimo de texto de currículo, o número diário de importações de currículo por usuário, o número diário de runs imediatos por usuário, a janela de publicação ampla, o limite de vagas enviadas ao modelo de linguagem, o limiar de destaque, o registro de provedores de modelo, a ordem padrão de tentativa entre provedores, os pesos dos componentes de score, os valores de bônus e de penalidade e a precedência entre origens de perfil.
+24.1 THE Job Agent SHALL read de uma fonte de configuração externa todo parâmetro descrito como configurado nestes requisitos, incluindo a janela de publicação, a faixa de intervalo entre enriquecimentos, o intervalo de recuperação, a duração máxima de um run, a duração máxima de sessão, o período de retenção, o orçamento diário de coleta, o limite de tamanho de arquivo, o comprimento mínimo de texto de currículo, o número diário de importações de currículo por usuário, o número diário de runs imediatos por usuário, a janela de publicação ampla, o limite de vagas enviadas ao modelo de linguagem, o número de vagas relidas pelo modelo, a janela de contratação por empresa, o limiar de destaque, o registro de provedores de modelo, a ordem padrão de tentativa entre provedores, os pesos dos componentes de score, os valores de bônus e de penalidade e a precedência entre origens de perfil.
 
 24.2 WHEN a configuração é carregada, THEN the Job Agent SHALL validate cada valor configurado contra o seu tipo e a sua faixa permitida.
 
@@ -568,3 +584,71 @@ A coleta de dados de vaga é feita exclusivamente por rotas públicas, sem sess�
 26.11 THE Credential Vault SHALL store a ordem de tentativa entre os provedores configurados por um usuário.
 
 26.12 WHEN a primeira credencial de um usuário é armazenada, THEN the Credential Vault SHALL create a ordem de tentativa desse usuário a partir da ordem padrão configurada pelo operador.
+
+### REQ-27: Insights de concorrência lidos no navegador do usuário
+
+**User Story:** As a candidato com LinkedIn Premium, I want que o sistema use o que a minha conta enxerga enquanto eu navego, so that a triagem considere sinais como "You'd be a top applicant", que a coleta por rota pública não recebe.
+
+#### Acceptance Criteria
+
+27.1 WHEN a extensão envia insights de uma vaga do usuário, THEN the Insight Store SHALL record a contagem de candidatos, a distribuição de senioridade e os sinais reconhecidos.
+
+27.2 THE Insight Store SHALL discard todo sinal ausente da lista de sinais aceitos.
+
+27.3 THE Insight Store SHALL merge os sinais recebidos aos sinais já gravados pela coleta, sem substituí-los.
+
+27.4 IF um envio não contém nenhum insight reconhecível, THEN the Insight Store SHALL reject o envio com uma mensagem que nomeia a causa.
+
+27.5 WHEN um envio cita vaga que o usuário ainda não tem e traz título e endereço, THEN the Insight Store SHALL create a vaga para esse usuário com a origem registrada como extensão.
+
+27.6 IF um envio cita vaga desconhecida sem título ou sem endereço, THEN the Insight Store SHALL reject esse envio.
+
+27.7 WHEN a extensão envia uma varredura em lote, THEN the Job Agent SHALL record cada item de forma independente, sem que a recusa de um item impeça a gravação dos demais.
+
+27.8 IF uma varredura em lote está vazia ou excede o limite de itens por lote, THEN the Job Agent SHALL reject o lote inteiro.
+
+27.9 THE Job Agent SHALL prevent que um envio de insight altere vaga pertencente a outro usuário.
+
+27.10 IF um envio de insight não traz sessão válida nem token do extrator válido, THEN the Job Agent SHALL reject o envio.
+
+27.11 WHEN um envio de insight traz token do extrator válido em cabeçalho, THEN the Job Agent SHALL accept o envio sem cookie de sessão.
+
+27.12 THE Job Agent SHALL restrict o token do extrator às rotas de insight.
+
+27.13 WHEN o usuário emite um token do extrator, THEN the Job Agent SHALL invalidate o token emitido anteriormente para esse usuário.
+
+27.14 THE Job Agent SHALL issue token do extrator apenas por requisição de escrita de um usuário com sessão válida.
+
+27.15 THE Job Agent SHALL restrict a liberação de origem externa ao endereço do LinkedIn e às rotas de insight.
+
+27.16 WHEN o enriquecimento de um run é enfileirado, THEN the Job Agent SHALL order as vagas com sinal de top applicant à frente das demais.
+
+27.17 WHEN uma vaga tem sinal de top applicant, THEN the Report Renderer SHALL recommend a candidatura imediata, inclusive quando a vaga também tem sinal de muitos candidatos.
+
+27.18 IF uma vaga tem sinal de top applicant e requisito eliminatório não atendido, THEN the Report Renderer SHALL prevent que o sinal substitua a recomendação ditada pelo requisito.
+
+### REQ-28: Releitura das vagas do topo por modelo de linguagem
+
+**User Story:** As a candidato, I want que as vagas mais bem colocadas sejam relidas por um modelo, so that um anúncio vago que pede pouco não passe à frente de uma vaga exigente que serve para mim.
+
+#### Acceptance Criteria
+
+28.1 WHILE o modo determinístico está desativado, WHEN a pontuação final termina, THEN the Judge SHALL send ao modelo de linguagem o perfil-alvo e as vagas de maior posição no relatório, até o limite de vagas relidas.
+
+28.2 THE Judge SHALL send a releitura como tarefa própria, com gabarito de sistema distinto do gabarito da síntese.
+
+28.3 THE Judge SHALL restrict o corpo da requisição ao teto de texto externo do cliente de modelo, dividindo o espaço de descrição igualmente entre as vagas enviadas.
+
+28.4 IF uma vaga não tem descrição coletada ou não há espaço de descrição no teto, THEN the Judge SHALL mark essa condição na requisição em vez de omitir a vaga.
+
+28.5 WHEN a resposta do modelo chega, THEN the Judge SHALL read uma nota de 0 a 100 e um motivo por vaga, tolerando marcadores de lista, colchetes, travessões e denominador na nota.
+
+28.6 THE Judge SHALL discard nota atribuída a identificador ausente da requisição e nota fora da faixa de 0 a 100.
+
+28.7 IF nenhum cliente de modelo está disponível para o usuário, THEN the Job Agent SHALL complete o run sem releitura e preservar a ordem determinística.
+
+28.8 IF a cadeia de provedores se esgota, o provedor falha ou a resposta não tem nenhuma linha legível, THEN the Job Agent SHALL record o motivo e preservar a ordem determinística.
+
+28.9 THE Store SHALL store a nota e o motivo do modelo ao lado do score de aderência, sem substituí-lo, e the Report Renderer SHALL display a origem de cada número.
+
+28.10 WHERE uma vaga tem nota do modelo, the Report Renderer SHALL order o relatório por essa nota à frente da ordem determinística.

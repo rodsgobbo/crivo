@@ -338,6 +338,23 @@ def test_the_missing_ranking_excludes_what_the_profile_has(ontology):
     assert "observabilidade" in faltando
 
 
+def test_a_skill_proven_by_the_history_is_not_reported_missing(ontology):
+    """O ranking do relatorio precisa concordar com o card da vaga.
+
+    Declarada ou evidenciada pelo historico, a competencia e do candidato.
+    """
+    campos = {
+        "competencias": ["Python"],
+        "experiencias": [
+            {"titulo": "Lider de SRE", "descricao": "Kubernetes em producao"}
+        ],
+    }
+    descricoes = ["Kubernetes e Datadog", "Kubernetes"]
+    faltando = dict(gaps.missing_for_profile(ontology, campos, descricoes))
+    assert "kubernetes" not in faltando
+    assert "observabilidade" in faltando
+
+
 # ------------------------------------------- competencias vindas do historico
 def test_skills_are_read_from_the_experience_text(ontology):
     """O sistema recomendava adicionar SRE a quem lidera um time de SRE."""

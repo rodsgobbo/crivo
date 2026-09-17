@@ -276,21 +276,32 @@ class Prefilter:
         if card.remoto:
             # Vaga remota nunca e avaliada geograficamente.
             return None
-        if origem is None:
-            return None
-        destino = find_city(card.local, self._cidades)
-        if destino is None:
-            if not normalize(card.local):
-                return None
-            return (
-                f"{PREFIXO_GEOGRAFIA} presencial em {card.local}, distancia "
-                "desconhecida; cidade fora da tabela de referencia"
-            )
-        nome, coordenadas = destino
-        distancia = haversine_km(origem, coordenadas)
-        if distancia <= self._raio:
+        return blocker_geografico(card.local, origem, self._cidades, self._raio)
+
+
+def blocker_geografico(local, origem, cidades: dict, raio: int) -> str | None:
+    """Aviso de deslocamento de uma vaga presencial, ou `None` se nao ha.
+
+    Fora da classe porque a passada final precisa do mesmo calculo: a vaga que
+    se anuncia remota e exige escritorio so se revela quando a descricao chega,
+    e ai o pre-filtro ja passou. Duas implementacoes da mesma distancia
+    discordariam sobre a mesma vaga, que e o defeito de §1.7 outra vez.
+    """
+    if origem is None:
+        return None
+    destino = find_city(local, cidades)
+    if destino is None:
+        if not normalize(local):
             return None
         return (
-            f"{PREFIXO_GEOGRAFIA} presencial em {card.local}, cerca de "
-            f"{distancia:.0f} km acima do raio de {self._raio} km"
+            f"{PREFIXO_GEOGRAFIA} presencial em {local}, distancia "
+            "desconhecida; cidade fora da tabela de referencia"
         )
+    _nome, coordenadas = destino
+    distancia = haversine_km(origem, coordenadas)
+    if distancia <= raio:
+        return None
+    return (
+        f"{PREFIXO_GEOGRAFIA} presencial em {local}, cerca de "
+        f"{distancia:.0f} km acima do raio de {raio} km"
+    )

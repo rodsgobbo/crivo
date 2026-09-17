@@ -6,7 +6,7 @@ Google Drive, de um Word ou de um PDF, conecta a conta LinkedIn pelo fluxo
 oficial e traz a própria chave de um provedor de modelo de linguagem.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-26 requisitos, 178 critérios de aceitação, 19 elementos de design.
+28 requisitos, 210 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
@@ -42,6 +42,16 @@ nasce sem alguém pedir. Quem quiser recorrência chama esse comando pelo cron.
 
 Testes: `.venv/Scripts/python -m pytest tests/ -q`
 
+### Sem configurar o Google
+
+Para desenvolver, ponha `CRIVO_DEV_LOGIN=1` no `.env`: aparece uma entrada local
+que dispensa o fluxo de autorização. Sem a variável a rota nem é registrada. Os
+segredos do Google continuam exigidos para subir `web` e `tudo` — qualquer valor
+não vazio serve, e a página inicial avisa quando eles são de exemplo.
+
+Para ver um relatório sem rede nenhuma, `python demo/run_demo.py` roda um run
+completo com os serviços de verdade e uma fonte de vagas falsa.
+
 ### Se um processo morrer à força
 
 As travas de instância única vivem no banco, em `schema_meta`, e são soltas pelo
@@ -71,11 +81,36 @@ powercfg /requestsoverride PROCESS python.exe SYSTEM DISPLAY
 | Provedores de modelo e credenciais | `providers/` |
 | Currículo e perfil-alvo | `resume/`, `profile/` |
 | Coleta, pré-filtro, contenção, cota | `pipeline/` |
-| Pontuação e lacunas | `scoring/` |
+| Pontuação, lacunas e releitura do topo | `scoring/` |
 | Síntese e aterramento | `synthesis/` |
 | Relatório | `report/` |
-| Processos | `worker/`, `__main__.py` |
+| Processos e agendamento | `worker/`, `scheduler.py`, `__main__.py` |
 | Extensão de navegador | `tools/extensao/` |
+
+Os caminhos são relativos a `src/crivo/`, exceto `tools/`. Na raiz ficam ainda:
+
+| Arquivo | O que é |
+|---|---|
+| `demo/run_demo.py` | Run completo sem rede, com fonte de vagas falsa |
+| `tools/extrator.js`, `tools/bookmarklet.html` | O extrator em forma de bookmarklet, anterior à extensão. Autentica só por cookie, que o navegador retém num POST vindo do LinkedIn — hoje recebe 401; use a extensão |
+| `specagentevagaslinkedin.md` | A especificação original, anterior a `.specs/`; o design a lê como restrição |
+| `jobradar.html`, `_jobradar.txt` | Reconstrução da varredura manual que deu origem ao projeto, com os parâmetros de URL |
+
+## Preferências, e o que "vazio" significa
+
+Em `/profile` há um seletor opcional: **quantos dias de escritório por semana
+você aceita**. Vazio, o crivo não avalia presença. Preenchido, a vaga anunciada
+como remota cuja descrição exige mais dias que isso deixa de contar como remota
+e entra na conta de distância, como qualquer presencial — marcada, nunca
+descartada.
+
+A origem só responde remoto ou presencial, e nada entre os dois. Quem sabe dos
+dias é a descrição, que só existe depois do enriquecimento; por isso a regra roda
+na pontuação final e não no pré-filtro.
+
+Vazio é o padrão e desliga a regra. Não saber quantos dias alguém aceita não
+autoriza supor que aceita zero — a mesma linha que faz um campo de idioma vazio
+não gerar teto de nota.
 
 ## A extensão: o que a coleta anônima não vê
 
@@ -110,6 +145,9 @@ nem credencial de provedor. O banco guarda só o hash.
 | `top_applicant` | +10 na nota, e a recomendação vira “aplicar agora” |
 | `early_applicant` | +5 |
 | `muitos_candidatos` | −5 |
+| `premium_insight` | gravado, sem efeito na nota nem na recomendação |
+
+Os valores vêm de `[scoring.bonus]` e `[scoring.penalidades]` em `config/default.toml`.
 
 `top_applicant` passa na frente de `muitos_candidatos` na recomendação: os dois
 falam da mesma fila e dizem coisas opostas — um conta quantos entraram, o outro
@@ -130,13 +168,14 @@ sem teste ou teste renomeado quebram a suíte.
 Registrados no checkpoint final. Nenhum é bloqueio; todos são coisas que quem
 operar precisa saber.
 
-### Nada foi exercitado contra as origens reais
+### Os testes não tocam as origens reais, e o uso real só cobriu parte delas
 
-Os 861 testes usam fontes e provedores falsos. O adaptador do coletor, os fluxos
-de autorização do Google e do LinkedIn e as chamadas aos provedores de modelo
-**nunca tocaram a rede**. A primeira execução real encontra coisas que os testes
-não preveem: formatos de resposta, códigos de erro, particularidades de cada
-provedor.
+Os 861 testes usam fontes e provedores falsos. Fora deles, a coleta e a releitura
+já rodaram de verdade: runs de 24h contra o LinkedIn e um modelo real relendo o
+topo, registrados no [`BACKLOG.md`](BACKLOG.md) — e cada um encontrou defeito que
+os testes não previam. Dos fluxos de autorização do Google e do LinkedIn não há
+execução real registrada, e a extensão com o token do extrator ainda não tem run
+observado.
 
 Isso já cobrou o preço uma vez, e vale como aviso concreto: a rota de insights
 passou nos testes desde o primeiro dia e era **inalcançável na prática**, porque
@@ -203,13 +242,6 @@ Além disso o glossário da Fase 1 define camada guest, card e sinal do card tod
 em termos do LinkedIn, e a biblioteca só entrega descrição do Indeed na própria
 chamada de busca — o que colide com o requisito de pré-filtrar antes de
 enriquecer. Ligar outros portais é mudança de desenho, não de configuração.
-
-### Cinco módulos fora da `Code Anatomy` do design
-
-`__main__.py`, `pipeline/enricher.py`, `secrets_vault.py`, `store/scores.py`,
-`synthesis/synthesizer.py` e `worker/enrichment_queue.py` existem e são
-necessários, mas o design os descreve em prosa sem listá-los. Alinhar os
-documentos é uma emenda curta na Fase 2.
 
 ### A licença não diz nada sobre os Termos de Serviço
 

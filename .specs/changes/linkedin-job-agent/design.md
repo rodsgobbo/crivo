@@ -229,7 +229,7 @@ flowchart TD
     H -->|nao| I[Recusa de run com instrucao]
 ```
 
-_Implements: REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-6.1, REQ-6.2, REQ-6.3_
+_Implements: REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-6.1, REQ-6.2, REQ-6.3_
 
 ### DES-9: Planejador de buscas
 
@@ -363,7 +363,7 @@ flowchart TD
     J --> K[Agregacao por frequencia]
 ```
 
-_Implements: REQ-13.1, REQ-13.2, REQ-13.3, REQ-13.4, REQ-13.5, REQ-13.6, REQ-13.7, REQ-13.8, REQ-13.9, REQ-13.10, REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4_
+_Implements: REQ-13.1, REQ-13.2, REQ-13.3, REQ-13.4, REQ-13.5, REQ-13.6, REQ-13.7, REQ-13.8, REQ-13.9, REQ-13.10, REQ-13.11, REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4, REQ-14.5, REQ-14.6_
 
 ### DES-15: Sintetizador, aterramento e injeção
 
@@ -405,7 +405,7 @@ flowchart TD
     I -->|sim| J[Contagens e motivos de descarte]
 ```
 
-_Implements: REQ-17.1, REQ-17.2, REQ-17.3, REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5, REQ-18.6, REQ-18.7, REQ-18.8, REQ-18.9, REQ-18.10, REQ-18.11, REQ-18.12, REQ-18.13_
+_Implements: REQ-17.1, REQ-17.2, REQ-17.3, REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5, REQ-18.6, REQ-18.7, REQ-18.8, REQ-18.9, REQ-18.10, REQ-18.11, REQ-18.12, REQ-18.13, REQ-18.14_
 
 ### DES-17: Persistência, isolamento e direitos do titular
 
@@ -464,6 +464,58 @@ flowchart TD
 
 _Implements: REQ-23.1, REQ-23.2, REQ-23.3, REQ-24.1, REQ-24.2, REQ-24.3, REQ-24.4_
 
+### DES-20: Insights lidos no navegador do usuário
+
+Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top applicant", sobretudo — não existem na rota pública, e o desenho recusa guardar sessão de qualquer conta. A extensão resolve as duas coisas de uma vez: ela roda na página que o próprio usuário está vendo, lê os cards por padrão de texto e envia só o resultado — contagem, senioridade, sinais. O servidor recebe números, nunca o meio de refazer a leitura sem o usuário.
+
+Duas rotas recebem esses envios: uma por vaga e uma em lote, para a página de resultados, que mostra dezenas de cards de uma vez. Cada item do lote é gravado ou recusado sozinho. A validação é estrita porque o dado vem de uma página que o sistema não controla: sinal fora da lista aceita é descartado, contagem fora da faixa de sanidade é ignorada e envio sem nada reconhecível é recusado com a causa. Sinais recebidos se unem aos da coleta em vez de substituí-los. Vaga desconhecida com título e endereço é criada para o usuário autenticado, com a origem gravada como `extensao`, porque a navegação de quem usa e as buscas do planejador quase não se sobrepõem.
+
+A autenticação tem duas portas para as mesmas rotas. A sessão serve a quem chama do próprio app. O token do extrator serve à extensão, porque o cookie de sessão é `samesite=lax` e o navegador o retém num POST vindo do LinkedIn; afrouxá-lo abriria CSRF em todas as outras rotas. O token viaja em cabeçalho, vale só para as rotas de insight, é emitido por POST numa página que exige sessão, invalida o anterior ao ser reemitido e é guardado apenas como hash. A liberação de origem é nominal — só `https://www.linkedin.com` — e existe só nessas rotas.
+
+No pipeline, `top_applicant` adianta a vaga na fila de enriquecimento, porque o orçamento diário acaba antes da fila e vaga sem descrição pontua pior. No relatório ele muda a recomendação para candidatura imediata, inclusive diante de muitos candidatos, e não se sobrepõe a requisito eliminatório não atendido.
+
+```mermaid
+sequenceDiagram
+    participant P as Pagina do LinkedIn
+    participant X as Extensao
+    participant A as Rota de insights
+    participant T as Token do extrator
+    participant I as Insight Store
+    P->>X: cards com sinais visiveis
+    X->>A: POST em lote com o token no cabecalho
+    A->>T: resolve o dono pelo hash
+    T-->>A: identificador de usuario
+    A->>I: grava cada item
+    I-->>A: gravadas e ignoradas com motivo
+    A-->>X: resultado com liberacao de origem
+```
+
+_Implements: REQ-27.1, REQ-27.2, REQ-27.3, REQ-27.4, REQ-27.5, REQ-27.6, REQ-27.7, REQ-27.8, REQ-27.9, REQ-27.10, REQ-27.11, REQ-27.12, REQ-27.13, REQ-27.14, REQ-27.15, REQ-27.16, REQ-27.17, REQ-27.18_
+
+### DES-21: Releitura do topo por modelo
+
+O cálculo determinístico erra num ponto e erra caro: o componente de competências é uma proporção, então anúncio vago, que pede pouco, pontua acima de vaga exigente. Nenhum peso corrige isso. O estágio `julgamento` roda entre a pontuação final e a síntese e manda ao modelo o perfil-alvo e as vagas do topo do relatório, na ordem em que o usuário vai lê-las, numa tarefa própria com gabarito de sistema distinto do da síntese.
+
+O corpo respeita o teto de texto externo do cliente de modelo, que corta pelo fim — e o fim de um pedido é onde ficariam as instruções. Por isso o formato da resposta vive no gabarito de sistema e a descrição é fatiada igualmente entre as vagas. Vaga sem descrição, ou sem espaço para ela, entra marcada, e não omitida.
+
+A leitura da resposta tolera a pontuação que um modelo real usa — marcador de lista, colchete, travessão, `20/100` — e nunca afrouxa o identificador: nota de vaga que não foi enviada, ou fora de 0 a 100, é descartada. Nota e motivo ficam em colunas próprias ao lado do score, que continua gravado e reprodutível. Sem cliente de modelo, com cadeia esgotada, erro de provedor ou resposta sem linha legível, o run segue com a ordem determinística e registra o motivo. Onde há nota do modelo, o relatório ordena por ela e mostra de onde veio cada número.
+
+```mermaid
+flowchart TD
+    A[Pontuacao final] --> B[Topo do relatorio]
+    B --> C{Cliente de modelo disponivel}
+    C -->|nao| D[Ordem deterministica e motivo registrado]
+    C -->|sim| E[Pedido dentro do teto com fatia igual por vaga]
+    E --> F{Linhas com identificador enviado e nota de 0 a 100}
+    F -->|nenhuma| D
+    F -->|alguma| G[(Nota e motivo ao lado do score)]
+    G --> H[Relatorio ordena pela nota do modelo]
+    D --> I[Sintese]
+    H --> I
+```
+
+_Implements: REQ-28.1, REQ-28.2, REQ-28.3, REQ-28.4, REQ-28.5, REQ-28.6, REQ-28.7, REQ-28.8, REQ-28.9, REQ-28.10_
+
 ## Data Flow
 
 ```mermaid
@@ -478,9 +530,12 @@ flowchart LR
     H -->|score provisorio| I[Fila ordenada]
     I -->|cota de coleta| J[Descricoes e sinais]
     J -->|score final| K[Scores e lacunas]
-    K -->|top-N| L[Sintese]
-    K --> M[Relatorio]
+    K -->|topo| N[Releitura do modelo]
+    N --> L[Sintese]
+    N --> M[Relatorio]
     L --> M
+    O[Extensao no navegador] -->|sinais e contagens| J
+    O -->|vaga desconhecida| G
 ```
 
 ## Data Models
@@ -494,14 +549,15 @@ flowchart LR
 | `resumes` | `resume_id` | user_id, texto, origem, hash_conteudo, importado_em | DES-6 |
 | `resume_extractions` | `extraction_id` | resume_id, user_id, campos, trechos_origem, lacunas, provedor, modelo, confirmado_em | DES-7 |
 | `profile_versions` | `version_id` | user_id, campos, origem_por_campo, nivel_inferido, problemas_higiene, criado_em | DES-8 |
-| `jobs` | `job_id`, `user_id` | titulo, empresa, url, local, modelo, publicada_em, flags, blocker, estado, primeira_vez_em, ultima_vez_em, ausencias_elegiveis | DES-10, DES-17 |
+| `jobs` | `job_id`, `user_id` | titulo, empresa, url, local, modelo, publicada_em, flags, blocker, estado, primeira_vez_em, ultima_vez_em, ausencias_elegiveis, busca | DES-10, DES-17, DES-20 |
 | `job_descriptions` | `job_id` | texto, emails_contato, candidatos, distribuicao_senioridade, coletada_em | DES-12, DES-17 |
-| `scores` | `job_id`, `run_id`, `passada` | user_id, score, componentes, lacunas, diferenciais, descricao_disponivel, sinais_sessao_disponiveis | DES-14 |
+| `scores` | `job_id`, `run_id`, `passada` | user_id, score, componentes, lacunas, diferenciais, descricao_disponivel, sinais_sessao_disponiveis, nota_do_modelo, motivo_do_modelo | DES-14, DES-21 |
 | `runs` | `run_id` | user_id, estado, janela, iniciado_em, heartbeat_em, encerrado_em, buscas, config_efetiva, contagens, cota_consumida, cota_esgotada, bloqueios, provedor_sintese, tokens, falha_sintese | DES-1, DES-17 |
 | `discards` | `run_id`, `job_id` | titulo, empresa, motivo | DES-11 |
 | `daily_quota` | `user_id`, `dia` | consumida, limite | DES-13 |
 | `collection_blocks` | `block_id` | ocorrido_em, tentativas, liberado_em | DES-12, DES-18 |
 | `data_subject_ops` | `op_id` | user_id, tipo, instante | DES-17 |
+| `extractor_tokens` | `token_hash` | user_id, criado_em, ultimo_uso_em | DES-20 |
 | `schema_meta` | `chave` | versao_esquema, aplicada_em | DES-17 |
 
 ## Error Handling
@@ -533,48 +589,69 @@ flowchart LR
 | Run concorrente do mesmo usuário | Estado do run no banco | Recusa e registra | REQ-22.2 |
 | Run travado além da duração máxima | Heartbeat vencido | Marca interrompido e libera a vez | REQ-22.4 |
 | Configuração inválida ou ausente | Validação por esquema | Impede a inicialização nomeando a chave | REQ-24.3 |
+| Envio de insight sem sessão nem token válido | Guarda da rota de insights | Recusa dizendo onde emitir o token | REQ-27.10 |
+| Envio de insight sem nada reconhecível | Insight Store | Recusa nomeando a causa | REQ-27.4 |
+| Vaga desconhecida sem título ou endereço | Insight Store | Recusa o item e grava os demais do lote | REQ-27.6, REQ-27.7 |
+| Releitura sem cliente, com cadeia esgotada ou resposta ilegível | Juiz | Mantém a ordem determinística e registra o motivo | REQ-28.7, REQ-28.8 |
 
 ## Code Anatomy
 
 | File Path | Status | Evidence | Purpose | Implements |
 |-----------|--------|----------|---------|------------|
-| `src/jobagent/web/app.py` | New | Proposto por DES-1 | Aplicação web e rotas | DES-1 |
-| `src/jobagent/web/auth.py` | New | Proposto por DES-2 | Fluxo Google e ciclo de sessão | DES-2 |
-| `src/jobagent/web/linkedin.py` | New | Proposto por DES-3 | Fluxo de autorização do LinkedIn | DES-3 |
-| `src/jobagent/web/credentials.py` | New | Proposto por DES-4 | Cadastro, ordem e remoção de credenciais | DES-4 |
-| `src/jobagent/web/resume.py` | New | Proposto por DES-6 | Importação e tela de conferência | DES-6, DES-7 |
-| `src/jobagent/worker/runner.py` | New | Proposto por DES-1 | Consumidor da fila e execução do pipeline | DES-1 |
-| `src/jobagent/worker/enricher_process.py` | New | Proposto por DES-12 | Processo único de enriquecimento | DES-12 |
-| `src/jobagent/worker/queue.py` | New | Proposto por DES-1 | Fila em banco com reserva de linha | DES-1 |
-| `src/jobagent/providers/registry.py` | New | Proposto por DES-4 | Carga e validação do registro de provedores | DES-4 |
-| `src/jobagent/providers/vault.py` | New | Proposto por DES-4 | Cifragem envelopada das credenciais | DES-4 |
-| `src/jobagent/providers/client.py` | New | Proposto por DES-5 | Camada fina sobre o roteador: ordem do usuário, contenção e queda para modo determinístico | DES-5 |
-| `src/jobagent/resume/importer.py` | New | Proposto por DES-6 | Normalização de Drive, Word e PDF para texto | DES-6 |
-| `src/jobagent/resume/parser.py` | New | Proposto por DES-7 | Extração estruturada e portão de conferência | DES-7 |
-| `src/jobagent/profile/merger.py` | New | Proposto por DES-8 | Precedência entre origens e versionamento | DES-8 |
-| `src/jobagent/profile/seniority.py` | New | Proposto por DES-8 | Inferência determinística de nível | DES-8 |
-| `src/jobagent/profile/hygiene.py` | New | Proposto por DES-8 | Diagnóstico de problemas do perfil | DES-8 |
-| `src/jobagent/pipeline/planner.py` | New | Proposto por DES-9 | Geração determinística de buscas | DES-9 |
-| `src/jobagent/pipeline/collector.py` | New | Proposto por DES-10 | Orquestração das buscas, normalização e dedupe | DES-10 |
-| `src/jobagent/pipeline/sources/guest.py` | New | Proposto por DES-10 | Adaptador do coletor multi-portal para o card normalizado | DES-10 |
-| `src/jobagent/pipeline/prefilter.py` | New | Proposto por DES-11 | Rejeição por título e avaliação geográfica | DES-11 |
-| `src/jobagent/pipeline/governor.py` | New | Proposto por DES-12 | Serialização, atraso, recuo e bloqueio | DES-12 |
-| `src/jobagent/pipeline/quota.py` | New | Proposto por DES-13 | Cálculo e débito da cota diária | DES-13 |
-| `src/jobagent/scoring/ontology.py` | New | Proposto por DES-14 | Canonicalização de competências | DES-14 |
-| `src/jobagent/scoring/scorer.py` | New | Proposto por DES-14 | Componentes, ajustes e limite final | DES-14 |
-| `src/jobagent/scoring/gaps.py` | New | Proposto por DES-14 | Lacunas, diferenciais e agregação | DES-14 |
-| `src/jobagent/synthesis/prompt.py` | New | Proposto por DES-15 | Gabarito fixo e empacotamento não confiável | DES-15 |
-| `src/jobagent/synthesis/grounding.py` | New | Proposto por DES-15 | Verificação de aterramento | DES-15 |
-| `src/jobagent/report/renderer.py` | New | Proposto por DES-16 | Montagem do contexto do relatório | DES-16 |
-| `src/jobagent/report/templates/` | New | Proposto por DES-16 | Gabaritos com escape automático | DES-16 |
-| `src/jobagent/store/schema.sql` | New | Proposto por DES-17 | Definição de tabelas e índices | DES-17 |
-| `src/jobagent/store/migrations.py` | New | Proposto por DES-17 | Versionamento e migração ordenada | DES-17 |
-| `src/jobagent/store/repository.py` | New | Proposto por DES-17 | Acesso com filtro de usuário injetado | DES-17 |
-| `src/jobagent/store/lifecycle.py` | New | Proposto por DES-17 | Transições de estado e expiração | DES-17 |
-| `src/jobagent/store/privacy.py` | New | Proposto por DES-17 | Exclusão em cascata, exportação e retenção | DES-17 |
-| `src/jobagent/scheduler.py` | New | Proposto por DES-18 | Rodízio e portão de recuperação | DES-18 |
-| `src/jobagent/config.py` | New | Proposto por DES-19 | Leitura e validação por esquema | DES-19 |
-| `src/jobagent/logging_filters.py` | New | Proposto por DES-19 | Redação de segredos em log | DES-19 |
+| `src/crivo/web/app.py` | New | Proposto por DES-1 | Aplicação web e rotas | DES-1 |
+| `src/crivo/web/auth.py` | New | Proposto por DES-2 | Fluxo Google e ciclo de sessão | DES-2 |
+| `src/crivo/web/linkedin.py` | New | Proposto por DES-3 | Fluxo de autorização do LinkedIn | DES-3 |
+| `src/crivo/web/credentials.py` | New | Proposto por DES-4 | Cadastro, ordem e remoção de credenciais | DES-4 |
+| `src/crivo/web/resume.py` | New | Proposto por DES-6 | Importação e tela de conferência | DES-6, DES-7 |
+| `src/crivo/worker/runner.py` | New | Proposto por DES-1 | Consumidor da fila e execução do pipeline | DES-1 |
+| `src/crivo/worker/enricher_process.py` | New | Proposto por DES-12 | Processo único de enriquecimento | DES-12 |
+| `src/crivo/worker/queue.py` | New | Proposto por DES-1 | Fila em banco com reserva de linha | DES-1 |
+| `src/crivo/providers/registry.py` | New | Proposto por DES-4 | Carga e validação do registro de provedores | DES-4 |
+| `src/crivo/providers/vault.py` | New | Proposto por DES-4 | Cifragem envelopada das credenciais | DES-4 |
+| `src/crivo/providers/client.py` | New | Proposto por DES-5 | Camada fina sobre o roteador: ordem do usuário, contenção e queda para modo determinístico | DES-5 |
+| `src/crivo/resume/importer.py` | New | Proposto por DES-6 | Normalização de Drive, Word e PDF para texto | DES-6 |
+| `src/crivo/resume/parser.py` | New | Proposto por DES-7 | Extração estruturada e portão de conferência | DES-7 |
+| `src/crivo/profile/merger.py` | New | Proposto por DES-8 | Precedência entre origens e versionamento | DES-8 |
+| `src/crivo/profile/seniority.py` | New | Proposto por DES-8 | Inferência determinística de nível | DES-8 |
+| `src/crivo/profile/hygiene.py` | New | Proposto por DES-8 | Diagnóstico de problemas do perfil | DES-8 |
+| `src/crivo/pipeline/planner.py` | New | Proposto por DES-9 | Geração determinística de buscas | DES-9 |
+| `src/crivo/pipeline/collector.py` | New | Proposto por DES-10 | Orquestração das buscas, normalização e dedupe | DES-10 |
+| `src/crivo/pipeline/sources/guest.py` | New | Proposto por DES-10 | Adaptador do coletor multi-portal para o card normalizado | DES-10 |
+| `src/crivo/pipeline/prefilter.py` | New | Proposto por DES-11 | Rejeição por título e avaliação geográfica | DES-11 |
+| `src/crivo/pipeline/governor.py` | New | Proposto por DES-12 | Serialização, atraso, recuo e bloqueio | DES-12 |
+| `src/crivo/pipeline/quota.py` | New | Proposto por DES-13 | Cálculo e débito da cota diária | DES-13 |
+| `src/crivo/scoring/ontology.py` | New | Proposto por DES-14 | Canonicalização de competências | DES-14 |
+| `src/crivo/scoring/scorer.py` | New | Proposto por DES-14 | Componentes, ajustes e limite final | DES-14 |
+| `src/crivo/scoring/gaps.py` | New | Proposto por DES-14 | Lacunas, diferenciais e agregação | DES-14 |
+| `src/crivo/synthesis/prompt.py` | New | Proposto por DES-15 | Gabarito fixo e empacotamento não confiável | DES-15 |
+| `src/crivo/synthesis/grounding.py` | New | Proposto por DES-15 | Verificação de aterramento | DES-15 |
+| `src/crivo/report/renderer.py` | New | Proposto por DES-16 | Montagem do contexto do relatório | DES-16 |
+| `src/crivo/report/templates/` | New | Proposto por DES-16 | Gabaritos com escape automático | DES-16 |
+| `src/crivo/store/schema.sql` | New | Proposto por DES-17 | Definição de tabelas e índices | DES-17 |
+| `src/crivo/store/migrations.py` | New | Proposto por DES-17 | Versionamento e migração ordenada | DES-17 |
+| `src/crivo/store/repository.py` | New | Proposto por DES-17 | Acesso com filtro de usuário injetado | DES-17 |
+| `src/crivo/store/lifecycle.py` | New | Proposto por DES-17 | Transições de estado e expiração | DES-17 |
+| `src/crivo/store/privacy.py` | New | Proposto por DES-17 | Exclusão em cascata, exportação e retenção | DES-17 |
+| `src/crivo/scheduler.py` | New | Proposto por DES-18 | Rodízio e portão de recuperação | DES-18 |
+| `src/crivo/config.py` | New | Proposto por DES-19 | Leitura e validação por esquema | DES-19 |
+| `src/crivo/logging_filters.py` | New | Proposto por DES-19 | Redação de segredos em log | DES-19 |
+| `src/crivo/__main__.py` | New | Acrescentado na implementação | Ponto de entrada único: sobe web, runs, enricher, schedule ou os três de uso normal | DES-1, DES-19 |
+| `src/crivo/secrets_vault.py` | New | Acrescentado na implementação | Cofre em memória dos segredos do operador, lidos do ambiente e do `.env` | DES-19 |
+| `src/crivo/pipeline/stages.py` | New | Acrescentado na implementação | Estágios do run na ordem em que acontecem, da coleta à síntese | DES-1, DES-21 |
+| `src/crivo/pipeline/enricher.py` | New | Acrescentado na implementação | Enriquecimento das vagas que sobreviveram ao pré-filtro | DES-12 |
+| `src/crivo/worker/enrichment_queue.py` | New | Acrescentado na implementação | Fila do enriquecimento, ponto de suspensão entre os dois trechos do run | DES-1, DES-12 |
+| `src/crivo/profile/periodo.py` | New | Acrescentado na implementação | Leitura de período de experiência num lugar só | DES-8 |
+| `src/crivo/pipeline/presenca.py` | New | Acrescentado na implementação | Leitura, na descrição, de quantos dias de escritório a vaga exige | DES-11, DES-14 |
+| `src/crivo/store/scores.py` | New | Acrescentado na implementação | Persistência das pontuações nas duas passadas, com histórico | DES-14 |
+| `src/crivo/store/locks.py` | New | Acrescentado na implementação | Travas de instância única gravadas no banco | DES-1, DES-12 |
+| `src/crivo/store/insights.py` | New | Acrescentado na implementação | Validação e gravação dos insights enviados pela extensão | DES-20 |
+| `src/crivo/store/extractor_tokens.py` | New | Acrescentado na implementação | Emissão, resolução e revogação do token do extrator | DES-20 |
+| `src/crivo/scoring/judge.py` | New | Acrescentado na implementação | Releitura do topo por modelo | DES-21 |
+| `src/crivo/synthesis/synthesizer.py` | New | Acrescentado na implementação | Estágio terminal de síntese, uma requisição lógica por run | DES-15 |
+| `src/crivo/web/tempo.py` | New | Acrescentado na implementação | Apresentação de carimbo de tempo num lugar só | DES-16 |
+| `src/crivo/web/templates/`, `src/crivo/web/static/crivo.css` | New | Acrescentado na implementação | Telas do app e folha de estilo única | DES-1 |
+| `config/cidades.toml` | New | Acrescentado na implementação | Coordenadas das cidades do cálculo de distância do pré-filtro | DES-11 |
+| `tools/extensao/` | New | Acrescentado na implementação | Extensão de navegador que lê os cards e envia os insights | DES-20 |
 | `config/default.toml` | New | Proposto por DES-19 | Valores padrão de todo parâmetro | DES-19 |
 | `config/providers.toml` | New | Proposto por DES-4 | Registro de provedores habilitados | DES-4 |
 | `config/ontology.toml` | New | Proposto por DES-14 | Mapa de sinônimos de tecnologia | DES-14 |
@@ -626,7 +703,6 @@ flowchart LR
 | `litellm` | Roteamento entre provedores de modelo, com cadeia ordenada, recuo e período de espera | Cliente próprio por provedor; descartado por reimplementar pior um problema já resolvido e por exigir manutenção a cada mudança de formato de erro |
 | `python-jobspy` | Coleta multi-portal da camada guest, incluindo descrição e endereços de contato | Cliente artesanal contra a marcação da origem; descartado porque era o item de maior probabilidade da matriz de risco |
 | `pandas` | Formato de saída exigido pelo coletor multi-portal | Nenhuma; entra como dependência transitiva. É pesada para o porte deste serviço e fica confinada ao adaptador, que converte a saída tabular para o card normalizado e não deixa o tipo vazar para o resto do sistema |
-| `playwright` | Sessão persistente de navegador | Requisição HTTP simples; adotada por ser suficiente — o endereço público de anúncio devolve o corpo sem renderização |
 | `httpx` | Camada guest, provedores e fluxos de autorização | `urllib`; descartada por ausência de reuso de conexão e tempo limite granular |
 | `python-docx` e `pypdf` | Extração de texto de Word e PDF | Conversão por processo externo; descartada por dependência de binário do sistema |
 | `cryptography` | Cifragem envelopada das credenciais | Cifragem artesanal; descartada por princípio |
@@ -668,15 +744,17 @@ Cada migração de esquema tem passo inverso declarado, e a versão do esquema �
 | DES-5 | REQ-16.1, REQ-16.2, REQ-16.3, REQ-26.7, REQ-26.8, REQ-26.9, REQ-26.10 |
 | DES-6 | REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4, REQ-3.5, REQ-3.6, REQ-3.7, REQ-3.8, REQ-3.9 |
 | DES-7 | REQ-4.1, REQ-4.2, REQ-4.3, REQ-4.4, REQ-4.5, REQ-4.6, REQ-4.7, REQ-4.8, REQ-4.9, REQ-4.10, REQ-4.11, REQ-4.12, REQ-16.5 |
-| DES-8 | REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-6.1, REQ-6.2, REQ-6.3 |
+| DES-8 | REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-6.1, REQ-6.2, REQ-6.3 |
 | DES-9 | REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5 |
 | DES-10 | REQ-8.1, REQ-8.2, REQ-8.3, REQ-8.5, REQ-8.6, REQ-8.7 |
 | DES-11 | REQ-9.1, REQ-9.2, REQ-9.3, REQ-9.4, REQ-9.5, REQ-9.6 |
 | DES-12 | REQ-10.1, REQ-10.2, REQ-10.3, REQ-10.4, REQ-10.5, REQ-10.6, REQ-10.7, REQ-11.1, REQ-11.2, REQ-11.3, REQ-11.4, REQ-11.5, REQ-11.6 |
 | DES-13 | REQ-12.1, REQ-12.2, REQ-12.3, REQ-12.4, REQ-12.5 |
-| DES-14 | REQ-13.1, REQ-13.2, REQ-13.3, REQ-13.4, REQ-13.5, REQ-13.6, REQ-13.7, REQ-13.8, REQ-13.9, REQ-13.10, REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4 |
+| DES-14 | REQ-13.1, REQ-13.2, REQ-13.3, REQ-13.4, REQ-13.5, REQ-13.6, REQ-13.7, REQ-13.8, REQ-13.9, REQ-13.10, REQ-13.11, REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4, REQ-14.5, REQ-14.6 |
 | DES-15 | REQ-15.1, REQ-15.2, REQ-15.3, REQ-15.4, REQ-15.5, REQ-15.6, REQ-15.7, REQ-15.8, REQ-15.9, REQ-15.10, REQ-15.11, REQ-15.12, REQ-16.4 |
-| DES-16 | REQ-17.1, REQ-17.2, REQ-17.3, REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5, REQ-18.6, REQ-18.7, REQ-18.8, REQ-18.9, REQ-18.10, REQ-18.11, REQ-18.12, REQ-18.13 |
+| DES-16 | REQ-17.1, REQ-17.2, REQ-17.3, REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5, REQ-18.6, REQ-18.7, REQ-18.8, REQ-18.9, REQ-18.10, REQ-18.11, REQ-18.12, REQ-18.13, REQ-18.14 |
 | DES-17 | REQ-19.1, REQ-19.2, REQ-19.3, REQ-19.4, REQ-20.1, REQ-20.2, REQ-20.3, REQ-20.4, REQ-20.5, REQ-20.6, REQ-20.7, REQ-20.8, REQ-21.1, REQ-21.2, REQ-21.3, REQ-21.4, REQ-21.5, REQ-21.6 |
 | DES-18 | REQ-22.1, REQ-22.2, REQ-22.3, REQ-22.4, REQ-22.5, REQ-22.6, REQ-22.7 |
 | DES-19 | REQ-23.1, REQ-23.2, REQ-23.3, REQ-24.1, REQ-24.2, REQ-24.3, REQ-24.4 |
+| DES-20 | REQ-27.1, REQ-27.2, REQ-27.3, REQ-27.4, REQ-27.5, REQ-27.6, REQ-27.7, REQ-27.8, REQ-27.9, REQ-27.10, REQ-27.11, REQ-27.12, REQ-27.13, REQ-27.14, REQ-27.15, REQ-27.16, REQ-27.17, REQ-27.18 |
+| DES-21 | REQ-28.1, REQ-28.2, REQ-28.3, REQ-28.4, REQ-28.5, REQ-28.6, REQ-28.7, REQ-28.8, REQ-28.9, REQ-28.10 |

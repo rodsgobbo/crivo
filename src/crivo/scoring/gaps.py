@@ -77,3 +77,19 @@ def missing_across(
         for termo, quantas in aggregate(ontology, descricoes)
         if termo not in perfil
     ]
+
+
+def missing_for_profile(
+    ontology: Ontology, campos: dict, descricoes
+) -> list[tuple[str, int]]:
+    """Mais pedidas que o candidato nao tem, nem declaradas nem pelo historico.
+
+    E o mesmo conjunto que as lacunas de cada vaga usam. Comparar o ranking so
+    com a lista declarada faria a mesma pagina dizer duas coisas opostas: o card
+    da vaga sem lacuna de SRE, e o ranking mandando acrescentar SRE ao perfil.
+    """
+    from .ontology import skills_from_profile
+
+    return missing_across(
+        ontology, skills_from_profile(ontology, campos), descricoes
+    )

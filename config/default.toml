@@ -75,6 +75,14 @@ modo_deterministico = false
 
 [report]
 limiar_destaque = 70
+# Quantas vagas do topo o modelo rele. O topo e onde a decisao acontece, e cada
+# vaga a mais custa contexto sem mudar o que o usuario faz: ninguem se candidata
+# a quadragesima colocada.
+vagas_relidas = 20
+# Janela da tabela de empresas contratando, em dias. Trinta e o mesmo alcance da
+# janela ampla de coleta -- alem disso o anuncio ja costuma ter saido do ar, e a
+# empresa apareceria contratando pelo que fez no mes retrasado.
+dias_de_contratacao = 30
 
 [profile]
 # Precedencia entre origens: a primeira vence em caso de conflito.

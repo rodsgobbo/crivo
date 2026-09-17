@@ -67,6 +67,8 @@ class SynthesisConfig:
 @dataclass(frozen=True)
 class ReportConfig:
     limiar_destaque: int
+    vagas_relidas: int
+    dias_de_contratacao: int
 
 
 @dataclass(frozen=True)
@@ -145,7 +147,11 @@ _SCHEMA: dict[str, dict[str, tuple[type, Any, Any]]] = {
         "limite_caracteres_texto_externo": (int, 100, 1000000),
         "modo_deterministico": (bool, None, None),
     },
-    "report": {"limiar_destaque": (int, 0, 100)},
+    "report": {
+        "limiar_destaque": (int, 0, 100),
+        "vagas_relidas": (int, 1, 100),
+        "dias_de_contratacao": (int, 1, 365),
+    },
     "profile": {
         "precedencia_origens": (list, 1, None),
         "raio_deslocamento_km": (int, 0, 20000),

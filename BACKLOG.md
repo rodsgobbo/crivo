@@ -1,6 +1,8 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-08-26**. Esquema do banco na v8, 830 testes passando.
+Estado em **2026-09-17**. Esquema do banco na v9, 880 testes passando. De
+26/ago para cá entrou uma coisa grande, a extensão que traz os sinais Premium
+(§3.5), e duas pequenas vindas da Fase 5 (§7.1, §7.2).
 
 Cada item traz a evidência que o sustenta. Item sem evidência é suposição, e
 suposição não entra em roadmap — vira pergunta na seção final.
@@ -14,14 +16,14 @@ melhor que pareça.
 
 | Restrição | Por quê |
 |---|---|
-| **HTML servidor puro, sem JavaScript** | Decisão de produto. Qualquer proposta que dependa de JS no navegador é inaceitável, inclusive diálogo de confirmação. |
-| **Nunca aceitar credencial, cookie ou sessão de LinkedIn do usuário** | Escrito no contrato do módulo: a recusa acontece antes de qualquer gravação. **Em revisão desde 26/ago** a pedido do dono do produto — a avaliação, com o preço, está em §3.5. |
+| **HTML servidor puro, sem JavaScript** | Decisão de produto. Qualquer proposta que dependa de JS no navegador é inaceitável, inclusive diálogo de confirmação. Vale para as telas do app: a extensão em `tools/extensao/` é JavaScript por natureza, roda dentro do LinkedIn e não abre exceção para elas. |
+| **Nunca aceitar credencial, cookie ou sessão de LinkedIn do usuário** | Escrito no contrato do módulo: a recusa acontece antes de qualquer gravação. Esteve em revisão de 26/ago a 09/set e **continua valendo**: os sinais Premium chegam pela extensão, que envia números lidos e nunca credencial (§3.5). |
 | **Governador de taxa é obrigatório** | Bloqueio de coleta custa **1 hora de recuperação no IP do usuário**. Toda requisição nova a origem passa por ele. |
 | **Python 3.12, não 3.13** | `python-jobspy` fixa `numpy==1.26.3`, cujo último wheel é cp312. Sai quando o pin relaxar a montante. |
 
 ---
 
-## 1. Onde estamos
+## Onde estamos
 
 Três runs de 24h já rodaram de ponta a ponta. O último, `1418e378` em 26/ago,
 com todas as correções: 201 coletadas, 159 sobreviventes, 159/159 descrições
@@ -54,9 +56,19 @@ julgamento — ver §1.1.
 > não passaram por um run completo, exceto a v7, cujo efeito já aparece em
 > `1418e378`.
 
+### Feito em 2026-09-09
+
+| O quê | Onde |
+|---|---|
+| Extensão de navegador que lê os sinais Premium nos cards (§3.5) | `tools/extensao/`, `store/insights.py`, `web/app.py` |
+| Token do extrator, porque o cookie `samesite=lax` não chega ao POST vindo do LinkedIn (esquema v9) | `store/extractor_tokens.py`, `store/migrations.py` |
+| `top_applicant` vai na frente da fila de enriquecimento | `pipeline/stages.py` |
+| `top_applicant` vira "aplicar agora", sem atropelar requisito eliminatório | `report/renderer.py` |
+| Licença MIT | `LICENSE`, `pyproject.toml` |
+
 ---
 
-## 2. Fase 1 — a triagem precisa acertar
+## Fase 1 — a triagem precisa acertar
 
 O produto entrega uma lista ordenada, e a ordem está errada. Enquanto isso não
 mudar, nada mais importa: melhorar a coleta só traz mais vaga errada.
@@ -211,7 +223,7 @@ registrado como não-item para ninguém reabrir.
 
 ---
 
-## 3. Fase 2 — a coleta precisa ser explicável
+## Fase 2 — a coleta precisa ser explicável
 
 Depois que a ordem estiver certa, a pergunta seguinte é sempre *"por que esta
 vaga apareceu?"* — e hoje ela não tem resposta sem ler o código.
@@ -319,7 +331,17 @@ Ambos obtidos sem sessão, ambos previstos na especificação, nenhum coletado.
 
 ---
 
-## 3.5 — Usar a conta LinkedIn Premium do próprio usuário
+## 3.5 — Usar a conta LinkedIn Premium do próprio usuário · ✔ **resolvido em 09/set, sem credencial**
+
+**Como foi resolvido.** Nenhuma das rotas avaliadas abaixo foi adotada. Uma
+extensão em `tools/extensao/` roda no navegador de quem usa, lê nos cards os
+avisos que a conta Premium calcula — `top_applicant`, `early_applicant`,
+contagem de candidatos — e manda só esses números ao app. Nem cookie nem `li_at`
+atravessam: a restrição do topo continua de pé. O preço que sobra é o de
+marcação sem contrato — um redesenho do LinkedIn cala a extensão, e §5.3 passa a
+valer para ela também.
+
+O que segue é a avaliação de 26/ago, mantida como registro do porquê.
 
 **Pedido em 26/ago.** Colide de frente com uma restrição do topo deste
 documento: *"nunca aceitar credencial, cookie ou sessão de LinkedIn do
@@ -384,32 +406,26 @@ medido, decidir se o resto compensa o preço acima.
 
 ---
 
-## 4. Fora de alcance por desenho
+## Fora de alcance por desenho
 
 Não são backlog. Estão aqui para que ninguém os proponha de novo achando que
 foram esquecidos.
 
-Sinais que só existem dentro de uma sessão autenticada — `top applicant`,
-conexões na empresa, estado `Applied`/`Saved` — estão fora **enquanto a
-restrição do topo valer**. O produto recusa credencial de LinkedIn do usuário
-antes de qualquer gravação, e essa recusa é desenho, não lacuna.
-
-Deixou de ser definitivo em 26/ago: o dono do produto pediu para avaliar usar a
-própria conta Premium. A avaliação está em §3.5, com o preço à vista. Enquanto
-ela não for decidida, o que está escrito aqui continua valendo.
+O produto recusa credencial de LinkedIn do usuário antes de qualquer gravação,
+e essa recusa é desenho, não lacuna. Sinais que só existem numa sessão
+autenticada entram apenas pela extensão (§3.5): `top applicant`, `early
+applicant` e a contagem de candidatos já entram. Conexões na empresa e estado
+`Applied`/`Saved` continuam fora — a extensão não os lê.
 
 ---
 
-## 5. Fase 3 — dívida de verificação
+## Fase 3 — dívida de verificação
 
-### 5.1 — Nada de 2026-08-25 foi visto num run real · **alto** · P
+### 5.1 — ~~Nada de 2026-08-25 foi visto num run real~~ · ✔ **visto em 26/ago**
 
-Teto de buscas, ordem em português, contenção na coleta, bloqueio visível,
-cancelamento, tetos de score, ação recomendada, síntese persistida — tudo isso
-tem teste, e nenhum tem observação. **O próximo run é a verificação.**
-
-Depende de: reiniciar o `crivo tudo` (o banco migra de v4 para v5 sozinho na
-abertura; testado numa cópia — 7 runs e 1.093 vagas preservados).
+As correções de 25/ago apareceram no run `a6d5a060`, e o run `1418e378` rodou
+com todas elas (ver "Onde estamos"). A extensão e o token do extrator, de 09/set,
+ainda não têm run observado registrado aqui.
 
 ### 5.2 — Telas redesenhadas nunca abertas num navegador · **médio** · P
 
@@ -424,7 +440,7 @@ defeito de §2.2 é exatamente disso: uma classe CSS mudou e nada avisou.
 
 ---
 
-## 6. Fase 4 — acabamento
+## Fase 4 — acabamento
 
 | Item | Tamanho |
 |---|---|
@@ -435,19 +451,128 @@ defeito de §2.2 é exatamente disso: uma classe CSS mudou e nada avisou.
 
 ---
 
-## 7. Ordem sugerida
+## Fase 5 — o que veio do funil de prospecção e do `linkedin-skills`
+
+Avaliados em 15/set: um carrossel de prompts de prospecção (@guilhermemorais.ia)
+e o repositório `sergebulaev/linkedin-skills`. Quase tudo ali parte da empresa
+ou do conteúdo, e o crivo parte da vaga. Entrou só o que usa dado que o crivo
+já tem ou já coleta.
+
+### 7.1 — ~~O ranking não dizia o que falta no perfil~~ · ✔ **feito em 15/set**
+
+`gaps.missing_across` existia, com teste, e nada a chamava: o relatório listava
+as competências mais pedidas sem marcar quais o candidato não tem. Agora marca,
+e só quando há perfil consolidado — sem perfil, "falta" seria acusação sem
+pergunta.
+
+No caminho apareceu um defeito maior. `skills_from_profile`, que evita mandar
+acrescentar "SRE" a quem lidera time de SRE, também não era chamada: as lacunas
+de cada vaga comparavam só com a lista declarada. Os dois lugares agora usam o
+mesmo conjunto, declaradas mais histórico (REQ-14.5, REQ-14.6), para que ranking
+e card não discordem na mesma página. Muda lacunas e diferenciais exibidos; não
+muda score.
+
+Ainda não visto num run real.
+
+### 7.2 — ~~Empresas que estão contratando~~ · ✔ **feito em 17/set**
+
+O banco já guardava empresa e `primeira_vez_em` de cada vaga: a tabela sai sem
+requisição nova e sem pesquisar a empresa em lugar nenhum.
+
+Três decisões, e as três estão na página para quem lê não se enganar: conta
+**título distinto** e não vaga, porque anúncio republicado chega com
+identificador novo e uma empresa que repete a mesma vaga toda semana lideraria a
+tabela sem ter aberto nada; exige **mais de um** título, porque uma vaga só é a
+vaga que você já está lendo; e **atravessa runs**, porque contratação é
+movimento de semanas e uma tabela presa ao run de hoje mostraria sempre o mesmo
+número baixo. A janela é configurável (`report.dias_de_contratacao`, 30 dias).
+
+A ressalva que fica: mede o que **as suas buscas** trouxeram, não o mercado. A
+página diz isso.
+
+No caminho apareceu outro parâmetro que a especificação dizia ser configurável e
+não era: `vagas_relidas`, o tamanho do topo que o modelo relê. O código lia com
+`getattr` e um padrão embutido, e a chave não existia na configuração. Agora
+existe.
+
+Ainda não visto num run real.
+
+### 7.3 — ~~Vaga "remota" que é híbrida~~ · ✔ **feito em 17/set**
+
+A origem só entrega booleano — `guest.py` grava `remote` ou `on-site` — e vaga
+remota **nunca é avaliada geograficamente**. Uma vaga que pede três dias por
+semana no escritório chegava marcada como remota, e o deslocamento que ela exige
+sumia do sistema inteiro.
+
+Quem sabe disso é a descrição, que só existe depois do enriquecimento. Por isso
+a correção mora na passada final e não no pré-filtro: é o primeiro momento em
+que o texto está disponível. `pipeline/presenca.py` lê o número de dias por
+padrão de texto, nos dois idiomas que a coleta traz.
+
+O cálculo de distância foi **extraído** do pré-filtro (`blocker_geografico`) e é
+o mesmo nos dois lugares. Duas implementações da mesma distância discordariam
+sobre a mesma vaga, que é o defeito de §1.7 de novo.
+
+Três recusas deliberadas: "híbrido" sem número não vira número, porque não saber
+quantos dias não é saber que são zero; sem preferência declarada a regra inteira
+fica desligada (§1.3); e a vaga é **marcada**, nunca descartada — a decisão de
+encarar o deslocamento é de quem se candidata.
+
+Junto veio a tela que faltava. `ProfileMerger.consolidate` já aceitava
+`manual_fields`, e a origem manual já vencia as demais, mas o formulário do
+perfil não tinha campo nenhum: ninguém nunca mandava dado manual. Agora tem o
+seletor de dias, opcional, e a consolidação preserva a escolha quando o botão de
+reconsolidar é usado — sem isso, cada clique apagaria a preferência.
+
+Ainda não visto num run real.
+
+### 7.4 — Faixa salarial · **médio** · M
+
+O card traz `salario` e nada além do coletor o lê. Marcar "abaixo da sua faixa"
+só quando o anúncio publica valor; ausência não penaliza, pelo mesmo motivo de
+§1.3.
+
+A tela de preferências já existe desde §7.3, então falta um campo a mais nela e a
+regra que o consome. O campo só entra junto com a regra: campo preenchido que não
+faz nada é mentira na tela.
+
+### 7.5 — Rascunho de pedido de indicação · **médio** · G
+
+Só nas vagas em que o relatório já diz "pedir indicação antes". Até 150
+palavras, a partir da descrição e do perfil confirmado, pelo modelo do usuário e
+aterrado como a síntese, gerado sob demanda e não em todo run. O crivo nunca
+envia. Do `linkedin-interviewer` vem a regra de perguntar uma vez pelos números
+reais e guardar, para a mensagem não inventar feito. Pede requisito.
+
+### 7.6 — Acompanhamento da candidatura · pergunta em aberto
+
+`aplicado` hoje não tem data nem próximo passo. Lembrete único e regra de
+encerramento caberiam no desenho, mas aproximam o crivo de um CRM. Ver pergunta
+5.
+
+### Descartado por desenho
+
+Apify e Publora (raspagem e publicação por terceiro, contra a restrição de
+credencial), Pixfaro, posts e marca pessoal, pesquisa de empresa na web,
+abordagem sem vaga aberta e os benchmarks sem fonte do `profile-optimizer`.
+
+---
+
+## Ordem sugerida
 
 ```
 1.2  teto de trilha          ✔    1.6  desenvolvimento no topo  ✔
 1.3  idiomas vazio           ✔    1.7  remoto como presencial   ✔
 2.1  guardar a busca         ✔    2.2  data de publicação       ✔
 5.1  rodar e olhar           ✔    2.5  data envelhecida         ✔
+2.6  cortar buscas de ruído  ✔    1.1  score que premia vago    ✔
+3.5  sinais Premium          ✔    7.1  o que falta no perfil    ✔
+7.2  quem está contratando   ✔    7.3  híbrido disfarçado       ✔
      ↓
-2.6  cortar buscas que só dão ruído   ← barato, e a tabela já diz quais  ← AQUI
+2.7  as buscas não acham o cargo      ← o único "alto" de pé fora da verificação;
+                                        começa por 2.3, os filtros de URL
      ↓
-1.1  score que premia anúncio vago    ← o grande; precisa de decisão sua
-     ↓
-5.3  canário de HTML                  ← o que evita a próxima surpresa
+5.3  canário de HTML                  ← agora protege a coleta e a extensão
 ```
 
 O raciocínio: **1.2 e 1.3 eram pequenos e mexiam no topo da lista** — feitos, e
@@ -457,7 +582,7 @@ saber qual busca trouxe cada vaga não há como medir se a mudança no score
 adiantou. **1.1 é o único item que precisa de decisão antes de código**, e é o
 mais caro; entra quando houver como medir.
 
-### O que a simulação já mostra sobre 1.1
+### O que a simulação mostrava sobre 1.1, antes da releitura
 
 Com 1.2 e 1.3 aplicados, o topo do relatório fica assim:
 
@@ -475,16 +600,18 @@ não tornou as notas corretas.
 
 ---
 
-## 8. Perguntas em aberto
+## Perguntas em aberto
 
 Coisas que mudam o que se constrói e que só o dono do produto responde.
 
 1. **Vaga fora da trilha deve sumir ou só descer?** O teto (65) mantém no
    relatório; o descarte tira. Hoje 76% do relatório é fora da trilha.
-2. **O modelo de linguagem pode entrar no julgamento por vaga**, ou fica só na
-   síntese? Resolve §1.1 de um jeito que nenhuma fórmula determinística resolve,
+2. ~~**O modelo de linguagem pode entrar no julgamento por vaga**, ou fica só na
+   síntese?~~ **Respondida em 26/ago:** entra, relendo as 20 do topo (§1.1). Resolve §1.1 de um jeito que nenhuma fórmula determinística resolve,
    mas custa por vaga e quebra a reprodutibilidade que o planejador protege.
 3. **Qual janela é a padrão?** Hoje 30 dias. Com 24h o volume é gerenciável e a
    vaga é fresca; com 30 dias entram vagas que já receberam 200 candidaturas.
 4. **Vale confirmar §2.2 com uma requisição ao LinkedIn?** É uma só, mas conta
    contra o mesmo limite que impõe 1 hora de bloqueio se estourar.
+5. **Acompanhamento de candidatura entra no crivo?** Data, lembrete único e
+   regra de encerramento são determinísticos, mas mudam o que o produto é (§7.6).

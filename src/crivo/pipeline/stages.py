@@ -330,7 +330,7 @@ class _PontuacaoStage:
                     "job_id": card.job_id, "titulo": card.titulo,
                     "empresa": card.empresa, "remoto": card.remoto,
                     "flags": list(card.flags or ()), "descricao": None,
-                    "blocker": None,
+                    "blocker": None, "local": card.local,
                 }
                 for card in context.dados.get("sobreviventes") or []
             ]
@@ -339,7 +339,7 @@ class _PontuacaoStage:
         linhas = self._connection.execute(
             """
             SELECT j.job_id, j.titulo, j.empresa, j.modelo_trabalho, j.flags,
-                   j.blocker, d.texto AS descricao
+                   j.blocker, j.local, d.texto AS descricao
             FROM scores s
             JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
             LEFT JOIN job_descriptions d ON d.job_id = s.job_id
@@ -362,14 +362,75 @@ class _PontuacaoStage:
                 "remoto": linha["modelo_trabalho"] == REMOTO,
                 "flags": json.loads(linha["flags"] or "[]"),
                 "descricao": linha["descricao"], "blocker": linha["blocker"],
+                "local": linha["local"],
             }
             for linha in linhas
         ]
+
+    def _corrigir_presenca(self, context: RunContext, perfil: dict, alvo: dict) -> None:
+        """Vaga anunciada como remota que a descricao revela hibrida.
+
+        A origem responde remoto ou presencial, e nada entre os dois. O
+        pre-filtro decide geografia com essa resposta, antes de existir
+        descricao, e vaga remota nunca e avaliada geograficamente -- entao o
+        deslocamento de uma vaga que pede tres dias no escritorio sumia do
+        sistema inteiro.
+
+        Aqui e o primeiro momento em que da para saber: a descricao ja chegou e
+        o candidato ja disse quantos dias aceita. Quando a vaga exige mais que
+        isso, ela deixa de contar como remota e passa pelo mesmo calculo de
+        distancia de qualquer presencial.
+        """
+        if _sem_presenca_avaliada(perfil) or not alvo["remoto"]:
+            return
+
+        from . import presenca as presenca_module
+        from .prefilter import blocker_geografico, find_city
+
+        exigencia = presenca_module.ler(alvo["descricao"])
+        limite = int(perfil["dias_escritorio_max"])
+        # Sem numero na descricao nao ha o que comparar: "hibrido" sozinho nao
+        # diz se sao cinco dias ou um, e supor seria inventar a evidencia.
+        if exigencia.dias is None or exigencia.dias <= limite:
+            return
+
+        cidades = _tabela_de_cidades()
+        encontrada = find_city(perfil.get("localizacao"), cidades)
+        avisos = [
+            parte.strip()
+            for parte in str(alvo["blocker"] or "").split(";")
+            if parte.strip()
+        ]
+        avisos.append(
+            f"{presenca_module.PREFIXO_PRESENCA} {exigencia.dias} dias de "
+            f"escritorio por semana, acima dos {limite} que voce aceita"
+        )
+        geografico = blocker_geografico(
+            alvo.get("local"),
+            encontrada[1] if encontrada else None,
+            cidades,
+            self._config.profile.raio_deslocamento_km,
+        )
+        if geografico:
+            avisos.append(geografico)
+
+        alvo["remoto"] = False
+        alvo["blocker"] = "; ".join(avisos)
+        # Gravado na vaga, e nao apenas no score: o relatorio le o blocker de
+        # `jobs`, e quem abrir o run seguinte precisa ver o mesmo aviso.
+        context.scope.update(
+            "jobs",
+            {"blocker": alvo["blocker"]},
+            where="job_id = ?",
+            params=(alvo["job_id"],),
+        )
 
     def run(self, context: RunContext) -> None:
         perfil = carregar_perfil(self._connection, self._config, context)
         for alvo in self._alvos(context):
             descricao = alvo["descricao"]
+            if self.passada == FINAL:
+                self._corrigir_presenca(context, perfil, alvo)
             resultado = self._scorer.score(
                 perfil,
                 {
@@ -381,8 +442,14 @@ class _PontuacaoStage:
                 sinais=alvo["flags"],
                 passada=self.passada,
             )
+            # Declaradas mais as que o historico evidencia. So a lista declarada
+            # fazia a lacuna mandar acrescentar ao perfil o que o curriculo ja
+            # afirma -- o defeito que `skills_from_profile` corrigia e que
+            # nenhum estagio chamava.
+            from ..scoring.ontology import skills_from_profile
+
             diferenca = gaps.from_description(
-                self._ontology, perfil.get("competencias") or [],
+                self._ontology, skills_from_profile(self._ontology, perfil),
                 descricao or alvo["titulo"],
             )
             context.scope.insert(
@@ -413,6 +480,30 @@ class _PontuacaoStage:
                     "criado_em": _agora(),
                 },
             )
+
+
+def _sem_presenca_avaliada(perfil: dict) -> bool:
+    """O candidato nao declarou quantos dias de escritorio aceita.
+
+    Campo vazio desliga a regra inteira. Nao saber quantos dias alguem aceita
+    nao autoriza supor que aceita zero -- e a mesma linha de §1.3, onde um campo
+    nunca preenchido estava derrubando metade do relatorio.
+    """
+    return perfil.get("dias_escritorio_max") is None
+
+
+#: Tabela de cidades do processo. Sao dezenas de vagas por run, e reler o
+#: arquivo em cada uma seria trabalho repetido para um dado que nao muda.
+_CIDADES: dict | None = None
+
+
+def _tabela_de_cidades() -> dict:
+    global _CIDADES
+    if _CIDADES is None:
+        from .prefilter import load_cities
+
+        _CIDADES = load_cities()
+    return _CIDADES
 
 
 class PontuacaoProvisoriaStage(_PontuacaoStage):

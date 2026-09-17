@@ -121,7 +121,7 @@
       !Object.keys(l.senioridade).length;
   }
 
-  /* Onde o id de uma vaga pode estar, e por que sao tres lugares.
+  /* Onde o id de uma vaga pode estar, e por que sao quatro lugares.
    *
    * A primeira versao procurava so `a[href*="/jobs/view/"]`, e isso vale na
    * pagina de UMA vaga. Na busca de duas colunas nao vale: os cards da esquerda
@@ -130,7 +130,7 @@
    * direita, e era por isso que a varredura via "1 card" com seis na lista.
    *
    * A ordem nao importa; o conjunto sim. Cada forma cobre uma tela diferente, e
-   * o LinkedIn usa as tres ao mesmo tempo. */
+   * o LinkedIn usa as quatro ao mesmo tempo. */
   var SELETOR_DE_VAGA = [
     'a[href*="/jobs/view/"]',
     'a[href*="currentJobId="]',
