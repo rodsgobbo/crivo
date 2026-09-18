@@ -247,7 +247,7 @@ flowchart LR
     F --> G[Lista de buscas]
 ```
 
-_Implements: REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5_
+_Implements: REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5, REQ-7.6, REQ-7.7_
 
 ### DES-10: Coletor e deduplicação
 
@@ -442,7 +442,7 @@ flowchart TD
     H[Run alem da duracao maxima] --> I[Marca interrompido e libera a vez]
 ```
 
-_Implements: REQ-22.1, REQ-22.2, REQ-22.3, REQ-22.4, REQ-22.5, REQ-22.6, REQ-22.7_
+_Implements: REQ-22.1, REQ-22.2, REQ-22.3, REQ-22.4, REQ-22.5, REQ-22.6, REQ-22.7, REQ-22.8_
 
 ### DES-19: Configuração e segredos
 
@@ -584,6 +584,8 @@ flowchart LR
 | Provedor configurado indisponível | Verificação de disponibilidade | Exclui da lista oferecida ao usuário | REQ-25.5 |
 | Credencial inválida no cadastro | Validação contra o provedor | Recusa o armazenamento e mostra a causa | REQ-26.2 |
 | Falha de gravação no banco | Repositório | Encerra o run nomeando a operação e a causa | REQ-21.6 |
+| Estágio de run levanta exceção | Executor | Marca o run interrompido com a causa e segue para o próximo run | REQ-22.8 |
+| Run retomado sem estado em memória | Estágio de coleta | Lê as buscas gravadas no registro do run | REQ-7.7 |
 | Esquema mais novo que o código | Comparação de versão na abertura | Impede a inicialização | REQ-21.6 |
 | Requisição a recurso de outro usuário | Filtro do repositório | Recusa e registra a tentativa | REQ-19.3 |
 | Run concorrente do mesmo usuário | Estado do run no banco | Recusa e registra | REQ-22.2 |
@@ -745,7 +747,7 @@ Cada migração de esquema tem passo inverso declarado, e a versão do esquema �
 | DES-6 | REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4, REQ-3.5, REQ-3.6, REQ-3.7, REQ-3.8, REQ-3.9 |
 | DES-7 | REQ-4.1, REQ-4.2, REQ-4.3, REQ-4.4, REQ-4.5, REQ-4.6, REQ-4.7, REQ-4.8, REQ-4.9, REQ-4.10, REQ-4.11, REQ-4.12, REQ-16.5 |
 | DES-8 | REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4, REQ-5.5, REQ-5.6, REQ-5.7, REQ-5.8, REQ-6.1, REQ-6.2, REQ-6.3 |
-| DES-9 | REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5 |
+| DES-9 | REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5, REQ-7.6, REQ-7.7 |
 | DES-10 | REQ-8.1, REQ-8.2, REQ-8.3, REQ-8.5, REQ-8.6, REQ-8.7 |
 | DES-11 | REQ-9.1, REQ-9.2, REQ-9.3, REQ-9.4, REQ-9.5, REQ-9.6 |
 | DES-12 | REQ-10.1, REQ-10.2, REQ-10.3, REQ-10.4, REQ-10.5, REQ-10.6, REQ-10.7, REQ-11.1, REQ-11.2, REQ-11.3, REQ-11.4, REQ-11.5, REQ-11.6 |
@@ -754,7 +756,7 @@ Cada migração de esquema tem passo inverso declarado, e a versão do esquema �
 | DES-15 | REQ-15.1, REQ-15.2, REQ-15.3, REQ-15.4, REQ-15.5, REQ-15.6, REQ-15.7, REQ-15.8, REQ-15.9, REQ-15.10, REQ-15.11, REQ-15.12, REQ-16.4 |
 | DES-16 | REQ-17.1, REQ-17.2, REQ-17.3, REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5, REQ-18.6, REQ-18.7, REQ-18.8, REQ-18.9, REQ-18.10, REQ-18.11, REQ-18.12, REQ-18.13, REQ-18.14 |
 | DES-17 | REQ-19.1, REQ-19.2, REQ-19.3, REQ-19.4, REQ-20.1, REQ-20.2, REQ-20.3, REQ-20.4, REQ-20.5, REQ-20.6, REQ-20.7, REQ-20.8, REQ-21.1, REQ-21.2, REQ-21.3, REQ-21.4, REQ-21.5, REQ-21.6 |
-| DES-18 | REQ-22.1, REQ-22.2, REQ-22.3, REQ-22.4, REQ-22.5, REQ-22.6, REQ-22.7 |
+| DES-18 | REQ-22.1, REQ-22.2, REQ-22.3, REQ-22.4, REQ-22.5, REQ-22.6, REQ-22.7, REQ-22.8 |
 | DES-19 | REQ-23.1, REQ-23.2, REQ-23.3, REQ-24.1, REQ-24.2, REQ-24.3, REQ-24.4 |
 | DES-20 | REQ-27.1, REQ-27.2, REQ-27.3, REQ-27.4, REQ-27.5, REQ-27.6, REQ-27.7, REQ-27.8, REQ-27.9, REQ-27.10, REQ-27.11, REQ-27.12, REQ-27.13, REQ-27.14, REQ-27.15, REQ-27.16, REQ-27.17, REQ-27.18 |
 | DES-21 | REQ-28.1, REQ-28.2, REQ-28.3, REQ-28.4, REQ-28.5, REQ-28.6, REQ-28.7, REQ-28.8, REQ-28.9, REQ-28.10 |

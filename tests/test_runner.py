@@ -53,6 +53,32 @@ def test_stages_execute_in_the_declared_order(env):
     assert queue.get(run_id)["estado"] == CONCLUIDO
 
 
+def test_a_broken_stage_ends_the_run_and_not_the_worker(env):
+    """Estagio que quebra derrubava o executor inteiro, e em ciclo.
+
+    A excecao subia ate o laco do processo; o run continuava em andamento, e a
+    partida seguinte o devolvia a fila e morria de novo.
+    """
+    from crivo.worker.queue import INTERROMPIDO
+
+    connection, queue, config = env
+    run_id = queue.enqueue("ana")
+
+    def explodir(_contexto):
+        raise KeyError("buscas")
+
+    seguinte = Recorder("nunca")
+    stages = [Recorder("coletar", explodir), seguinte]
+
+    contexto = Runner(connection, config, stages).run_once()
+
+    assert contexto is not None, "o executor precisa continuar de pe"
+    assert seguinte.calls == 0, "o run para no estagio que quebrou"
+    linha = queue.get(run_id)
+    assert linha["estado"] == INTERROMPIDO
+    assert "coletar" in (linha["motivo_recusa"] or "")
+
+
 def test_the_scope_is_bound_to_the_run_owner(env):
     connection, queue, config = env
     queue.enqueue("ana")
@@ -127,15 +153,27 @@ def test_stage_progress_survives_a_new_runner_instance(env):
     assert antes.calls == 0
 
 
-def test_a_failing_stage_propagates(env):
+def test_a_failing_stage_records_the_reason_in_the_run(env):
+    """Contrato trocado em 18/set, contra defeito visto em uso real.
+
+    Este teste exigia que a excecao subisse. Quem chama `run_once` no processo
+    de verdade e um laco `while True`, entao subir queria dizer matar o
+    executor -- e, como o run continuava em andamento, a partida seguinte o
+    devolvia a fila e morria de novo. A causa agora fica no run.
+    """
+    from crivo.worker.queue import INTERROMPIDO
+
     connection, queue, config = env
-    queue.enqueue("ana")
+    run_id = queue.enqueue("ana")
 
     def explode(context):
         raise RuntimeError("estagio quebrou")
 
-    with pytest.raises(RuntimeError):
-        Runner(connection, config, [Recorder("x", explode)]).run_once()
+    Runner(connection, config, [Recorder("x", explode)]).run_once()
+
+    linha = queue.get(run_id)
+    assert linha["estado"] == INTERROMPIDO
+    assert "estagio quebrou" in (linha["motivo_recusa"] or "")
 
 
 def test_repeated_stage_names_are_refused(env):

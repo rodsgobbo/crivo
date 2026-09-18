@@ -217,12 +217,19 @@
    * O endereco e montado do id em vez de lido do href: na busca de duas colunas
    * o href e `?currentJobId=`, que carrega a busca inteira junto e nao serve
    * como link permanente para a vaga. */
-  /* Linhas que sao aviso, data ou estado -- nunca nome de empresa. */
+  /* Linhas que sao aviso, data, estado ou moldura da pagina -- nunca nome de
+   * empresa.
+   *
+   * As tres ultimas alternativas entraram depois de oito vagas serem gravadas
+   * com "99+ results" no lugar da empresa: na secao "Jobs based on your
+   * preferences" o cabecalho dela entrava na leitura do card. */
   var NAO_E_EMPRESA = new RegExp(
     "top applicant|early applicant|clicked apply|" + QUEM_SE_CANDIDATOU +
     "|\\bago\\b|h[aá] \\d|atr[aá]s|promoted|patrocinad|viewed|visualizad|" +
     "saved|salva|easy apply|candidatura simplificada|connection|conex[oõ]es|" +
-    "premium|reposted|republicad|actively|reviewing|\\bnew\\b|\\bnova\\b",
+    "premium|reposted|republicad|actively|reviewing|\\bnew\\b|\\bnova\\b" +
+    "|\\d+\\+?\\s*(?:results?|resultados?|vagas?)\\b" +
+    "|jobs? based on|vagas? com base|recomendad|recommended",
     "i"
   );
 
@@ -258,6 +265,32 @@
     };
   }
 
+  /* Seletor do link que leva a vaga. O texto dele e o titulo. */
+  var LINK_DA_VAGA = 'a[href*="/jobs/view/"],a[href*="currentJobId="]';
+
+  /* O titulo sai do link da vaga, e nao da primeira linha do card.
+   *
+   * A primeira linha vale enquanto a subida para no card. Na secao "Jobs based
+   * on your preferences" o card e filho unico: nao ha segundo id que diga que a
+   * subida passou do ponto, ela alcanca o cabecalho da secao, e oito vagas
+   * foram gravadas chamadas "Jobs based on your preferences", com "99+ results"
+   * como empresa. O link nao tem esse problema -- ele carrega o titulo e nao
+   * carrega cabecalho de secao nenhum.
+   *
+   * A primeira linha continua como reserva: em card cujo id vem de atributo e
+   * que nao tenha link reconhecivel, ela e o que resta. */
+  function tituloDoLink(elemento, caixa) {
+    var link = null;
+    if (elemento.matches && elemento.matches(LINK_DA_VAGA)) {
+      link = elemento;
+    } else if (caixa && caixa.querySelector) {
+      link = caixa.querySelector(LINK_DA_VAGA);
+    }
+    if (!link) return "";
+    var linhas = linhasDe(link);
+    return linhas.length ? linhas[0] : "";
+  }
+
   function cards() {
     var achados = Object.create(null);
     var alvos = document.querySelectorAll(SELETOR_DE_VAGA);
@@ -273,9 +306,10 @@
       // titulo, empresa e aviso -- e nao um pedaco do proprio card.
       if (achados[id] && texto.length <= achados[id].texto.length) continue;
       var linhas = linhasDe(caixa);
+      var titulo = tituloDoLink(alvos[i], caixa) || linhas[0] || "";
       achados[id] = {
         texto: texto,
-        vaga: metadados(caixa, bruto, linhas[0] || "")
+        vaga: metadados(caixa, bruto, titulo)
       };
     }
     return achados;
@@ -391,9 +425,20 @@
       var ids = Object.keys(doDom);
       var comSinal = 0;
       var lote = [];
+      /* Card cujo texto veio vazio. A lista do LinkedIn e virtualizada: o que
+       * esta fora da tela existe como marcador, sem conteudo. Contar isso junto
+       * com os demais fazia "20 cards, nenhum com aviso" descrever uma pagina
+       * em que so tres cards existiam de fato. */
+      var vazios = 0;
+      /* O texto do primeiro card legivel, truncado. E a unica forma de
+       * responder "o que a pagina esta entregando hoje?" sem pedir a quem usa
+       * que abra o console. Fica so no armazenamento local da extensao. */
+      var amostra = "";
 
       ids.forEach(function (id) {
         var achado = doDom[id];
+        if (!achado.texto || !achado.texto.trim()) { vazios++; return; }
+        if (!amostra) amostra = id + " :: " + achado.texto.slice(0, 300);
         var leitura = ler(achado.texto);
         if (vazia(leitura)) return;
         comSinal++;
@@ -419,7 +464,9 @@
         ultima_varredura_em: new Date().toISOString(),
         ultima_url: location.pathname,
         cards_vistos: ids.length,
+        cards_vazios: vazios,
         cards_com_sinal: comSinal,
+        amostra: amostra,
         sem_token: !cfg.token
       });
 

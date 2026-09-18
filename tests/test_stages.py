@@ -24,11 +24,11 @@ from crivo.pipeline.stages import (
     PreFiltroStage,
     build_stages,
 )
-from crivo.profile.merger import HistoryRequired, ProfileMerger
+from crivo.profile.merger import ProfileMerger
 from crivo.store.migrations import open_database
 from crivo.store.repository import Repository
 from crivo.worker.enrichment_queue import EnrichmentQueue
-from crivo.worker.queue import CONCLUIDO, RunQueue
+from crivo.worker.queue import CONCLUIDO, INTERROMPIDO, RunQueue
 from crivo.worker.runner import RunContext, Runner
 
 USUARIO = "ana"
@@ -152,11 +152,21 @@ def test_the_declared_order_matches_what_a_run_needs(env):
 
 
 def test_a_run_without_a_profile_is_refused_by_name(env):
+    """A recusa continua nomeando a causa; ela passou a morar no run.
+
+    Antes a excecao subia do estagio ate quem chamou. No processo real quem
+    chama e o laco do executor, entao um usuario sem perfil derrubava o
+    executor de todos. A causa agora fica gravada na linha do run, que e onde
+    quem abre a tela consegue le-la.
+    """
     connection, fila, config = env
-    fila.enqueue(USUARIO)
-    with pytest.raises(HistoryRequired) as erro:
-        Runner(connection, config, montar(connection, config)).run_once()
-    assert "curriculo" in str(erro.value)
+    run_id = fila.enqueue(USUARIO)
+
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    linha = fila.get(run_id)
+    assert linha["estado"] == INTERROMPIDO
+    assert "curriculo" in (linha["motivo_recusa"] or "")
 
 
 # ------------------------------------------------------- primeiro trecho
@@ -285,6 +295,35 @@ def test_the_final_pass_uses_the_collected_description(env):
     assert all(linha["descricao_disponivel"] == 1 for linha in linhas)
     # "azure" esta na descricao e nao no perfil: e lacuna acionavel.
     assert any("azure" in linha["lacunas"] for linha in linhas)
+
+
+def _contexto_vazio(connection, config, run_id):
+    """Como o runner monta o contexto ao retomar: sem nada em memoria."""
+    return RunContext(
+        run_id=run_id, user_id=USUARIO, janela="ampla", config=config,
+        scope=Repository(connection).for_user(USUARIO),
+    )
+
+
+def test_the_collection_survives_a_run_reclaimed_with_an_empty_context(env):
+    """O run devolvido a fila retoma sem `dados`, e a coleta quebrava ali.
+
+    `KeyError: 'buscas'` subia ate o laco do executor e matava o processo. Como
+    o run continuava em andamento, a partida seguinte o devolvia a fila e morria
+    de novo -- um run defeituoso parava os runs de todos.
+    """
+    from crivo.pipeline.stages import carregar_buscas
+
+    connection, fila, config = env
+    consolidar(connection, config)
+    run_id = fila.enqueue(USUARIO)
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    vazio = _contexto_vazio(connection, config, run_id)
+    assert carregar_buscas(connection, vazio), "as buscas do run precisam estar no banco"
+
+    coleta = [e for e in montar(connection, config) if e.name == "coleta"][0]
+    coleta.run(vazio)  # nao pode levantar KeyError
 
 
 def test_a_hybrid_job_stops_counting_as_remote(env):

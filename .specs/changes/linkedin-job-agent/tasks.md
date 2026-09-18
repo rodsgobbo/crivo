@@ -628,6 +628,11 @@ A ordem das fases segue a direção das dependências de dados, não a ordem de 
   - _Depends: 4.29, 3.14_
   - _Implements: DES-8, DES-11, DES-14, REQ-5.8, REQ-13.11_
 
+- [x] 4.40 Sobreviver à retomada de um run e à falha de um estágio
+  - Gravar as buscas no registro do run assim que o planejamento as escolhe e lê-las de lá quando a retomada chega sem estado em memória; encerrar o run que falha marcando-o interrompido com a causa, em vez de deixar a exceção alcançar o laço do processo executor.
+  - _Depends: 4.32_
+  - _Implements: DES-1, DES-9, REQ-7.6, REQ-7.7, REQ-22.8_
+
 ## Phase 5: Acceptance Criteria Testing
 
 - [x] 5.1 Test: entrada por conta Google cria sessão estável
@@ -1067,6 +1072,12 @@ A ordem das fases segue a direção das dependências de dados, não a ordem de 
   - Test type: integration
   - _Depends: 4.39_
   - _Implements: REQ-5.8, REQ-13.11_
+
+- [x] 5.74 Test: a retomada acha as buscas e o executor sobrevive à falha
+  - Verificar que a coleta de um run retomado sem estado em memória lê as buscas gravadas, que um estágio que levanta exceção marca o run interrompido com a causa sem interromper o executor, e que a recusa por falta de currículo continua nomeando o motivo.
+  - Test type: integration
+  - _Depends: 4.40_
+  - _Implements: REQ-7.6, REQ-7.7, REQ-22.8_
 
 ## Phase 6: Final Checkpoint
 

@@ -1,8 +1,9 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-09-17**. Esquema do banco na v9, 880 testes passando. De
+Estado em **2026-09-18**. Esquema do banco na v9, 882 testes passando. De
 26/ago para cá entrou uma coisa grande, a extensão que traz os sinais Premium
-(§3.5), e duas pequenas vindas da Fase 5 (§7.1, §7.2).
+(§3.5), três vindas da Fase 5 (§7.1, §7.2, §7.3) e os consertos de 18/set, que
+saíram todos de uso real.
 
 Cada item traz a evidência que o sustenta. Item sem evidência é suposição, e
 suposição não entra em roadmap — vira pergunta na seção final.
@@ -65,6 +66,21 @@ julgamento — ver §1.1.
 | `top_applicant` vai na frente da fila de enriquecimento | `pipeline/stages.py` |
 | `top_applicant` vira "aplicar agora", sem atropelar requisito eliminatório | `report/renderer.py` |
 | Licença MIT | `LICENSE`, `pyproject.toml` |
+
+### Feito em 2026-09-18 — tudo veio de uso real, nenhum de teste
+
+| O quê | Onde |
+|---|---|
+| `KeyError: 'buscas'` na retomada derrubava o processo executor; as buscas agora são gravadas no planejamento e lidas de lá | `pipeline/stages.py`, `worker/queue.py` |
+| Run que falha é marcado interrompido com a causa, e o executor segue vivo. Antes ele morria, o run continuava em andamento, a partida seguinte o devolvia à fila e matava o processo de novo — **um run ruim parava os runs de todos, em ciclo** | `worker/runner.py` |
+| Título da vaga vinha do cabeçalho da seção ("Jobs based on your preferences"); passa a sair do link da vaga | `tools/extensao/conteudo.js` |
+| A janelinha escondia o acumulado atrás da última varredura, e contava como card o que estava fora da tela | `tools/extensao/opcoes.js` |
+| A janelinha mostra a amostra do texto lido: é o que permite depurar a leitura sem abrir o console | `tools/extensao/conteudo.js`, `opcoes.html` |
+
+> Dois testes trocaram de lado junto: `test_a_failing_stage_propagates` e a
+> recusa por falta de perfil exigiam que a exceção subisse, e nenhum dos dois
+> dizia por quê. Quem chama `run_once` é um laço `while True` — subir era matar
+> o executor.
 
 ---
 

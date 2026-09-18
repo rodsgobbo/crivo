@@ -111,6 +111,13 @@ COVERAGE: dict[str, list[str]] = {
         "test_stages::test_searches_come_from_the_profile_and_are_recorded",
     ],
     "7.5": ["test_planner::test_the_same_input_always_produces_the_same_list"],
+    "7.6": [
+        "test_stages::test_the_collection_survives_a_run_reclaimed_with_an_empty_context"
+    ],
+    "7.7": [
+        "test_stages::test_the_collection_survives_a_run_reclaimed_with_an_empty_context",
+        "test_stages::test_the_second_half_survives_the_loss_of_in_memory_context",
+    ],
 
     # ------------------------------------------------------- REQ-8 coleta
     "8.1": ["test_collector::test_a_row_becomes_a_normalized_card"],
@@ -324,6 +331,11 @@ COVERAGE: dict[str, list[str]] = {
     "22.6": ["test_scheduler_and_privacy::test_an_immediate_run_uses_the_wide_window"],
     "22.7": [
         "test_scheduler_and_privacy::test_the_daily_limit_of_immediate_runs_is_enforced"
+    ],
+    "22.8": [
+        "test_runner::test_a_failing_stage_records_the_reason_in_the_run",
+        "test_runner::test_a_broken_stage_ends_the_run_and_not_the_worker",
+        "test_stages::test_a_run_without_a_profile_is_refused_by_name",
     ],
 
     # ------------------------------------------------------ REQ-23 segredos

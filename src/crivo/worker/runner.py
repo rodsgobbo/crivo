@@ -150,11 +150,21 @@ class Runner:
                     "run %s suspenso no estagio %s", context.run_id, stage.name
                 )
                 return context
-            except Exception:
+            except Exception as exc:
+                # Marcado e encerrado, nunca relancado. Relancar levava a
+                # excecao ate o laco do processo: o executor morria, o run
+                # continuava `em_andamento`, a partida seguinte o devolvia a
+                # fila e o matava de novo. Um run com defeito parava os runs de
+                # todo mundo.
                 logger.exception(
                     "run %s falhou no estagio %s", context.run_id, stage.name
                 )
-                raise
+                self._queue.fail(
+                    context.run_id,
+                    f"falha no estagio {stage.name}: "
+                    f"{type(exc).__name__}: {exc}",
+                )
+                return context
             context.executados.append(stage.name)
             self._mark(context.run_id, stage.name)
             self._queue.heartbeat(context.run_id)

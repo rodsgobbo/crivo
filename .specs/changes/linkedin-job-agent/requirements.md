@@ -204,6 +204,10 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 7.5 WHEN o mesmo perfil-alvo e a mesma configuração são usados em runs diferentes, THEN the Query Planner SHALL create a mesma lista de buscas.
 
+7.6 WHEN o planejamento de um run termina, THEN the Query Planner SHALL record as buscas no registro do run antes do início da coleta.
+
+7.7 WHEN um run é retomado sem estado em memória, THEN the Job Agent SHALL read as buscas do registro desse run, sem replanejar.
+
 ### REQ-8: Coleta e deduplicação de vagas
 
 **User Story:** As a candidato, I want que o sistema junte os resultados de todas as buscas em uma lista sem repetição, so that eu não leia a mesma vaga várias vezes.
@@ -505,6 +509,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 22.6 WHEN o usuário solicita um run imediato, THEN the Scheduler SHALL create esse run com a janela de publicação ampla configurada.
 
 22.7 IF um usuário excede o número diário configurado de runs imediatos, THEN the Scheduler SHALL reject a solicitação e display o instante em que novas solicitações serão aceitas.
+
+22.8 IF um estágio de um run falha, THEN the Job Agent SHALL update esse run para o estado interrompido, record a causa junto ao registro do run e continue executando os runs seguintes.
 
 ### REQ-23: Proteção de credenciais e segredos
 

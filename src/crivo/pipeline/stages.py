@@ -115,7 +115,7 @@ class PlanejamentoStage:
         }
 
     def run(self, context: RunContext) -> None:
-        perfil = context.dados["perfil"]
+        perfil = carregar_perfil(self._connection, self._config, context)
         config = self._config or context.config
         buscas = plan(
             perfil,
@@ -129,6 +129,20 @@ class PlanejamentoStage:
         # O contador guarda o texto das buscas, e nao a quantidade: quando o
         # run traz pouca coisa, a primeira pergunta e o que ele procurou.
         context.contadores["buscas"] = [q.texto for q in buscas]
+        # Gravado agora, e nao so na suspensao ou no fim. Um run devolvido a
+        # fila retoma com a memoria vazia, e sem os termos no banco a coleta
+        # nao tem o que executar -- era a `KeyError: 'buscas'` que derrubava o
+        # processo executor.
+        #
+        # So quando ha run para gravar: a pagina inicial roda este mesmo
+        # estagio, com um identificador que nao existe, para mostrar as buscas
+        # que o proximo run executaria. Exigir a linha aqui transformaria uma
+        # previa em erro.
+        fila = RunQueue(self._connection)
+        if fila.get(context.run_id) is not None:
+            fila.record_counters(
+                context.run_id, buscas=context.contadores["buscas"]
+            )
 
 
 class ColetaStage:
@@ -153,8 +167,13 @@ class ColetaStage:
         self._fila = RunQueue(connection)
 
     def run(self, context: RunContext) -> None:
-        buscas = [q.texto for q in context.dados["buscas"]]
-        perfil = context.dados["perfil"]
+        buscas = carregar_buscas(self._connection, context)
+        if not buscas:
+            raise RunSemBuscas(
+                f"run {context.run_id} retomado sem buscas gravadas; "
+                "peca a busca de novo para que o planejamento rode"
+            )
+        perfil = carregar_perfil(self._connection, self._config, context)
         # A escolha gravada com o run vence a configuracao: foi o usuario quem
         # decidiu o alcance, e um run releito meses depois precisa continuar
         # dizendo o que ele de fato cobriu.
@@ -288,6 +307,32 @@ class PreFiltroStage:
                 "UPDATE jobs SET blocker = ? WHERE job_id = ? AND user_id = ?",
                 (blocker, job_id, context.user_id),
             )
+
+
+class RunSemBuscas(RuntimeError):
+    """Retomada sem termo de busca em lugar nenhum."""
+
+
+def carregar_buscas(connection, context: RunContext) -> list[str]:
+    """Os termos deste run: da memoria se houver, do banco quando nao houver.
+
+    Mesma razao de `carregar_perfil`, e o mesmo defeito que ele ja tinha
+    corrigido para o perfil. `RunContext.dados` nao atravessa nem a suspensao
+    do enriquecimento nem a retomada de um run devolvido a fila por morte do
+    processo -- e `context.dados["buscas"]` levantava `KeyError` ali. A excecao
+    subia ate o laco do executor e o matava.
+
+    Os termos vem da propria linha do run, gravada pelo planejamento, porque e
+    o que aquele run de fato procurou. Replanejar aqui daria a lista de hoje
+    para um run de ontem, e o relatorio passaria a citar busca que nunca
+    aconteceu.
+    """
+    do_contexto = context.dados.get("buscas")
+    if do_contexto:
+        return [q.texto for q in do_contexto]
+    linha = RunQueue(connection).get(context.run_id)
+    gravadas = json.loads(linha["buscas"] or "[]") if linha else []
+    return [str(termo) for termo in gravadas if str(termo).strip()]
 
 
 def carregar_perfil(connection, config, context: RunContext) -> dict:

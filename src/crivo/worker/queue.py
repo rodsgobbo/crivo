@@ -234,6 +234,26 @@ class RunQueue:
             return
         self._update(run_id, _normalize_counters(counters))
 
+    def fail(self, run_id: str, motivo: str) -> None:
+        """Encerra um run que quebrou, nomeando o estagio e a causa.
+
+        Existe porque a alternativa era a excecao subir ate o laco do processo.
+        Um run defeituoso derrubava o executor inteiro -- e, como ele continuava
+        `em_andamento`, a partida seguinte o devolvia a fila e morria de novo.
+        Um run ruim parava os runs de todos os usuarios, em ciclo, e o sintoma
+        era o processo sumir da janela sem ninguem entender por que.
+        """
+        self._update(
+            run_id,
+            {
+                "estado": INTERROMPIDO,
+                "encerrado_em": _stamp(_now()),
+                # Truncado porque a mensagem carrega o texto da excecao, que nao
+                # tem tamanho previsivel.
+                "motivo_recusa": str(motivo)[:500],
+            },
+        )
+
     def finish(self, run_id: str, **counters: Any) -> None:
         """Encerra o run, gravando os contadores do resultado."""
         payload: dict[str, Any] = {

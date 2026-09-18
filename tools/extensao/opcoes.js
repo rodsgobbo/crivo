@@ -14,7 +14,8 @@
 
   var campos = ["token", "app", "total", "destaques", "ultimo_envio_em",
                 "ultimo_erro", "ultimo_erro_em", "ultima_varredura_em",
-                "ultima_url", "cards_vistos", "cards_com_sinal", "sem_token"];
+                "ultima_url", "cards_vistos", "cards_com_sinal", "sem_token",
+                "cards_vazios", "amostra"];
 
   var APP_PADRAO = "http://localhost:8000";
 
@@ -31,7 +32,13 @@
     try { return new Date(iso).toLocaleString(); } catch (e) { return iso; }
   }
 
-  function diagnostico(g) {
+  /* O que dizer sobre a ULTIMA varredura, e se aquilo e problema.
+   *
+   * "Problema" aqui nao e o mesmo que "nao achou aviso agora". Uma varredura
+   * roda a cada rolagem, e a lista do LinkedIn e virtualizada: passar por uma
+   * tela sem nenhum aviso e normal. O que e problema mesmo e nunca ter gravado
+   * nada -- por isso o total entra na conta. */
+  function ultimaVarredura(g) {
     if (!g.token) return ["Sem token. Cole o token de /extensao e salve.", true];
     if (!g.ultima_varredura_em) {
       return [
@@ -41,27 +48,54 @@
         true
       ];
     }
+
+    var vazios = g.cards_vazios || 0;
+    var legiveis = Math.max(0, (g.cards_vistos || 0) - vazios);
+    var quando = local(g.ultima_varredura_em) + " em " + (g.ultima_url || "?");
+    var nunca_gravou = !(g.total > 0);
+
     if (!g.cards_vistos) {
       return [
-        "Rodou em " + local(g.ultima_varredura_em) + " (" +
-        (g.ultima_url || "?") + ") mas não encontrou nenhum card de vaga.\n\n" +
+        "Última varredura: " + quando + ", sem nenhum card de vaga.\n" +
         "Abra uma lista de vagas e role a página.",
-        true
+        nunca_gravou
+      ];
+    }
+    if (!legiveis) {
+      return [
+        "Última varredura: " + quando + ".\n" + g.cards_vistos +
+        " cards, todos sem texto — é a lista virtualizada, que só monta o que " +
+        "está na tela. Role a página devagar.",
+        nunca_gravou
       ];
     }
     if (!g.cards_com_sinal) {
       return [
-        "Viu " + g.cards_vistos + " cards, nenhum com aviso reconhecível.\n\n" +
-        "Ou essas vagas não mostram os avisos, ou a marcação mudou.",
-        true
+        "Última varredura: " + quando + ".\n" + legiveis + " cards lidos" +
+        (vazios ? " (" + vazios + " fora da tela)" : "") +
+        ", nenhum com aviso reconhecível.",
+        nunca_gravou
       ];
     }
-    return [null, false];
+    return [
+      "Última varredura: " + quando + ".\n" + legiveis + " cards lidos" +
+      (vazios ? " (" + vazios + " fora da tela)" : "") + ", " +
+      g.cards_com_sinal + " com aviso.",
+      false
+    ];
+  }
+
+  function linha(texto, classe) {
+    var div = document.createElement("div");
+    if (classe) div.className = classe;
+    div.textContent = texto;
+    return div;
   }
 
   function pintar(g) {
     var caixa = document.getElementById("estado");
     caixa.className = "estado";
+    caixa.textContent = "";
 
     if (g.ultimo_erro) {
       caixa.className = "estado erro";
@@ -70,21 +104,33 @@
       return;
     }
 
-    var par = diagnostico(g);
-    if (par[0]) {
-      caixa.className = par[1] ? "estado erro" : "estado";
-      caixa.textContent = par[0];
-      return;
+    // O acumulado vem primeiro, e existe mesmo quando a varredura de agora nao
+    // achou nada. A versao anterior escondia "28 vagas gravadas" atras de
+    // "nenhum aviso nesta tela", e quem lia concluia que nada funcionava.
+    if (g.total > 0) {
+      var n = document.createElement("div");
+      var forte = document.createElement("span");
+      forte.className = "numero";
+      forte.textContent = String(g.total);
+      n.appendChild(forte);
+      n.appendChild(document.createTextNode(" vagas gravadas · " +
+        (g.destaques || 0) + " com “top applicant”"));
+      caixa.appendChild(n);
+      caixa.appendChild(linha("último envio: " + local(g.ultimo_envio_em),
+                              "discreto"));
     }
 
-    caixa.innerHTML =
-      '<div><span class="numero">' + (g.total || 0) + "</span> vagas gravadas</div>" +
-      '<div><span class="numero">' + (g.destaques || 0) +
-      "</span> com “top applicant”</div>" +
-      '<div style="margin-top:.4rem;opacity:.75">último envio: ' +
-      local(g.ultimo_envio_em) + "<br>última varredura: " +
-      local(g.ultima_varredura_em) + " — " + (g.cards_vistos || 0) +
-      " cards, " + (g.cards_com_sinal || 0) + " com aviso</div>";
+    var par = ultimaVarredura(g);
+    if (par[1]) caixa.className = "estado erro";
+    caixa.appendChild(linha(par[0], "discreto"));
+
+    /* A amostra e texto do LinkedIn, escrito por terceiros. Vai por
+     * `textContent` e nunca por `innerHTML`: a janelinha nao executa o que le
+     * de uma pagina que nao controla. */
+    if (g.amostra) {
+      caixa.appendChild(linha("o que ela leu do primeiro card:", "discreto"));
+      caixa.appendChild(linha(g.amostra, "amostra"));
+    }
   }
 
   function recarregar() {

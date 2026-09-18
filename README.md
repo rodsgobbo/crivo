@@ -6,7 +6,7 @@ Google Drive, de um Word ou de um PDF, conecta a conta LinkedIn pelo fluxo
 oficial e traz a própria chave de um provedor de modelo de linguagem.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-28 requisitos, 210 critérios de aceitação, 21 elementos de design.
+28 requisitos, 213 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
