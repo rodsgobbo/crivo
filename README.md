@@ -1,9 +1,17 @@
 # crivo — triagem automatizada de vagas
 
+> **Primeira vez? Não é da área de informática?** Siga o
+> [**COMECE-AQUI.md**](COMECE-AQUI.md): instalação passo a passo no Windows,
+> primeiro uso e o que fazer quando algo dá errado. O resto desta página é
+> técnico.
+
 Aplicação web multiusuário que transforma um currículo em um relatório diário de
-vagas pontuadas. Cada candidato entra com a conta Google, importa o currículo do
-Google Drive, de um Word ou de um PDF, conecta a conta LinkedIn pelo fluxo
-oficial e traz a própria chave de um provedor de modelo de linguagem.
+vagas pontuadas. Cada candidato entra com a conta Google, importa o currículo de
+um Word ou de um PDF, conecta a conta LinkedIn pelo fluxo oficial e traz a
+própria chave de um provedor de modelo de linguagem. A importação pelo Google
+Drive existe como rota (`POST /resume/drive`), mas exige um token de acesso ao
+Drive que o app nunca obtém — o login pede só `openid email profile` — e a
+interface não a oferece.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
 28 requisitos, 213 critérios de aceitação, 21 elementos de design.
@@ -22,11 +30,29 @@ py -3.12 -m venv .venv
 cp .env.example .env      # preencha os segredos
 ```
 
-Quatro processos, e um comando que sobe os três de que o uso normal depende:
+No `.env`, `CRIVO_MASTER_KEY` são 32 bytes em base64 seguro para URL, e
+`CRIVO_DATABASE_URL` é o **caminho de um arquivo** SQLite (`data/crivo.db`), não
+uma URL. Gerar a chave:
+
+```bash
+.venv/Scripts/python -c "import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
+```
+
+`.env` e `config/default.toml` são lidos em relação ao diretório corrente: rode
+tudo a partir da raiz do repositório.
+
+Quatro processos, e um comando que sobe os três de que o uso normal depende. Os
+comandos abaixo supõem o `.venv` ativado; sem ativá-lo, troque `python` por
+`.venv/Scripts/python`, senão o interpretador do sistema responde
+`No module named crivo`.
 
 ```bash
 python -m crivo tudo       # web + runs + enricher, numa janela só
 ```
+
+A face web atende em <http://127.0.0.1:8000>. Use esse endereço, e não
+`localhost`: o retorno do OAuth é montado a partir do host da requisição, e o
+Google só aceita o que foi cadastrado.
 
 Ou cada um no seu terminal, quando você quiser vê-los separados:
 
@@ -170,7 +196,7 @@ operar precisa saber.
 
 ### Os testes não tocam as origens reais, e o uso real só cobriu parte delas
 
-Os 861 testes usam fontes e provedores falsos. Fora deles, a coleta e a releitura
+Os 882 testes usam fontes e provedores falsos. Fora deles, a coleta e a releitura
 já rodaram de verdade: runs de 24h contra o LinkedIn e um modelo real relendo o
 topo, registrados no [`BACKLOG.md`](BACKLOG.md) — e cada um encontrou defeito que
 os testes não previam. Dos fluxos de autorização do Google e do LinkedIn não há
