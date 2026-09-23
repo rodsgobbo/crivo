@@ -287,6 +287,7 @@ que fazer.
 | `requires a different Python` durante o `pip install` | O `.venv` foi criado com outra versão. Apague a pasta `.venv` e refaça o Passo 3, começando por `py -3.12`. |
 | `nao foi possivel subir: modo tudo: variaveis de ambiente ausentes [...]` | Falta preencher uma linha do `.env` — a mensagem diz qual. Refaça o Passo 4. Confira também se o arquivo se chama `.env` mesmo, e não `.env.txt`. |
 | `chave mestra ilegivel` ou `chave mestra com N bytes; esperado 32` | A `CRIVO_MASTER_KEY` foi copiada pela metade ou com algo a mais. Gere e cole de novo (Passo 4.2), sem espaços e sem aspas. |
+| `WARNING ... trava de enricher sem sinal de vida desde ...; assumindo que o processo anterior morreu e tomando o lugar dele` | **Não é erro, e não precisa fazer nada.** Da última vez o crivo foi fechado no X, e esta partida assumiu o lugar do anterior. Para não ver de novo, feche com **Ctrl+C**. |
 | `ja ha um processo de runs ativo` (ou `de enricher`) | Primeiro confira se não há outra janela do crivo aberta. Se não houver, alguma vez a janela foi fechada no X: **feche o crivo com Ctrl+C, espere 15 minutos** e abra de novo. |
 | `address already in use` ou `[Errno 10048]` | O crivo já está aberto em outra janela de terminal. Use essa, ou feche-a com **Ctrl+C**. |
 | O navegador diz **"Não é possível acessar esse site"** | A janela do terminal foi fechada ou o crivo ainda está subindo. Refaça a [Parte 2](#parte-2--abrir-o-crivo-toda-vez-que-for-usar) e espere a linha `Uvicorn running`. |
