@@ -7,6 +7,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Triagem de vagas — {{ ctx.gerado_em[:10] }}</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/crivo.css">
 </head>
 <body class="relatorio">
@@ -17,10 +18,28 @@
 
 <h1>Triagem de vagas</h1>
 <p class="sub">
-  Run {{ ctx.run_id }} · gerado em {{ ctx.gerado_em | local_completo }} ·
-  {{ ctx.contagens.brutos }} coletadas, {{ ctx.contagens.filtrados }} após o pré-filtro,
-  {{ ctx.contagens.novos }} novas
+  Gerado em {{ ctx.gerado_em | local_completo }} · run {{ ctx.run_id[:8] }}
 </p>
+
+{# As contagens do run em tres mostradores, e nao numa frase. Elas nao se
+   comparam entre si -- coletadas, sobreviventes e novas medem etapas
+   diferentes --, entao barras lado a lado mentiriam sobre a relacao. O numero
+   de novas e o unico colorido: e a resposta da pergunta que faz alguem abrir o
+   relatorio de novo. #}
+<div class="tiles">
+  <div class="tile">
+    <span class="numero">{{ ctx.contagens.brutos }}</span>
+    <span class="rotulo-tile">coletadas da origem</span>
+  </div>
+  <div class="tile">
+    <span class="numero">{{ ctx.contagens.filtrados }}</span>
+    <span class="rotulo-tile">sobreviveram ao pré-filtro</span>
+  </div>
+  <div class="tile destaca-novas">
+    <span class="numero">{{ ctx.contagens.novos }}</span>
+    <span class="rotulo-tile">novas para você</span>
+  </div>
+</div>
 
 {# ---------------------------------------------------- estados degradados #}
 {% if ctx.modo_deterministico %}
@@ -153,14 +172,19 @@
       <span class="teto" title="nota limitada por requisito eliminatório ou trilha">·
         teto</span>{% endif %}</span>
   </div>
+  {# Cada dado numa pilula propria. Antes era uma frase separada por pontos, e
+     achar o modelo de trabalho exigia ler a linha toda -- numa lista de cento e
+     sessenta vagas, isso e a diferenca entre varrer e ler. #}
   <p class="meta">
-    {{ vaga.local or "local não informado" }} ·
-    {{ vaga.modelo or "modelo não informado" }} ·
+    <span class="chip">{{ vaga.local or "local não informado" }}</span>
+    <span class="chip{{ ' remoto' if vaga.modelo == 'remote' }}">
+      {{ vaga.modelo or "modelo não informado" }}
+    </span>
     {% if vaga.fora_da_janela %}
-      <strong class="atrasada">{{ vaga.publicada_em }} — fora da janela</strong>
+      <span class="chip atrasada">{{ vaga.publicada_em }} — fora da janela</span>
     {% else %}
-      {{ vaga.publicada_em or "data não informada" }}
-    {% endif %} ·
+      <span class="chip">{{ vaga.publicada_em or "data não informada" }}</span>
+    {% endif %}
     {# Nova de verdade e a que nunca apareceu em relatorio anterior. O estado
        da vaga nao responde isso: ele guarda a decisao de quem le -- vista,
        aplicada, descartada -- e uma vaga que ninguem tocou continua `novo`
@@ -173,11 +197,15 @@
     {% else %}
       <span class="novidade nova">nova</span>
     {% endif %}
-    {% if vaga.candidatos %} · {{ vaga.candidatos }} candidatos{% endif %}
+    {% if vaga.candidatos %}
+      <span class="chip">{{ vaga.candidatos }} candidatos</span>
+    {% endif %}
     {# A busca que a trouxe. Sem isto, "por que esta vaga apareceu?" só tinha
        resposta lendo o código do planejador -- e um termo que só traz ruído
        ficava impossível de identificar a partir do relatório. #}
-    {% if vaga.busca %} · achada por <strong>{{ vaga.busca }}</strong>{% endif %}
+    {% if vaga.busca %}
+      <span class="chip busca">achada por {{ vaga.busca }}</span>
+    {% endif %}
   </p>
 
   <p class="acao-recomendada acao-{{ vaga.acao | replace(' ', '-') }}">
@@ -206,14 +234,17 @@
   </p>
   {% endif %}
 
+  {# O que o perfil tem e o que falta, separados tambem pela cor. O sinal
+     continua na palavra -- "✓" e "falta" --, porque verde e amarelo sao um par
+     que parte dos leitores nao distingue. #}
   {% if vaga.diferenciais %}
-  <div class="tags">
+  <div class="tags tem">
     {% for termo in vaga.diferenciais %}<span class="tag">✓ {{ termo }}</span>{% endfor %}
   </div>
   {% endif %}
 
   {% if vaga.lacunas %}
-  <div class="tags">
+  <div class="tags falta">
     {% for termo in vaga.lacunas %}<span class="tag">falta {{ termo }}</span>{% endfor %}
   </div>
   {% endif %}

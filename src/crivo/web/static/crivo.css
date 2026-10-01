@@ -1,29 +1,58 @@
-/* Folha única da interface do crivo.
+/* Folha única da aplicação. As cinco telas -- início, perfil, conferência,
+ * extensão e relatório -- compartilham estes tokens e estes componentes.
  *
- * Ela existe porque o CSS vivia repetido dentro de cada gabarito, e a cópia já
- * havia divergido: os tokens de `home` deixaram de ser iguais aos de
- * `conferencia` e `perfil` no espaço de uma sessão de trabalho. Três lugares
- * para mudar uma cor é o mesmo que nenhum.
+ * Antes havia quatro cópias dos mesmos tokens, com nomes diferentes para as
+ * mesmas cores (`--card` e `--caixa`, `--linha` e `--borda`, `--alerta` e
+ * `--erro`). Duas paletas com nomes diferentes para a mesma cor são o mesmo
+ * problema que a triplicação era, só disfarçado.
  *
- * Sem build e sem framework, de propósito: o arquivo é servido como está e o
- * navegador o entende sem etapa intermediária.
- */
+ * REGRA DE COR, e vale para o arquivo inteiro: cor reforça, nunca carrega
+ * sozinha. Verde e vermelho são justamente o par que parte dos leitores não
+ * distingue, e em escala de cinza os três estados viram o mesmo cinza. Todo
+ * estado tem símbolo ou palavra junto -- é o símbolo que carrega o
+ * significado. Cada valor abaixo passa 4,5:1 contra as duas superfícies do seu
+ * tema, medido, e não estimado.
+ *
+ * As cores da marca são duas, e dizem coisas diferentes:
+ *   --marca  identidade e ação. Cabeçalho, botão, foco, logo, vaga nova.
+ *   --ok     qualidade. Destaque de vaga boa, estado resolvido.
+ * Nunca troque uma pela outra: elas aparecem juntas na mesma vaga. */
 
-/* ------------------------------------------------------------------ tokens */
 :root {
   color-scheme: light dark;
 
-  --fundo: #fbfbfa;
-  --texto: #1a1a19;
-  --suave: #6b6b66;
-  --borda: #e3e3df;
-  --caixa: #fff;
-  --ok: #1c6b3f;
-  --pendente: #8a6d1f;
-  --erro: #b4232a;
-  /* Novidade tem cor propria, e nao a do destaque: uma diz quando a vaga
-   * chegou, a outra quanto ela vale, e as duas aparecem na mesma vaga. */
-  --novo: #14539e;
+  /* ---------------------------------------------------------- superfícies */
+  --fundo: #f7f7f8;
+  --caixa: #ffffff;
+  --caixa-2: #f1f1f4;
+  --texto: #18181b;
+  --suave: #5c5c66;
+  --borda: #e4e4e9;
+
+  /* ---------------------------------------------------------------- marca */
+  --marca: #6d28d9;
+  --marca-viva: #7c3aed;
+  --marca-fundo: #f1ebfd;
+  /* O cabeçalho é a única superfície escura do tema claro, e por isso tem
+   * tokens próprios: o texto dele não pode herdar a cor de texto da página.
+   * O grafite abre e o violeta fecha -- a cor da marca entra onde o olho
+   * termina de ler a barra. */
+  --topo: linear-gradient(100deg, #18181b 0%, #2a2233 45%, #6d28d9 100%);
+  --topo-texto: #f6f3fe;
+  --topo-suave: #d2c5f7;
+
+  /* --------------------------------------------------------------- estados */
+  /* Cada tinta é medida contra o cartão branco E contra o próprio fundo
+   * tingido, que é onde ela aparece de fato. Os valores anteriores passavam no
+   * branco e caíam para 4,4:1 dentro da própria pílula. */
+  --ok: #136c34;
+  --ok-fundo: #ecf7ef;
+  --pendente: #875206;
+  --pendente-fundo: #fdf6e8;
+  --erro: #a81f15;
+  --erro-fundo: #fdeeed;
+  --novo: #6d28d9;
+  --novo-fundo: #f1ebfd;
 
   /* Escala tipográfica de razão 1,25. Antes havia seis tamanhos, cinco deles
    * espremidos entre 0,78 e 0,93rem -- diferenças de meio pixel, invisíveis na
@@ -33,6 +62,7 @@
   --txt-md: 1rem;
   --txt-lg: 1.25rem;
   --txt-xl: 1.75rem;
+  --txt-2xl: 2.5rem;
 
   /* Espaçamento em múltiplos de 4px. Antes eram dezesseis valores distintos,
    * com vizinhos separados por menos de um pixel. */
@@ -44,21 +74,48 @@
   --esp-8: 2rem;
   --esp-12: 3rem;
 
-  --raio: 8px;
-  --raio-sm: 5px;
+  --raio-sm: 6px;
+  --raio: 10px;
+  --raio-lg: 16px;
+  --pilula: 999px;
+
+  /* Três níveis, e não um por componente: cartão apoiado, cartão em foco e
+   * barra flutuante. */
+  --sombra-1: 0 1px 2px rgb(24 24 27 / 0.05), 0 1px 3px rgb(24 24 27 / 0.04);
+  --sombra-2: 0 2px 4px rgb(24 24 27 / 0.06), 0 8px 20px rgb(24 24 27 / 0.07);
+  --sombra-topo: 0 6px 20px rgb(24 24 27 / 0.3);
 }
 
+/* O tema escuro é escolhido, e não o claro invertido: cada passo é medido
+ * contra a superfície escura, que reflete luz de outro jeito. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo: #1a1a19;
-    --texto: #ededea;
-    --suave: #9a9a94;
-    --borda: #33332f;
-    --caixa: #232320;
+    --fundo: #121214;
+    --caixa: #1c1c20;
+    --caixa-2: #26262c;
+    --texto: #ededf0;
+    --suave: #9b9ba5;
+    --borda: #2d2d34;
+
+    --marca: #c4b5fd;
+    --marca-viva: #a78bfa;
+    --marca-fundo: #2a2440;
+    --topo: linear-gradient(100deg, #0f0f11 0%, #241d33 45%, #5b21b6 100%);
+    --topo-texto: #f6f3fe;
+    --topo-suave: #d2c5f7;
+
     --ok: #5fbe8a;
+    --ok-fundo: #16311f;
     --pendente: #d6ad48;
+    --pendente-fundo: #332a14;
     --erro: #e4757c;
-    --novo: #7fb2f0;
+    --erro-fundo: #3a1c1e;
+    --novo: #c4b5fd;
+    --novo-fundo: #272046;
+
+    --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --sombra-2: 0 2px 4px rgb(0 0 0 / 0.4), 0 10px 24px rgb(0 0 0 / 0.45);
+    --sombra-topo: 0 6px 20px rgb(0 0 0 / 0.5);
   }
 }
 
@@ -67,97 +124,153 @@
 
 body {
   margin: 0;
-  padding: var(--esp-12) var(--esp-6);
+  padding: var(--esp-6) var(--esp-4) var(--esp-12);
   background: var(--fundo);
   color: var(--texto);
-  font: var(--txt-md)/1.6 ui-sans-serif, system-ui, sans-serif;
+  font: var(--txt-md)/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-main { max-width: 44rem; margin: 0 auto; }
+main { max-width: 46rem; margin: 0 auto; }
 
 h1 {
   font-size: var(--txt-xl);
-  margin: 0 0 var(--esp-1);
-  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin: 0 0 var(--esp-2);
+  letter-spacing: -0.02em;
 }
 
+/* Título de seção: versalete com um traço da marca à esquerda. O traço é o que
+ * faz a seção ser achada ao rolar, sem precisar de corpo maior. */
 h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
   font-size: var(--txt-xs);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--suave);
   margin: var(--esp-8) 0 var(--esp-3);
-  font-weight: 600;
+  font-weight: 700;
+}
+h2::before {
+  content: "";
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--marca);
+  flex: none;
 }
 
-.sub { color: var(--suave); margin: 0 0 var(--esp-8); }
+.sub { color: var(--suave); margin: 0 0 var(--esp-6); }
 
 a { color: inherit; }
+a:hover { text-decoration-thickness: 2px; }
 
 /* Nenhum estado de foco existia em toda a aplicação, e ela é inteiramente
  * formulários: quem navega por teclado ficava sem saber onde estava, porque o
- * contorno padrão do navegador some contra o fundo escuro e o canto arredondado. */
+ * contorno padrão do navegador some contra o fundo escuro e o canto
+ * arredondado. */
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--texto);
+  outline: 2px solid var(--marca-viva);
   outline-offset: 2px;
   border-radius: var(--raio-sm);
 }
 
-/* ------------------------------------------------------------- navegação */
-/* O relatorio era um beco sem saida: nenhum link de volta, nenhum caminho para
- * o perfil. As outras paginas ofereciam um "voltar" so no rodape, alcancavel
- * depois de rolar tudo. Numa aplicacao de quatro telas, estar em uma delas nao
- * pode custar a rolagem inteira para sair. */
+/* -------------------------------------------------------------- navegação */
+/* O relatório era um beco sem saída: nenhum link de volta, nenhum caminho para
+ * o perfil. As outras páginas ofereciam um "voltar" só no rodapé, alcançável
+ * depois de rolar tudo. Numa aplicação de cinco telas, estar em uma delas não
+ * pode custar a rolagem inteira para sair.
+ *
+ * A barra é a única superfície escura do tema claro. Ela ancora a página: sem
+ * ela, a tela começava com um título solto no vazio. */
 .navegacao {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: var(--esp-2) var(--esp-4);
   margin-bottom: var(--esp-8);
-  padding-bottom: var(--esp-3);
-  border-bottom: 1px solid var(--borda);
+  padding: var(--esp-3) var(--esp-4);
+  border-radius: var(--raio-lg);
+  background: var(--topo);
+  color: var(--topo-texto);
+  box-shadow: var(--sombra-topo);
   font-size: var(--txt-sm);
 }
-/* O nome do produto e o caminho de volta -- convencao que todo site usa, e que
- * dispensa um botao dedicado em cada pagina. */
+
+/* O nome do produto é o caminho de volta -- convenção que todo site usa, e que
+ * dispensa um botão dedicado em cada página. */
 .marca-produto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-2);
   font-weight: 700;
+  font-size: var(--txt-md);
   text-decoration: none;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  color: var(--topo-texto);
 }
-.trilha { display: flex; flex-wrap: wrap; gap: var(--esp-3); color: var(--suave); }
-.trilha a { color: var(--suave); }
-.trilha a:hover { color: var(--texto); }
-/* A secao aberta nao finge levar a outro lugar. */
-.trilha .aqui { color: var(--texto); font-weight: 600; }
+.marca-produto .logo { width: 1.5rem; height: 1.5rem; flex: none; }
+/* Dentro da barra o logo é monocromático: o furo aceso usaria a cor da marca
+ * contra a própria cor da marca, e desapareceria. */
+.navegacao .logo .destaque { fill: var(--topo-texto); }
+.navegacao .logo { color: var(--topo-suave); }
+
+.trilha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-1);
+  margin-left: auto;
+}
+.trilha a,
+.trilha .aqui {
+  padding: var(--esp-1) var(--esp-3);
+  border-radius: var(--pilula);
+  text-decoration: none;
+  color: var(--topo-suave);
+}
+.trilha a:hover { background: rgb(255 255 255 / 0.14); color: var(--topo-texto); }
+/* A seção aberta não finge levar a outro lugar. */
+.trilha .aqui {
+  background: rgb(255 255 255 / 0.18);
+  color: var(--topo-texto);
+  font-weight: 600;
+}
 @media print { .navegacao { display: none; } }
 
 /* ---------------------------------------------------------------- cartões */
-/* Três pesos. O peso vem de borda, densidade e tamanho -- e não de mais cor,
- * que já carrega o significado de estado. */
+/* Três pesos. O peso vem de borda, densidade, sombra e tamanho -- e não de
+ * mais cor, que já carrega o significado de estado. */
 .cartao {
   background: var(--caixa);
   border: 1px solid var(--borda);
-  border-radius: var(--raio);
+  border-radius: var(--raio-lg);
   padding: var(--esp-4) var(--esp-6);
-  margin-bottom: var(--esp-2);
+  margin-bottom: var(--esp-3);
+  box-shadow: var(--sombra-1);
 }
 
 /* O que exige ação agora. Único na página por vez. */
 .cartao.agora {
-  border-color: var(--texto);
+  border-color: transparent;
+  background:
+    linear-gradient(var(--caixa), var(--caixa)) padding-box,
+    var(--topo) border-box;
+  border: 2px solid transparent;
   padding: var(--esp-6);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.07);
+  box-shadow: var(--sombra-2);
 }
-.cartao.agora > .linha .rotulo { font-size: var(--txt-lg); }
+.cartao.agora > .linha .rotulo { font-size: var(--txt-lg); letter-spacing: -0.01em; }
 
 /* Resolvido: presente e alcançável, porém calado. Ocupa um terço da altura. */
 .cartao.pronto {
   background: none;
   border: 0;
-  border-left: 2px solid var(--ok);
+  border-left: 3px solid var(--ok);
   border-radius: 0;
   padding: var(--esp-2) var(--esp-4);
+  box-shadow: none;
 }
 .cartao.pronto > summary,
 .cartao.pronto > .linha .rotulo {
@@ -165,8 +278,8 @@ a { color: inherit; }
   color: var(--suave);
 }
 
-.cartao.andando { border-color: var(--pendente); }
-.cartao.falhou { border-color: var(--erro); }
+.cartao.andando { border-color: var(--pendente); background: var(--pendente-fundo); }
+.cartao.falhou { border-color: var(--erro); background: var(--erro-fundo); }
 
 .linha {
   display: flex;
@@ -183,49 +296,73 @@ a { color: inherit; }
   color: var(--suave);
   font-size: var(--txt-sm);
   margin: var(--esp-2) 0 0;
-  line-height: 1.5;
+  line-height: 1.55;
 }
-/* Nota que abre um bloco, e nao segue um paragrafo. */
-.nota.destacada { margin-top: var(--esp-3); }
-/* Nota que e o unico conteudo do cartao. */
+/* Nota que abre um bloco, e não segue um parágrafo. */
+.nota.destacada {
+  margin-top: var(--esp-3);
+  padding-left: var(--esp-3);
+  border-left: 2px solid var(--marca-fundo);
+  color: var(--texto);
+}
+/* Nota que é o único conteúdo do cartão. */
 .nota.sozinha { margin: 0; }
 
 /* --------------------------------------------------------------- estados */
-/* Cor sozinha não serve: verde e vermelho são justamente o par que parte dos
- * leitores não distingue, e em escala de cinza os três viram o mesmo. O
- * símbolo é a redundância que carrega o significado sem depender do matiz. */
-.marca { font-weight: 600; font-size: var(--txt-sm); white-space: nowrap; }
-.marca::before { margin-right: 0.35em; font-weight: 700; }
-.marca.ok { color: var(--ok); }
+/* Pílula com símbolo. O símbolo é a redundância que carrega o significado sem
+ * depender do matiz; a cor de fundo é o que faz o estado ser achado de longe. */
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.1em 0.6em;
+  border-radius: var(--pilula);
+  font-weight: 600;
+  font-size: var(--txt-xs);
+  white-space: nowrap;
+  background: var(--caixa-2);
+  color: var(--suave);
+}
+.marca::before { font-weight: 700; }
+.marca.ok { color: var(--ok); background: var(--ok-fundo); }
 .marca.ok::before { content: "✓"; }
-.marca.pendente { color: var(--pendente); }
+.marca.pendente { color: var(--pendente); background: var(--pendente-fundo); }
 .marca.pendente::before { content: "●"; }
-.marca.erro { color: var(--erro); }
+.marca.erro { color: var(--erro); background: var(--erro-fundo); }
 .marca.erro::before { content: "!"; }
 
 /* ----------------------------------------------------------------- ações */
 .acao {
-  display: inline-block;
-  margin-top: var(--esp-1);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-2);
+  margin-top: var(--esp-2);
   padding: var(--esp-2) var(--esp-4);
-  background: var(--texto);
-  color: var(--fundo);
+  min-height: 2.5rem;
+  background: var(--marca);
+  color: #fff;
   border: 0;
-  border-radius: var(--raio-sm);
+  border-radius: var(--raio);
   text-decoration: none;
   font: inherit;
   font-weight: 600;
   font-size: var(--txt-sm);
   cursor: pointer;
+  box-shadow: var(--sombra-1);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
-.acao:hover { opacity: 0.88; }
+.acao:hover { background: var(--marca-viva); box-shadow: var(--sombra-2); transform: translateY(-1px); }
+.acao:active { transform: none; box-shadow: var(--sombra-1); }
 
 .acao.discreta {
-  background: transparent;
-  color: var(--suave);
+  background: var(--caixa);
+  color: var(--texto);
   border: 1px solid var(--borda);
+  box-shadow: none;
 }
-.acao.avisa { background: var(--pendente); }
+.acao.discreta:hover { background: var(--caixa-2); border-color: var(--marca); color: var(--marca); }
+.acao.avisa { background: var(--pendente); color: #fff; }
+.acao.avisa:hover { background: var(--pendente); }
 
 /* Ação indisponível continua visível, com o motivo no próprio rótulo. Removê-la
  * fazia a ausência ser indistinguível de defeito -- foi assim que "o botão de
@@ -235,13 +372,15 @@ a { color: inherit; }
   color: var(--suave);
   border: 1px dashed var(--borda);
   cursor: not-allowed;
+  box-shadow: none;
 }
+.acao.travada:hover { background: transparent; transform: none; box-shadow: none; color: var(--suave); }
 
 .sair {
   background: none;
   border: 1px solid var(--borda);
   color: var(--suave);
-  border-radius: var(--raio-sm);
+  border-radius: var(--raio);
   padding: var(--esp-2) var(--esp-4);
   font: inherit;
   font-size: var(--txt-sm);
@@ -249,9 +388,9 @@ a { color: inherit; }
   cursor: pointer;
   margin-top: var(--esp-2);
 }
-.sair:hover { color: var(--erro); border-color: var(--erro); }
+.sair:hover { color: var(--erro); border-color: var(--erro); background: var(--erro-fundo); }
 
-/* --------------------------------------------------------------- formulários */
+/* ----------------------------------------------------------- formulários */
 .envio {
   display: flex;
   flex-wrap: wrap;
@@ -264,29 +403,33 @@ a { color: inherit; }
 .envio input[type="password"] {
   font: inherit;
   font-size: var(--txt-sm);
-  padding: var(--esp-2);
+  padding: var(--esp-2) var(--esp-3);
   min-width: 0;
-  background: var(--fundo);
+  background: var(--caixa);
   color: var(--texto);
   border: 1px solid var(--borda);
-  border-radius: var(--raio-sm);
+  border-radius: var(--raio);
 }
 .envio input[type="password"],
 .envio input[type="text"] { flex: 1 1 14rem; width: auto; margin-top: 0; }
 .envio .acao { margin-top: 0; }
 
 input[type="text"],
+input[type="search"],
 textarea {
   width: 100%;
   margin-top: var(--esp-1);
   padding: var(--esp-2) var(--esp-3);
-  background: var(--fundo);
+  background: var(--caixa);
   color: var(--texto);
   border: 1px solid var(--borda);
-  border-radius: var(--raio-sm);
+  border-radius: var(--raio);
   font: inherit;
   font-size: var(--txt-sm);
 }
+input[type="text"]:focus,
+input[type="search"]:focus,
+textarea:focus { border-color: var(--marca); }
 textarea { min-height: 6rem; resize: vertical; }
 textarea.json { font: var(--txt-sm) ui-monospace, monospace; min-height: 11rem; }
 
@@ -294,11 +437,12 @@ textarea.json { font: var(--txt-sm) ui-monospace, monospace; min-height: 11rem; 
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--esp-1) var(--esp-4);
+  gap: var(--esp-1) var(--esp-3);
   margin: var(--esp-3) 0 var(--esp-1);
   padding: var(--esp-3) var(--esp-4);
   border: 1px solid var(--borda);
   border-radius: var(--raio);
+  background: var(--caixa-2);
 }
 .alcance legend {
   padding: 0 var(--esp-1);
@@ -310,11 +454,15 @@ textarea.json { font: var(--txt-sm) ui-monospace, monospace; min-height: 11rem; 
   display: inline-flex;
   align-items: center;
   gap: var(--esp-1);
+  padding: var(--esp-1) var(--esp-2);
+  border-radius: var(--pilula);
   font-size: var(--txt-sm);
   cursor: pointer;
 }
+.alcance label:hover { background: var(--marca-fundo); }
+input[type="radio"], input[type="checkbox"] { accent-color: var(--marca-viva); }
 
-/* --------------------------------------------------------------- progresso */
+/* ------------------------------------------------------------- progresso */
 .girando {
   display: inline-block;
   width: 0.8em;
@@ -329,16 +477,18 @@ textarea.json { font: var(--txt-sm) ui-monospace, monospace; min-height: 11rem; 
 @keyframes girar { to { transform: rotate(360deg); } }
 
 .barra {
-  height: 6px;
+  height: 8px;
   margin: var(--esp-3) 0 var(--esp-1);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--suave) 20%, transparent);
+  border-radius: var(--pilula);
+  background: color-mix(in srgb, var(--pendente) 18%, transparent);
   overflow: hidden;
 }
+/* A trilha vazia é um passo mais claro da mesma cor do preenchimento, e não um
+ * cinza: assim o estado se lê ao longo da barra inteira. */
 .barra-cheia {
   height: 100%;
   background: var(--pendente);
-  border-radius: 3px;
+  border-radius: var(--pilula);
   transition: width 0.4s ease;
 }
 
@@ -347,18 +497,20 @@ textarea.json { font: var(--txt-sm) ui-monospace, monospace; min-height: 11rem; 
 @media (prefers-reduced-motion: reduce) {
   .girando { animation: none; }
   .barra-cheia { transition: none; }
+  .acao, .vaga { transition: none; }
+  .acao:hover, .vaga:hover { transform: none; }
 }
 
-/* ------------------------------------------------------------- conteúdo */
+/* --------------------------------------------------------------- conteúdo */
 table { width: 100%; border-collapse: collapse; font-size: var(--txt-sm); }
 td { padding: var(--esp-2) 0; border-bottom: 1px solid var(--borda); }
 td:last-child { text-align: right; color: var(--suave); }
 tr:last-child td { border-bottom: 0; }
 
 code {
-  background: color-mix(in srgb, var(--suave) 16%, transparent);
+  background: var(--caixa-2);
   padding: 0.12em 0.38em;
-  border-radius: 4px;
+  border-radius: var(--raio-sm);
   font: 0.88em ui-monospace, monospace;
 }
 
@@ -370,17 +522,17 @@ li { margin: 0.15rem 0; }
   font-size: var(--txt-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--suave);
 }
-.origem.linkedin { color: var(--ok); }
+.origem.linkedin { color: var(--marca); }
 .origem.resume { color: var(--pendente); }
 
 /* Uma experiência do histórico. */
 .exp {
-  margin: var(--esp-2) 0 0;
+  margin: var(--esp-3) 0 0;
   padding-left: var(--esp-3);
-  border-left: 2px solid var(--borda);
+  border-left: 2px solid var(--marca-fundo);
 }
 .exp .quando { color: var(--suave); font-size: var(--txt-sm); }
 
@@ -389,12 +541,29 @@ li { margin: 0.15rem 0; }
   margin: var(--esp-2) 0 0;
   padding: var(--esp-2) var(--esp-3);
   border-left: 2px solid var(--borda);
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  background: var(--caixa-2);
   color: var(--suave);
   font-size: var(--txt-sm);
   white-space: pre-wrap;
 }
 
-/* --------------------------------------------------------------- colapso */
+/* O token do extrator, que aparece uma vez só. */
+.token {
+  display: block;
+  margin: var(--esp-3) 0;
+  padding: var(--esp-3) var(--esp-4);
+  font-family: ui-monospace, monospace;
+  font-size: var(--txt-md);
+  word-break: break-all;
+  background: var(--marca-fundo);
+  border: 1px dashed var(--marca);
+  border-radius: var(--raio);
+  user-select: all;
+}
+.passos li { margin-bottom: var(--esp-2); }
+
+/* ---------------------------------------------------------------- colapso */
 details.cartao > summary {
   cursor: pointer;
   font-weight: 600;
@@ -412,192 +581,305 @@ details.cartao[open] > summary { margin-bottom: var(--esp-3); }
 
 .rodape {
   margin-top: var(--esp-12);
+  padding-top: var(--esp-4);
+  border-top: 1px solid var(--borda);
   color: var(--suave);
   font-size: var(--txt-sm);
 }
 
-/* ------------------------------------------------------------ relatório */
-/* O relatorio era a quarta copia dos tokens, e com outros nomes para os mesmos
- * conceitos: `--card` no lugar de `--caixa`, `--linha` no lugar de `--borda`,
- * `--alerta` no lugar de `--erro`. Duas paletas com nomes diferentes para a
- * mesma cor e o mesmo problema que a triplicacao tinha, so que disfarcado. */
-
-/* A pagina de relatorio e mais larga: ela mostra tabela e descricao de vaga. */
-body.relatorio main { max-width: 52rem; }
+/* ------------------------------------------------------------- relatório */
+/* A página de relatório é mais larga: ela mostra tabela e descrição de vaga. */
+body.relatorio main { max-width: 54rem; }
 body.relatorio h2 {
   font-size: var(--txt-lg);
   text-transform: none;
-  letter-spacing: normal;
+  letter-spacing: -0.01em;
   color: var(--texto);
 }
+body.relatorio h2::before { height: 4px; width: 18px; }
 
-.vaga {
+/* Contagens do run. Não é gráfico: são três números que não se comparam entre
+ * si -- coletadas, sobreviventes e novas medem etapas diferentes --, e três
+ * números pedem três mostradores, não barras lado a lado. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--esp-3);
+  margin: 0 0 var(--esp-6);
+}
+.tile {
+  padding: var(--esp-3) var(--esp-4);
   background: var(--caixa);
   border: 1px solid var(--borda);
   border-radius: var(--raio);
-  padding: var(--esp-4) var(--esp-6);
-  margin-bottom: var(--esp-4);
+  box-shadow: var(--sombra-1);
 }
-/* Destaque e o unico lugar do relatorio onde a cor carrega significado, e por
- * isso ele tambem engrossa a borda: quem nao distingue verde nao perde o
- * sinal. */
-.vaga.destaque { border-left: 4px solid var(--ok); }
-
-.cabeca {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--esp-4);
-  align-items: baseline;
-}
-.cabeca h3 { margin: 0; font-size: var(--txt-md); }
-
-/* Numeros alinhados na vertical: uma coluna de score so e comparavel se os
- * digitos tiverem a mesma largura. */
-.score {
-  font-variant-numeric: tabular-nums;
+.tile .numero {
+  display: block;
+  font-size: var(--txt-2xl);
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
-
-.meta {
+.tile .rotulo-tile {
+  display: block;
+  margin-top: var(--esp-1);
   color: var(--suave);
-  font-size: var(--txt-sm);
-  margin: var(--esp-1) 0 var(--esp-2);
-}
-
-.tags { display: flex; flex-wrap: wrap; gap: var(--esp-1); margin: var(--esp-2) 0; }
-/* Etiqueta removivel: o formulario existe so para carregar o texto ate a rota,
- * e por isso nao ocupa espaco proprio no fluxo. */
-.tag-form { display: inline; }
-.tag-x {
-  background: none;
-  border: 0;
-  color: var(--suave);
-  cursor: pointer;
-  font: inherit;
-  padding: 0 0 0 0.3em;
-  line-height: 1;
-}
-.tag-x:hover { color: var(--erro); }
-
-.tag {
   font-size: var(--txt-xs);
-  padding: 0.12rem var(--esp-2);
-  border-radius: 999px;
-  border: 1px solid var(--borda);
-  color: var(--suave);
+}
+/* O tile das novas é o único com cor: é a resposta da pergunta que faz alguém
+ * abrir o relatório de novo. */
+.tile.destaca-novas {
+  background: var(--novo-fundo);
+  border-color: color-mix(in srgb, var(--novo) 35%, transparent);
+}
+.tile.destaca-novas .numero { color: var(--novo); }
+
+.aviso {
+  border-left: 4px solid var(--pendente);
+  border-radius: 0 var(--raio) var(--raio) 0;
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--pendente-fundo);
+  margin: var(--esp-4) 0;
+  font-size: var(--txt-sm);
 }
 
+/* Barra de filtros. Fica acima da lista, numa linha, e o estado dela vive na
+ * URL -- então o endereço filtrado continua sendo um endereço. */
 .filtro {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--esp-2) var(--esp-4);
-  margin: var(--esp-3) 0 var(--esp-6);
+  gap: var(--esp-2) var(--esp-3);
+  margin-bottom: var(--esp-4);
   padding: var(--esp-3) var(--esp-4);
+  background: var(--caixa);
   border: 1px solid var(--borda);
-  border-radius: var(--raio);
+  border-radius: var(--raio-lg);
+  box-shadow: var(--sombra-1);
   font-size: var(--txt-sm);
 }
-.filtro label { display: inline-flex; align-items: center; gap: var(--esp-1); }
-.filtro label.cargo { flex: 1 1 16rem; }
-.filtro input[type="search"] {
-  flex: 1;
-  font: inherit;
-  font-size: var(--txt-sm);
-  padding: var(--esp-1) var(--esp-2);
-  min-width: 0;
-  background: var(--fundo);
-  color: var(--texto);
+.filtro label { display: inline-flex; align-items: center; gap: var(--esp-2); color: var(--suave); }
+.filtro label.cargo { flex: 1 1 15rem; }
+.filtro input[type="search"] { margin-top: 0; }
+/* Caixa de marcar vira pílula: ela é um filtro ligado ou desligado, e a pílula
+ * mostra isso sem depender de enxergar o quadradinho. */
+.filtro label:has(input[type="checkbox"]) {
+  padding: var(--esp-1) var(--esp-3);
   border: 1px solid var(--borda);
-  border-radius: var(--raio-sm);
+  border-radius: var(--pilula);
+  cursor: pointer;
+}
+.filtro label:has(input[type="checkbox"]:checked) {
+  background: var(--marca-fundo);
+  border-color: var(--marca);
+  color: var(--marca);
+  font-weight: 600;
 }
 .filtro select {
   font: inherit;
   font-size: var(--txt-sm);
   padding: var(--esp-1) var(--esp-2);
-  background: var(--fundo);
+  background: var(--caixa);
   color: var(--texto);
   border: 1px solid var(--borda);
   border-radius: var(--raio-sm);
 }
 .filtro .acao { margin-top: 0; }
-/* Um filtro nao serve para quem imprime: o papel ja e o recorte. */
+/* Um filtro não serve para quem imprime: o papel já é o recorte. */
 @media print { .filtro { display: none; } }
 
-.aviso {
-  border-left: 3px solid var(--pendente);
-  padding: var(--esp-2) var(--esp-3);
+/* ------------------------------------------------------------ uma vaga */
+.vaga {
+  position: relative;
   background: var(--caixa);
-  margin: var(--esp-4) 0;
-  font-size: var(--txt-sm);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  padding: var(--esp-4) var(--esp-6);
+  margin-bottom: var(--esp-3);
+  box-shadow: var(--sombra-1);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
-.acao-recomendada {
-  margin: var(--esp-2) 0;
-  font-size: var(--txt-sm);
-  padding: var(--esp-1) 0 var(--esp-1) var(--esp-3);
-  border-left: 3px solid var(--borda);
-}
-/* A cor reforca, e nao carrega sozinha: o rotulo ja diz o que fazer. */
-.acao-recomendada.acao-aplicar-agora { border-left-color: var(--ok); }
-.acao-recomendada.acao-pedir-indicação-antes { border-left-color: var(--pendente); }
-.acao-recomendada.acao-descartar { border-left-color: var(--erro); color: var(--suave); }
-.teto { font-size: var(--txt-xs); font-weight: 400; color: var(--suave); }
+.vaga:hover { box-shadow: var(--sombra-2); transform: translateY(-1px); }
+/* Destaque engrossa a borda além de colorir: quem não distingue verde não
+ * perde o sinal. */
+.vaga.destaque { border-left: 5px solid var(--ok); }
 
-.bloqueio { color: var(--erro); font-size: var(--txt-sm); margin: var(--esp-1) 0; }
+.cabeca {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--esp-4);
+  align-items: flex-start;
+}
+.cabeca h3 {
+  margin: 0;
+  font-size: var(--txt-lg);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.cabeca h3 a { text-decoration-color: var(--borda); }
+.cabeca h3 a:hover { text-decoration-color: var(--marca); }
+
+/* Números alinhados na vertical: uma coluna de score só é comparável se os
+ * dígitos tiverem a mesma largura. */
+.score {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  padding: var(--esp-1) var(--esp-3);
+  border-radius: var(--raio);
+  background: var(--caixa-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: var(--txt-lg);
+  white-space: nowrap;
+}
+.vaga.destaque .score { background: var(--ok-fundo); color: var(--ok); }
+.relida, .teto { font-size: var(--txt-xs); font-weight: 600; color: var(--suave); }
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-1) var(--esp-2);
+  color: var(--suave);
+  font-size: var(--txt-sm);
+  margin: var(--esp-3) 0 var(--esp-2);
+}
+/* Cada dado do cabeçalho da vaga numa pílula própria. Antes era uma frase
+ * separada por pontos, e achar o modelo de trabalho exigia ler a linha toda. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.1em 0.6em;
+  border-radius: var(--pilula);
+  background: var(--caixa-2);
+  white-space: nowrap;
+}
+.chip.remoto { color: var(--ok); background: var(--ok-fundo); font-weight: 600; }
+.chip.busca { background: transparent; border: 1px dashed var(--borda); }
+
+/* Vaga publicada antes da janela pedida. A origem não cumpre o filtro de
+ * recência, e quem pediu 24 horas precisa ver isso na própria linha da vaga --
+ * não descobrir pelo anúncio depois de clicar. */
+.atrasada { color: var(--pendente); background: var(--pendente-fundo); font-weight: 600; }
+
+/* Nova nesta leitura, ou vaga que runs anteriores já mostraram. Quem roda o
+ * crivo todo dia revê a mesma lista e precisa achar em segundos o que mudou.
+ * Quem carrega o significado é a palavra -- "nova", "já vista" --, e a cor só
+ * reforça; o marcador antes dela repete o sinal para quem não distingue as
+ * duas cores. */
+.novidade { font-weight: 600; white-space: nowrap; }
+.novidade::before { margin-right: 0.3em; }
+/* A única palavra em negrito da linha, e por isso ela é achada antes de ser
+ * lida: a linha inteira é cinza e de corpo menor. */
+.novidade.nova {
+  color: var(--novo);
+  background: var(--novo-fundo);
+  font-weight: 700;
+  padding: 0.1em 0.6em;
+  border-radius: var(--pilula);
+}
+.novidade.nova::before { content: "★"; }
+/* Já vista recua: ela é a maioria da lista nos runs seguintes, e só precisa
+ * não ser confundida com o que é novo. */
+.novidade.vista { color: var(--suave); font-weight: 400; }
+.novidade.vista::before { content: "·"; }
+.novidade.decidida { color: var(--suave); font-weight: 400; }
+
+/* A ação recomendada. A cor reforça, e não carrega sozinha: o rótulo já diz o
+ * que fazer. */
+.acao-recomendada {
+  margin: var(--esp-3) 0;
+  font-size: var(--txt-sm);
+  padding: var(--esp-2) var(--esp-3);
+  border-left: 4px solid var(--borda);
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  background: var(--caixa-2);
+}
+.acao-recomendada.acao-aplicar-agora {
+  border-left-color: var(--ok);
+  background: var(--ok-fundo);
+}
+.acao-recomendada.acao-pedir-indicação-antes {
+  border-left-color: var(--pendente);
+  background: var(--pendente-fundo);
+}
+.acao-recomendada.acao-descartar {
+  border-left-color: var(--borda);
+  color: var(--suave);
+}
+
+.bloqueio {
+  color: var(--erro);
+  font-size: var(--txt-sm);
+  margin: var(--esp-2) 0;
+}
 .vazio { color: var(--suave); font-style: italic; }
+
+.tags { display: flex; flex-wrap: wrap; gap: var(--esp-1); margin: var(--esp-2) 0; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12em 0.6em;
+  border-radius: var(--pilula);
+  background: var(--caixa-2);
+  font-size: var(--txt-xs);
+  font-weight: 600;
+}
+/* Competência que a vaga pede e o perfil tem, e competência que falta. O sinal
+ * está no símbolo que o gabarito escreve; a cor acompanha. */
+.tags.tem .tag { color: var(--ok); background: var(--ok-fundo); }
+.tags.falta .tag { color: var(--pendente); background: var(--pendente-fundo); }
+
+/* Etiqueta removível: o formulário existe só para carregar o texto até a rota,
+ * e por isso não ocupa espaço próprio no fluxo. */
+.tag-form { display: inline; }
+.tag-x {
+  margin-left: 0.35em;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--suave);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tag-x:hover { color: var(--erro); }
 
 details { margin-top: var(--esp-2); }
 summary { cursor: pointer; color: var(--suave); font-size: var(--txt-sm); }
 
 pre.descricao {
+  margin: var(--esp-3) 0 0;
+  padding: var(--esp-4);
+  background: var(--caixa-2);
+  border-radius: var(--raio);
+  color: var(--texto);
+  font: var(--txt-sm)/1.6 ui-sans-serif, system-ui, sans-serif;
   white-space: pre-wrap;
-  word-wrap: break-word;
-  font-size: var(--txt-sm);
-  background: var(--fundo);
-  padding: var(--esp-3);
-  border-radius: var(--raio-sm);
-  max-height: 24rem;
+  max-height: 22rem;
   overflow: auto;
-  margin: var(--esp-2) 0 0;
 }
 
-body.relatorio th,
-body.relatorio td {
-  text-align: left;
-  padding: var(--esp-1) var(--esp-2);
-  border-bottom: 1px solid var(--borda);
+/* ------------------------------------------------------------- telas estreitas */
+/* A aplicação é usada no telefone para ler o relatório da manhã. */
+@media (max-width: 40rem) {
+  body { padding: var(--esp-3) var(--esp-3) var(--esp-8); }
+  .cartao, .vaga { padding: var(--esp-4); }
+  .navegacao { padding: var(--esp-3); }
+  .trilha { margin-left: 0; width: 100%; }
+  .cabeca { flex-direction: column; gap: var(--esp-2); }
+  h1 { font-size: var(--txt-lg); }
+  .tile .numero { font-size: var(--txt-xl); }
 }
-body.relatorio td:last-child { text-align: left; color: inherit; }
 
-/* O relatorio e o unico documento do produto que alguem imprime ou salva. */
+/* --------------------------------------------------------------- impressão */
 @media print {
-  body { padding: 0; background: #fff; color: #000; }
-  .vaga { break-inside: avoid; border-color: #999; }
+  body { background: #fff; color: #000; padding: 0; }
+  .vaga, .cartao, .tile { break-inside: avoid; box-shadow: none; border-color: #999; }
   details { display: none; }
+  .acao, .sair { display: none; }
 }
-
-/* Vaga publicada antes da janela pedida. A origem não cumpre o filtro de
-   recência, e quem pediu 24 horas precisa ver isso na própria linha da vaga --
-   não descobrir pelo anúncio depois de clicar. */
-.atrasada {
-  color: var(--txt-aviso, #8a5a00);
-}
-
-/* Nova nesta leitura, ou vaga que runs anteriores ja mostraram. Quem roda o
-   crivo todo dia reve a mesma lista e precisa achar em segundos o que mudou.
-   Quem carrega o significado e a palavra -- "nova", "já vista" --, e a cor so
-   reforca; o marcador antes dela repete o sinal para quem nao distingue as
-   duas cores, e e o que permite usar aqui a mesma cor do destaque sem que uma
-   leitura dependa de enxerga-la. */
-.novidade { font-weight: 600; white-space: nowrap; }
-.novidade::before { margin-right: 0.3em; }
-/* A unica palavra em negrito da linha, e por isso ela e achada antes de ser
-   lida: a linha inteira e cinza e de corpo menor. */
-.novidade.nova { color: var(--novo); font-weight: 700; }
-.novidade.nova::before { content: "★"; }
-/* Ja vista recua: ela e a maioria da lista nos runs seguintes, e so precisa
-   nao ser confundida com o que e novo. */
-.novidade.vista { color: var(--suave); font-weight: 400; }
-.novidade.vista::before { content: "·"; }
-.novidade.decidida { color: var(--suave); font-weight: 400; }

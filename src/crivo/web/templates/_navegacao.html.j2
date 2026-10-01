@@ -11,7 +11,28 @@
    `atual` diz qual secao esta aberta, para que o link dela nao finja levar a
    outro lugar. Quem passa o gabarito sem definir `atual` nao marca nenhuma. #}
 <nav class="navegacao">
-  <a class="marca-produto" href="/">crivo</a>
+  <a class="marca-produto" href="/">
+    {# O logo e desenhado em linha, e nao carregado de /static, por duas razoes:
+       ele usa `currentColor` -- entao acompanha o tema e a barra escura sem uma
+       segunda copia do arquivo -- e nao custa uma requisicao em cada pagina.
+       A letra c construida com a malha do crivo: oito modulos desenham o C, e o
+       modulo que fecharia a boca da letra e a vaga aprovada, fora da malha. #}
+    <svg class="logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+      <g fill="currentColor">
+        <rect x="168" y="72" width="80" height="80" rx="16"/>
+        <rect x="264" y="72" width="80" height="80" rx="16"/>
+        <rect x="360" y="72" width="80" height="80" rx="16"/>
+        <rect x="72" y="168" width="80" height="80" rx="16"/>
+        <rect x="72" y="264" width="80" height="80" rx="16"/>
+        <rect x="168" y="360" width="80" height="80" rx="16"/>
+        <rect x="264" y="360" width="80" height="80" rx="16"/>
+        <rect x="360" y="360" width="80" height="80" rx="16"/>
+      </g>
+      <rect class="destaque" x="360" y="216" width="80" height="80" rx="16"
+            fill="var(--marca-viva)"/>
+    </svg>
+    crivo
+  </a>
   <span class="trilha">
     {% if atual == 'inicio' %}
       <span class="aqui">início</span>

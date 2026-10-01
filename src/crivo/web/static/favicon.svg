@@ -1,0 +1,20 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="crivo">
+  <title>crivo</title>
+  <!-- Favicon: o mesmo desenho da barra, com fundo proprio e cores fixas.
+       Aqui `currentColor` nao serve -- o navegador desenha o icone fora da
+       pagina, sem herdar cor nenhuma -- e o fundo existe para o icone nao
+       desaparecer contra a aba escura. A malha e a mesma da barra, recuada para
+       sobrar margem dentro do quadrado. -->
+  <rect width="512" height="512" rx="104" fill="#18181b"/>
+  <g fill="#f6f3fe">
+    <rect x="186" y="106" width="68" height="68" rx="14"/>
+    <rect x="268" y="106" width="68" height="68" rx="14"/>
+    <rect x="350" y="106" width="68" height="68" rx="14"/>
+    <rect x="104" y="188" width="68" height="68" rx="14"/>
+    <rect x="104" y="270" width="68" height="68" rx="14"/>
+    <rect x="186" y="352" width="68" height="68" rx="14"/>
+    <rect x="268" y="352" width="68" height="68" rx="14"/>
+    <rect x="350" y="352" width="68" height="68" rx="14"/>
+  </g>
+  <rect x="350" y="222" width="68" height="68" rx="14" fill="#a78bfa"/>
+</svg>
