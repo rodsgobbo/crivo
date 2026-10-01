@@ -118,6 +118,11 @@
            {{ 'checked' if ctx.filtros.get('ocultar_fora_do_raio') }}>
     esconder fora do raio
   </label>
+  <label>
+    <input type="checkbox" name="novas" value="1"
+           {{ 'checked' if ctx.filtros.get('so_novas') }}>
+    só vagas novas
+  </label>
   <button class="acao discreta" type="submit">Filtrar</button>
   {% if ctx.vagas|length != ctx.total_sem_filtro %}
     <a class="acao discreta" href="?">Limpar</a>

@@ -213,6 +213,19 @@ def test_an_already_seen_job_is_not_highlighted(env):
     assert "em destaque" not in render(env)
 
 
+def test_a_job_an_earlier_run_already_showed_is_not_highlighted(env):
+    """Estado intocado nao basta: o destaque tem de ser novidade de verdade.
+
+    Vaga que ninguem marca fica `novo` para sempre, entao antes disto o
+    destaque verde reaparecia run apos run na mesma vaga -- e destaque que
+    aponta tudo nao aponta nada.
+    """
+    connection, repo = env
+    add_vaga(repo, score=95, estado="novo")
+    pontuar_em_run_anterior(repo, score=95)
+    assert "em destaque" not in render(env)
+
+
 # --------------------------------------------------------- nova ou ja vista
 def pontuar_em_run_anterior(repo, job_id="li-1", run_id="run-0", score=70):
     """Deixa a vaga com score de um run anterior, como um run repetido deixa."""
@@ -486,6 +499,46 @@ def test_remote_and_out_of_radius_are_independent_filters():
     assert [
         v["job_id"] for v in _aplicar_filtros(vagas, {"ocultar_fora_do_raio": True})
     ] == ["remota", "perto"]
+
+
+def test_only_new_jobs_hides_what_earlier_runs_already_showed():
+    from crivo.report.renderer import _aplicar_filtros
+
+    vagas = [_vaga(job_id="repetida"), _vaga(job_id="nova")]
+    vagas[0]["vista_antes"] = True
+    vagas[1]["vista_antes"] = False
+    restantes = _aplicar_filtros(vagas, {"so_novas": True})
+    assert [v["job_id"] for v in restantes] == ["nova"]
+
+
+def test_the_new_only_filter_ignores_the_user_state():
+    """Vaga nunca tocada fica `novo` para sempre, e o filtro nao se engana.
+
+    Se ele olhasse `estado`, "so vagas novas" devolveria a lista inteira --
+    exatamente as vagas que o filtro existe para esconder.
+    """
+    from crivo.report.renderer import _aplicar_filtros
+
+    repetida = _vaga(job_id="repetida", estado="novo")
+    repetida["vista_antes"] = True
+    assert _aplicar_filtros([repetida], {"so_novas": True}) == []
+
+
+def test_the_report_offers_the_new_only_filter(env):
+    connection, repo = env
+    add_vaga(repo)
+    assert 'name="novas"' in render(env)
+
+
+def test_the_new_only_filter_comes_from_the_address(env):
+    """O filtro vive na URL, entao o endereco filtrado pode ser guardado."""
+    connection, repo = env
+    add_vaga(repo, job_id="repetida")
+    pontuar_em_run_anterior(repo, job_id="repetida")
+    add_vaga(repo, job_id="recem-chegada", titulo="Head de Plataforma")
+    pagina = render(env, filtros={"so_novas": True})
+    assert "Head de Plataforma" in pagina
+    assert "já vista" not in pagina
 
 
 def test_filtering_never_reorders():

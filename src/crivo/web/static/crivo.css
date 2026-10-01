@@ -21,6 +21,9 @@
   --ok: #1c6b3f;
   --pendente: #8a6d1f;
   --erro: #b4232a;
+  /* Novidade tem cor propria, e nao a do destaque: uma diz quando a vaga
+   * chegou, a outra quanto ela vale, e as duas aparecem na mesma vaga. */
+  --novo: #14539e;
 
   /* Escala tipográfica de razão 1,25. Antes havia seis tamanhos, cinco deles
    * espremidos entre 0,78 e 0,93rem -- diferenças de meio pixel, invisíveis na
@@ -55,6 +58,7 @@
     --ok: #5fbe8a;
     --pendente: #d6ad48;
     --erro: #e4757c;
+    --novo: #7fb2f0;
   }
 }
 
@@ -588,7 +592,9 @@ body.relatorio td:last-child { text-align: left; color: inherit; }
    leitura dependa de enxerga-la. */
 .novidade { font-weight: 600; white-space: nowrap; }
 .novidade::before { margin-right: 0.3em; }
-.novidade.nova { color: var(--ok); }
+/* A unica palavra em negrito da linha, e por isso ela e achada antes de ser
+   lida: a linha inteira e cinza e de corpo menor. */
+.novidade.nova { color: var(--novo); font-weight: 700; }
 .novidade.nova::before { content: "★"; }
 /* Ja vista recua: ela e a maioria da lista nos runs seguintes, e so precisa
    nao ser confundida com o que e novo. */

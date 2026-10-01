@@ -430,7 +430,7 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.11 IF nenhuma vaga sobrevive ao pré-filtro, THEN the Report Renderer SHALL create o relatório com a contagem de cards coletados e a lista de motivos de descarte.
 
-18.12 THE Report Renderer SHALL display em destaque as vagas cujo estado é novo e cujo score de aderência atinge ou supera o limiar configurado.
+18.12 THE Report Renderer SHALL display em destaque as vagas cujo estado é novo, que não foram pontuadas em nenhum outro run do mesmo usuário, e cujo score de aderência atinge ou supera o limiar configurado.
 
 18.13 IF a cota de coleta do usuário se esgotou durante o run, THEN the Report Renderer SHALL display a quantidade de vagas que ficaram sem descrição por esse motivo.
 

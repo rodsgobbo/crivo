@@ -83,9 +83,23 @@ class ReportContext:
 
     @property
     def destaques(self) -> list[dict]:
+        """Vaga nova, intocada e boa.
+
+        As tres condicoes sao independentes e nenhuma substitui a outra.
+        `estado` diz que o usuario ainda nao decidiu nada sobre ela;
+        `vista_antes` diz que nenhum run anterior ja a mostrou; o score diz que
+        ela vale a leitura.
+
+        A segunda entrou depois, e e a que faltava: `estado` fica `novo` para
+        sempre em vaga que ninguem toca, entao o destaque marcava em verde a
+        vaga que o usuario ja tinha visto em dez relatorios -- e destaque que
+        aponta tudo nao aponta nada.
+        """
         return [
             v for v in self.vagas
-            if v.get("estado") == "novo" and int(v.get("score") or 0) >= self.limiar_destaque
+            if v.get("estado") == "novo"
+            and not v.get("vista_antes")
+            and int(v.get("score") or 0) >= self.limiar_destaque
         ]
 
 
@@ -199,6 +213,11 @@ def _aplicar_filtros(vagas: list[dict], filtros: dict) -> list[dict]:
         resultado = [v for v in resultado if v.get("modelo") == "remote"]
     if filtros.get("ocultar_fora_do_raio"):
         resultado = [v for v in resultado if not v.get("blocker")]
+    if filtros.get("so_novas"):
+        # Novidade e do dado, e nao do estado: a vaga que nunca foi pontuada em
+        # outro run. Quem roda todo dia quer ver so o que chegou desde ontem, e
+        # sem isto precisava varrer a lista inteira procurando o marcador.
+        resultado = [v for v in resultado if not v.get("vista_antes")]
     estado = filtros.get("estado")
     if estado:
         resultado = [v for v in resultado if v.get("estado") == estado]

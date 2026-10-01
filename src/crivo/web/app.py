@@ -1068,6 +1068,7 @@ def build_reports_router(context: WebContext) -> APIRouter:
             "so_com_descricao": parametros.get("descricao") == "1",
             "so_remoto": parametros.get("remoto") == "1",
             "ocultar_fora_do_raio": parametros.get("no_raio") == "1",
+            "so_novas": parametros.get("novas") == "1",
             "estado": parametros.get("estado") or None,
         }
         try:

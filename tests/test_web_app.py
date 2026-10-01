@@ -527,6 +527,64 @@ def _semear_vaga(banco, user_id, job_id="li-1"):
     )
 
 
+# ------------------------------------------------- filtro de vagas novas na URL
+def _pontuar(banco, user_id, run_id, job_id, titulo="SRE Manager"):
+    """Vaga pontuada num run, como o relatorio a encontraria."""
+    from crivo.store.repository import Repository
+
+    repo = Repository(banco())
+    escopo = repo.for_user(user_id)
+    if not escopo.select("jobs", where="job_id = ?", params=(job_id,)):
+        escopo.insert(
+            "jobs",
+            {
+                "job_id": job_id, "titulo": titulo,
+                "url": f"https://linkedin.com/jobs/view/{job_id}",
+                "estado": "novo", "flags": "[]", "publicada_em": "2026-08-21",
+                "primeira_vez_em": "2026-08-21", "ultima_vez_em": "2026-08-21",
+            },
+        )
+    escopo.insert(
+        "scores",
+        {
+            "job_id": job_id, "run_id": run_id, "passada": "final", "score": 80,
+            "componentes": json.dumps({"componentes": {}}), "lacunas": "[]",
+            "diferenciais": "[]", "descricao_disponivel": 1,
+            "sinais_sessao_disponiveis": 1, "criado_em": "2026-08-21",
+        },
+    )
+
+
+def test_the_report_address_can_ask_for_new_jobs_only(cliente):
+    """`?novas=1` precisa chegar ao filtro, e o nome do parametro e o acoplamento.
+
+    O formulario manda `novas`, a rota le `novas` e o filtro entende `so_novas`.
+    Sao tres nomes em tres arquivos, e uma divergencia entre eles nao quebra
+    nada visivelmente: a pagina volta inteira, como se ninguem tivesse filtrado.
+    """
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    from crivo.store.repository import Repository
+
+    anterior = _enfileirar(banco, user_id)
+    # Dois runs ativos nao existem para o mesmo usuario, e o de ontem ja acabou.
+    Repository(banco()).for_user(user_id).update(
+        "runs", {"estado": "concluido"}, where="run_id = ?", params=(anterior,)
+    )
+    atual = _enfileirar(banco, user_id)
+    _pontuar(banco, user_id, anterior, "repetida", titulo="Analista SRE")
+    _pontuar(banco, user_id, atual, "repetida", titulo="Analista SRE")
+    _pontuar(banco, user_id, atual, "recem-chegada", titulo="Head de Plataforma")
+
+    inteiro = c.get(f"/reports/{atual}").text
+    assert "Analista SRE" in inteiro
+    assert "Head de Plataforma" in inteiro
+
+    so_novas = c.get(f"/reports/{atual}?novas=1").text
+    assert "Head de Plataforma" in so_novas
+    assert "Analista SRE" not in so_novas
+
+
 def test_insights_from_the_browser_are_recorded(cliente):
     c, _i, banco = cliente
     user_id = entrar(cliente)

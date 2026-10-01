@@ -277,7 +277,11 @@ COVERAGE: dict[str, list[str]] = {
     "18.9": ["test_report::test_hygiene_problems_are_shown"],
     "18.10": ["test_report::test_the_skill_ranking_is_shown"],
     "18.11": ["test_report::test_a_run_with_no_survivors_says_so_with_the_counts"],
-    "18.12": ["test_report::test_a_new_job_above_the_threshold_is_highlighted"],
+    "18.12": [
+        "test_report::test_a_new_job_above_the_threshold_is_highlighted",
+        "test_report::test_a_job_an_earlier_run_already_showed_is_not_highlighted",
+        "test_report::test_an_already_seen_job_is_not_highlighted",
+    ],
     "18.13": ["test_report::test_jobs_left_without_description_by_quota_are_reported"],
 
     # -------------------------------------------------- REQ-19 isolamento
