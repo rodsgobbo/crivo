@@ -231,7 +231,9 @@ def test_an_exhausted_chain_records_a_synthesis_failure(env):
     resultado = executar(synth(env, router), run_id)
     assert resultado.disponivel is False
     linha = connection.execute("SELECT falha_sintese FROM runs WHERE run_id = ?", (run_id,)).fetchone()
-    assert "cadeia esgotada" in linha[0]
+    # A mensagem do erro e a frase que a pagina mostra, e entra inteira: um
+    # rotulo aqui a duplicava.
+    assert linha[0] == "todos recusaram"
 
 
 def test_a_grounding_violation_records_a_failure_and_keeps_provenance(env):

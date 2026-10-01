@@ -79,14 +79,14 @@ class Synthesizer:
         self._client.assert_owner(user_id)
         try:
             resposta = self._client.complete("sintese_vagas", payload.corpo)
+        # A mensagem do erro ja esta escrita para quem le o relatorio, e por isso
+        # entra inteira. Rotular de novo produzia "cadeia esgotada: cadeia
+        # esgotada para o usuario <uuid>" na pagina, com o identificador do
+        # usuario no meio da frase.
         except DeterministicFallback as exc:
-            return self._registrar(
-                run_id, SynthesisResult(texto=None, falha=f"cadeia esgotada: {exc}")
-            )
+            return self._registrar(run_id, SynthesisResult(texto=None, falha=str(exc)))
         except ModelError as exc:
-            return self._registrar(
-                run_id, SynthesisResult(texto=None, falha=f"falha de modelo: {exc}")
-            )
+            return self._registrar(run_id, SynthesisResult(texto=None, falha=str(exc)))
 
         ha_sem_descricao = any(not v.get("descricao") for v in vagas[: payload.vagas])
         try:

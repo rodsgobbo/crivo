@@ -195,10 +195,12 @@ class Judge:
         corpo = montar_pedido(perfil, alvo, self._orcamento)
         try:
             resposta = self._client.complete(TAREFA, corpo)
+        # Sem rotulo na frente: a mensagem do erro ja e a frase que a pagina
+        # mostra, e um rotulo a repetia.
         except DeterministicFallback as exc:
-            return JudgementResult(falha=f"cadeia esgotada: {exc}")
+            return JudgementResult(falha=str(exc))
         except ModelError as exc:
-            return JudgementResult(falha=f"falha de modelo: {exc}")
+            return JudgementResult(falha=str(exc))
 
         notas, motivos = interpretar(
             resposta.texto, {v["job_id"] for v in alvo}

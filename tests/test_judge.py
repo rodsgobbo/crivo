@@ -161,17 +161,23 @@ def test_without_a_model_nothing_happens_and_the_run_survives():
 
 
 def test_an_exhausted_chain_is_a_recorded_failure_not_a_crash():
+    """A falha e registrada, e a mensagem chega inteira e sem rotulo novo.
+
+    Rotular de novo aqui produzia "cadeia esgotada: cadeia esgotada para o
+    usuario <uuid>" na pagina -- duas vezes o mesmo rotulo, com um
+    identificador interno no meio da frase.
+    """
     cliente = ClienteFalso(erro=DeterministicFallback("sem credencial"))
     resultado = Judge(cliente, load_config()).judge("ana", PERFIL, vagas())
     assert not resultado.disponivel
-    assert "cadeia esgotada" in resultado.falha
+    assert resultado.falha == "sem credencial"
 
 
 def test_a_model_error_is_a_recorded_failure_not_a_crash():
-    cliente = ClienteFalso(erro=ModelError("timeout"))
+    cliente = ClienteFalso(erro=ModelError("tempo de resposta esgotado"))
     resultado = Judge(cliente, load_config()).judge("ana", PERFIL, vagas())
     assert not resultado.disponivel
-    assert "falha de modelo" in resultado.falha
+    assert resultado.falha == "tempo de resposta esgotado"
 
 
 def test_an_unreadable_answer_does_not_invent_an_order():

@@ -108,8 +108,10 @@ class ResumeParser:
                 "extracao_curriculo", INSTRUCAO + resumo["texto"]
             )
         except DeterministicFallback as exc:
+            # A mensagem do erro ja nomeia quem falhou e por que; aqui so entra o
+            # que o usuario pode fazer a respeito.
             raise ManualEntryRequired(
-                f"nenhum provedor respondeu; preencha o perfil manualmente: {exc}"
+                f"{exc}. Preencha o perfil manualmente, ou tente de novo"
             ) from exc
         except ModelError as exc:
             raise ExtractionError(f"a extracao falhou: {exc}") from exc

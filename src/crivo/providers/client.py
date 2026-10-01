@@ -95,11 +95,121 @@ GABARITOS: dict[str, str] = {
 
 
 class ModelError(Exception):
-    """Falha ao alcancar qualquer provedor da cadeia."""
+    """Falha ao alcancar qualquer provedor da cadeia.
+
+    A mensagem e escrita para quem le o relatorio, e nao para quem depura: ela
+    sai na pagina. O texto cru da biblioteca vive em `detalhe`, que vai para o
+    log -- antes ele ia para a pagina, e o usuario recebia
+    `ServiceUnavailableError: litellm.ServiceUnavailableError: GeminiException`
+    seguido de JSON e de contagem de tentativas, sem nada que ele pudesse fazer.
+
+    `transitoria` diz se vale tentar de novo. Sobrecarga do provedor passa em
+    minutos; chave recusada nao passa sozinha nunca.
+    """
+
+    def __init__(
+        self, mensagem: str, detalhe: str = "", transitoria: bool = False
+    ) -> None:
+        super().__init__(mensagem)
+        self.detalhe = detalhe or mensagem
+        self.transitoria = transitoria
 
 
 class DeterministicFallback(ModelError):
     """A cadeia acabou ou nao existe: o chamador deve seguir sem modelo."""
+
+
+#: Como traduzir a falha da biblioteca para quem le o relatorio.
+#:
+#: A chave e casada contra o nome da excecao e contra o texto dela, em minusculas
+#: -- a biblioteca nomeia bem as classes mas nem todo provedor chega por uma
+#: delas: o 503 do Gemini chegou como `ServiceUnavailableError` com o codigo
+#: dentro de um JSON, e um proxy pode devolver o mesmo estado como erro generico.
+#:
+#: A ordem importa: a primeira marca que casar decide. Credencial vem antes de
+#: limite porque "invalid api key" costuma vir acompanhado de 403, e limite vem
+#: antes de sobrecarga porque 429 e recusa por cota e nao fila cheia.
+CATEGORIAS: tuple[tuple[str, tuple[str, ...], bool, str], ...] = (
+    (
+        "credencial",
+        ("authenticationerror", "permissiondenied", "invalid api key",
+         "api key not valid", "unauthorized", "401", "403"),
+        False,
+        "a chave cadastrada foi recusada; cadastre outra em Configuração",
+    ),
+    (
+        "limite",
+        ("ratelimiterror", "quota", "rate limit", "resource_exhausted", "429"),
+        True,
+        "o limite de uso da chave foi atingido; a cota gratuita costuma voltar "
+        "no dia seguinte",
+    ),
+    (
+        "sobrecarga",
+        ("serviceunavailable", "unavailable", "overloaded", "high demand",
+         "internalservererror", "502", "503", "529"),
+        True,
+        "sobrecarga temporária do provedor; isso costuma passar em minutos, e a "
+        "próxima busca tenta de novo",
+    ),
+    (
+        "tempo",
+        ("timeout", "timedout", "deadline"),
+        True,
+        "tempo de resposta esgotado",
+    ),
+)
+
+#: Categoria de quem nao casou com nenhuma marca.
+#:
+#: As frases sao escritas sem sujeito de proposito: elas entram depois de "o
+#: provedor X" ou de "nenhum dos N provedores", e um sujeito proprio repetiria o
+#: da frase -- "o provedor X nao entregou: o provedor esta sobrecarregado".
+SEM_CATEGORIA = (
+    "outro", False,
+    "falha que o crivo não sabe classificar; o motivo técnico está no log",
+)
+
+
+def classificar(exc: Exception) -> tuple[str, bool, str]:
+    """Categoria, se vale tentar de novo, e a frase que o usuario le."""
+    assinatura = f"{type(exc).__name__} {exc}".lower()
+    for categoria, marcas, transitoria, frase in CATEGORIAS:
+        if any(marca in assinatura for marca in marcas):
+            return categoria, transitoria, frase
+    return SEM_CATEGORIA
+
+
+def mensagem_da_falha(destinations: list["Destination"], frase: str) -> str:
+    """Monta a frase da pagina: de quem e a falha, e o que ela foi.
+
+    Quem le precisa saber de quem e a falha. Com um destino so, o nome dele; com
+    varios, que nenhum respondeu -- senao a frase culparia o primeiro por uma
+    cadeia inteira.
+
+    A negativa muda de lugar junto com isso. "nenhum dos tres provedores NAO
+    entregou" e negativa dupla, e foi exatamente o que a primeira versao desta
+    frase disse quando montada: o defeito so aparece com a frase inteira pronta,
+    e nao lendo as duas metades separadas.
+
+    A conta e de PROVEDORES, e nao de destinos. Desde que um provedor contribui
+    um destino por modelo, contar destinos diria "nenhum dos 2 provedores" para
+    uma cadeia que tem o Mistral e mais ninguem.
+    """
+    provedores = list(dict.fromkeys(d.provider_id for d in destinations))
+    if len(provedores) > 1:
+        quem = (
+            f"nenhum dos {len(provedores)} provedores da sua cadeia "
+            "entregou a resposta"
+        )
+    elif len(destinations) > 1:
+        quem = (
+            f"o provedor {provedores[0]} não entregou a resposta "
+            f"({len(destinations)} modelos tentados)"
+        )
+    else:
+        quem = f"o provedor {provedores[0]} não entregou a resposta"
+    return f"{quem}: {frase}"
 
 
 @dataclass(frozen=True)
@@ -131,10 +241,46 @@ class ModelRouter(Protocol):
     ) -> Completion: ...
 
 
+def nome_do_grupo(destino: Destination) -> str:
+    """Nome que a biblioteca usa para este destino, unico dentro da cadeia.
+
+    Tem de ser unico, e nao o identificador do provedor. Dois destinos com o
+    mesmo `model_name` sao, para a biblioteca, duas implantacoes do MESMO grupo,
+    e ela as balanceia por sorteio -- o que apagaria a ordem da cadeia logo
+    quando ela passou a ter mais de um modelo por provedor: o pedido podia cair
+    no modelo pequeno antes de o grande ter sido tentado.
+    """
+    return f"{destino.provider_id}::{destino.modelo}"
+
+
+def montar_grupos(
+    destinations: list[Destination],
+) -> tuple[list[dict[str, Any]], str, list[str]]:
+    """Lista de implantacoes, o grupo principal e os alternativos em ordem."""
+    model_list = [
+        {"model_name": nome_do_grupo(destino), "litellm_params": _params(destino)}
+        for destino in destinations
+    ]
+    nomes = [nome_do_grupo(d) for d in destinations]
+    return model_list, nomes[0], nomes[1:]
+
+
 class LiteLLMRouter:
     """Adaptador do roteador de biblioteca. Unico ponto que conhece os tipos dela."""
 
-    def __init__(self, num_retries: int = 1, cooldown_time: int = 60) -> None:
+    #: Tentativas por destino, alem da primeira.
+    #:
+    #: Era 1, e um uso real mostrou que nao basta: o Gemini devolveu 503 "high
+    #: demand" -- que a propria mensagem chama de temporario --, a unica
+    #: retentativa caiu no mesmo pico e o run perdeu a sintese inteira, que e a
+    #: parte mais cara do relatorio. Tres tentativas com o espacamento da
+    #: biblioteca atravessam um pico de segundos; nao atravessam indisponibilidade
+    #: longa, e nem devem: para isso existe a cadeia de fallback.
+    TENTATIVAS_POR_DESTINO = 3
+
+    def __init__(
+        self, num_retries: int = TENTATIVAS_POR_DESTINO, cooldown_time: int = 60
+    ) -> None:
         self._num_retries = num_retries
         self._cooldown_time = cooldown_time
 
@@ -146,15 +292,7 @@ class LiteLLMRouter:
         if not destinations:
             raise DeterministicFallback("cadeia de destinos vazia")
 
-        model_list = [
-            {
-                "model_name": destino.provider_id,
-                "litellm_params": _params(destino),
-            }
-            for destino in destinations
-        ]
-        principal = destinations[0].provider_id
-        alternativos = [d.provider_id for d in destinations[1:]]
+        model_list, principal, alternativos = montar_grupos(destinations)
         # A construcao do roteador entra na contencao junto com a chamada. Ela
         # tambem valida os destinos e levanta excecao propria da biblioteca --
         # deixa-la de fora fazia um destino mal formado escapar como erro cru e
@@ -174,8 +312,14 @@ class LiteLLMRouter:
                 ],
             )
         except Exception as exc:
+            categoria, transitoria, frase = classificar(exc)
+            logger.warning(
+                "cadeia esgotada (%s): %s: %s", categoria, type(exc).__name__, exc
+            )
             raise ModelError(
-                f"nenhum destino da cadeia respondeu: {type(exc).__name__}: {exc}"
+                mensagem_da_falha(destinations, frase),
+                detalhe=f"{type(exc).__name__}: {exc}",
+                transitoria=transitoria,
             ) from exc
         return _to_completion(response, destinations)
 
@@ -217,13 +361,20 @@ class ModelClient:
                     credencial = self._vault.reveal(self._user_id, provider_id)
                 except CredentialValidationError:
                     continue
-            resolvidos.append(
+            # Um destino por modelo declarado, na ordem do registro. Antes era
+            # so `modelos[0]`, e os demais nunca eram usados: o Mistral declara
+            # `mistral-large-latest` e `mistral-small-latest`, e o segundo era
+            # decoracao em `providers.toml`. Isso importa justamente no caso que
+            # derruba a sintese -- recusa por limite de uso costuma atingir o
+            # modelo grande primeiro, e o pequeno da mesma chave responde.
+            resolvidos.extend(
                 Destination(
                     provider_id=provider.id,
                     endereco=provider.endereco,
-                    modelo=provider.modelos[0],
+                    modelo=modelo,
                     credencial=credencial,
                 )
+                for modelo in provider.modelos
             )
         return resolvidos
 
@@ -241,8 +392,17 @@ class ModelClient:
         except DeterministicFallback:
             raise
         except ModelError as exc:
+            # O identificador do usuario vai para o log, e nao para a frase: ele
+            # e o que serve para achar o run, e nao diz nada a quem le o
+            # relatorio. A mensagem tambem nao e reembalada -- ela ja esta
+            # escrita para ser lida, e repetir o rotulo produzia
+            # "cadeia esgotada: cadeia esgotada para o usuario <uuid>".
+            logger.warning(
+                "sem modelo para o usuario %s na tarefa %s: %s",
+                self._user_id, task, exc.detalhe,
+            )
             raise DeterministicFallback(
-                f"cadeia esgotada para o usuario {self._user_id}: {exc}"
+                str(exc), detalhe=exc.detalhe, transitoria=exc.transitoria
             ) from exc
 
     def assert_owner(self, user_id: str) -> None:
