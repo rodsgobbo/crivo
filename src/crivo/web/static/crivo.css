@@ -579,3 +579,19 @@ body.relatorio td:last-child { text-align: left; color: inherit; }
 .atrasada {
   color: var(--txt-aviso, #8a5a00);
 }
+
+/* Nova nesta leitura, ou vaga que runs anteriores ja mostraram. Quem roda o
+   crivo todo dia reve a mesma lista e precisa achar em segundos o que mudou.
+   Quem carrega o significado e a palavra -- "nova", "já vista" --, e a cor so
+   reforca; o marcador antes dela repete o sinal para quem nao distingue as
+   duas cores, e e o que permite usar aqui a mesma cor do destaque sem que uma
+   leitura dependa de enxerga-la. */
+.novidade { font-weight: 600; white-space: nowrap; }
+.novidade::before { margin-right: 0.3em; }
+.novidade.nova { color: var(--ok); }
+.novidade.nova::before { content: "★"; }
+/* Ja vista recua: ela e a maioria da lista nos runs seguintes, e so precisa
+   nao ser confundida com o que e novo. */
+.novidade.vista { color: var(--suave); font-weight: 400; }
+.novidade.vista::before { content: "·"; }
+.novidade.decidida { color: var(--suave); font-weight: 400; }

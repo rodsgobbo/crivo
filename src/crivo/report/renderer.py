@@ -451,7 +451,25 @@ class ReportRenderer:
                    s.descricao_disponivel, s.nota_do_modelo, s.motivo_do_modelo,
                    j.titulo, j.empresa, j.url, j.local,
                    j.modelo_trabalho, j.publicada_em, j.flags, j.blocker, j.estado,
-                   j.busca, d.texto AS descricao, d.emails_contato, d.candidatos
+                   j.busca, d.texto AS descricao, d.emails_contato, d.candidatos,
+                   -- Esta vaga ja foi pontuada em outro run deste usuario?
+                   --
+                   -- O criterio e ter aparecido em relatorio anterior, e nao a
+                   -- data de primeira ocorrencia comparada ao inicio do run:
+                   -- `iniciado_em` e reescrito quando um run e retomado, e um
+                   -- run retomado passaria a chamar de velha toda vaga que ele
+                   -- mesmo acabou de trazer.
+                   --
+                   -- `estado` nao serve para isso. Ele e a decisao do usuario
+                   -- -- vista, aplicada, descartada -- e uma vaga que o
+                   -- usuario nunca tocou continua `novo` por quantos runs
+                   -- forem, mesmo tendo sido mostrada em todos eles.
+                   EXISTS (
+                       SELECT 1 FROM scores anterior
+                       WHERE anterior.user_id = s.user_id
+                         AND anterior.job_id = s.job_id
+                         AND anterior.run_id <> s.run_id
+                   ) AS vista_antes
             FROM scores s
             JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
             LEFT JOIN job_descriptions d ON d.job_id = s.job_id
@@ -495,6 +513,7 @@ class ReportRenderer:
                 "motivo_do_modelo": linha["motivo_do_modelo"],
                 "emails": json.loads(linha["emails_contato"] or "[]"),
                 "candidatos": linha["candidatos"],
+                "vista_antes": bool(linha["vista_antes"]),
             }
             for linha in linhas
         ]

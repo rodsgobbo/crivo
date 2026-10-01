@@ -213,6 +213,68 @@ def test_an_already_seen_job_is_not_highlighted(env):
     assert "em destaque" not in render(env)
 
 
+# --------------------------------------------------------- nova ou ja vista
+def pontuar_em_run_anterior(repo, job_id="li-1", run_id="run-0", score=70):
+    """Deixa a vaga com score de um run anterior, como um run repetido deixa."""
+    repo.for_user("ana").insert(
+        "runs",
+        {
+            "run_id": run_id, "estado": "concluido", "janela": "incremental",
+            "solicitado_em": "2026-08-20T09:00:00+00:00",
+        },
+    )
+    repo.for_user("ana").insert(
+        "scores",
+        {
+            "job_id": job_id, "run_id": run_id, "passada": "final",
+            "score": score, "componentes": json.dumps({"componentes": {}}),
+            "lacunas": "[]", "diferenciais": "[]",
+            "descricao_disponivel": 1, "sinais_sessao_disponiveis": 1,
+            "criado_em": "2026-08-20",
+        },
+    )
+
+
+def test_a_job_that_never_appeared_before_is_marked_new(env):
+    connection, repo = env
+    add_vaga(repo)
+    pagina = render(env)
+    assert 'class="novidade nova"' in pagina
+    assert 'class="novidade vista"' not in pagina
+
+
+def test_a_job_scored_in_an_earlier_run_is_marked_already_seen(env):
+    connection, repo = env
+    add_vaga(repo)
+    pontuar_em_run_anterior(repo)
+    pagina = render(env)
+    assert 'class="novidade vista"' in pagina
+    assert "já vista" in pagina
+    assert 'class="novidade nova"' not in pagina
+
+
+def test_the_user_state_does_not_make_a_repeated_job_look_new(env):
+    """Estado e decisao de quem le, e nao idade da vaga no acervo.
+
+    Uma vaga que o usuario nunca tocou continua `novo` por quantos runs forem.
+    Antes deste criterio o relatorio imprimia esse estado cru, e a vaga que ja
+    tinha aparecido em dez relatorios chegava ao decimo primeiro dizendo "novo".
+    """
+    connection, repo = env
+    add_vaga(repo, estado="novo")
+    pontuar_em_run_anterior(repo)
+    assert "já vista" in render(env)
+
+
+def test_a_decided_job_shows_the_decision_instead_of_the_novelty(env):
+    connection, repo = env
+    add_vaga(repo, estado="aplicado")
+    pontuar_em_run_anterior(repo)
+    pagina = render(env)
+    assert 'class="novidade decidida"' in pagina
+    assert "já vista" not in pagina
+
+
 # ------------------------------------------------------- estados degradados
 def test_a_run_with_no_survivors_says_so_with_the_counts(env):
     connection, _repo = env

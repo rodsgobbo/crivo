@@ -436,6 +436,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.14 THE Report Renderer SHALL display, para cada empresa com mais de um título distinto coletado dentro da janela de contratação configurada, a quantidade de títulos distintos e a data da coleta mais recente.
 
+18.15 THE Report Renderer SHALL display, para cada vaga, se ela já foi pontuada em outro run do mesmo usuário ou se aparece em relatório pela primeira vez.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.

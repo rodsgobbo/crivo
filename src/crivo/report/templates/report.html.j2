@@ -156,7 +156,18 @@
     {% else %}
       {{ vaga.publicada_em or "data não informada" }}
     {% endif %} ·
-    {{ vaga.estado }}
+    {# Nova de verdade e a que nunca apareceu em relatorio anterior. O estado
+       da vaga nao responde isso: ele guarda a decisao de quem le -- vista,
+       aplicada, descartada -- e uma vaga que ninguem tocou continua `novo`
+       por quantos runs forem. Decisao tomada vence o aviso de novidade: quem
+       ja aplicou nao precisa saber que a vaga reapareceu. #}
+    {% if vaga.estado in ('aplicado', 'descartado', 'expirado') %}
+      <span class="novidade decidida">{{ vaga.estado }}</span>
+    {% elif vaga.vista_antes %}
+      <span class="novidade vista">já vista</span>
+    {% else %}
+      <span class="novidade nova">nova</span>
+    {% endif %}
     {% if vaga.candidatos %} · {{ vaga.candidatos }} candidatos{% endif %}
     {# A busca que a trouxe. Sem isto, "por que esta vaga apareceu?" só tinha
        resposta lendo o código do planejador -- e um termo que só traz ruído

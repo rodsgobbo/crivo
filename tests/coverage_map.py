@@ -224,6 +224,13 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_the_report_shows_who_is_hiring",
     ],
 
+    # ------------------------------------------- REQ-18.15 nova ou ja vista
+    "18.15": [
+        "test_report::test_a_job_that_never_appeared_before_is_marked_new",
+        "test_report::test_a_job_scored_in_an_earlier_run_is_marked_already_seen",
+        "test_report::test_a_decided_job_shows_the_decision_instead_of_the_novelty",
+    ],
+
     # ----------------------------------------------------- REQ-15 sintese
     "15.1": ["test_synthesis::test_one_logical_request_per_run"],
     "15.2": ["test_synthesis::test_only_the_closed_field_list_goes_up"],
