@@ -210,7 +210,7 @@ def _executar(args) -> int:
     if args.modo == "web":  # pragma: no cover - sobe servidor
         import uvicorn
 
-        from .providers.client import LiteLLMRouter
+        from .providers.client import LiteLLMRouter, verificar_credencial
         from .providers.vault import EnvelopeCipher
         from .web.app import create_app
         from .web.auth import GoogleIdentityProvider
@@ -243,6 +243,12 @@ def _executar(args) -> int:
             # aplicacao, para que o processo web continue subindo sem rede
             # nos testes.
             router_factory=LiteLLMRouter,
+            # A verificacao da chave no cadastro vive aqui pelo mesmo motivo
+            # que a fabrica do roteador: ela sai pela rede, e a aplicacao
+            # precisa subir sem rede nos testes. Sem esta linha o cofre
+            # aceitava qualquer chave -- a promessa de validar antes de
+            # guardar estava no docstring e em nenhum chamador.
+            validate_credential=verificar_credencial,
         )
         try:
             uvicorn.run(app, host=args.host, port=args.port)

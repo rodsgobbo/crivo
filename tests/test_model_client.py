@@ -208,6 +208,67 @@ def test_an_exhausted_chain_falls_back_to_deterministic(env):
     assert "ana" not in str(err.value)
 
 
+# ------------------------------------------ verificacao no cadastro da chave
+def provedor_de_teste():
+    from crivo.providers.registry import Provider
+
+    return Provider(
+        id="mistral", rotulo="Mistral", endereco="https://api.mistral.ai/v1",
+        formato_credencial="chave_estatica", execucao="rede_externa",
+        modelos=("mistral-large-latest", "mistral-small-latest"),
+        limite_declarado="cota gratuita", destino_dos_dados="servidores da Mistral",
+    )
+
+
+def test_a_key_the_provider_refuses_is_refused_at_registration():
+    """Chave errada entrava em silencio e falhava meia hora depois, no run."""
+    from crivo.providers.client import verificar_credencial
+
+    def recusa(_params):
+        raise Exception("AuthenticationError: API key not valid")
+
+    assert verificar_credencial(provedor_de_teste(), "errada", chamar=recusa) is False
+
+
+def test_a_provider_outage_does_not_block_registering_a_good_key():
+    """Sobrecarga nao fala sobre a chave.
+
+    Recusar por ela faria uma queda do provedor impedir o cadastro de uma chave
+    boa -- e o cadastro e justamente o que a pessoa faz para ter uma segunda
+    opcao quando o primeiro provedor cai.
+    """
+    from crivo.providers.client import verificar_credencial
+
+    def sobrecarregado(_params):
+        raise Exception("litellm.ServiceUnavailableError: 503 high demand")
+
+    assert verificar_credencial(provedor_de_teste(), "boa", chamar=sobrecarregado) is True
+
+
+def test_a_key_the_provider_accepts_is_stored():
+    from crivo.providers.client import verificar_credencial
+
+    recebido = {}
+
+    def aceita_e_registra(params):
+        recebido.update(params)
+
+    assert verificar_credencial(provedor_de_teste(), "boa", chamar=aceita_e_registra)
+    # A verificacao usa o primeiro modelo do provedor e a chave informada.
+    assert recebido["api_key"] == "boa"
+    assert recebido["model"].endswith("mistral-large-latest")
+
+
+def test_an_unknown_failure_does_not_refuse_the_key():
+    """Na duvida, a chave entra: a primeira falha real agora explica a causa."""
+    from crivo.providers.client import verificar_credencial
+
+    def estranho(_params):
+        raise Exception("algo que ninguem classificou")
+
+    assert verificar_credencial(provedor_de_teste(), "boa", chamar=estranho) is True
+
+
 # ------------------------------------------------- classificacao da falha
 #: O 503 que o Gemini devolveu num run real, como a biblioteca o entregou.
 #: Ele esta aqui inteiro de proposito: o codigo vem dentro de um JSON, e nao

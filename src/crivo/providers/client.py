@@ -241,6 +241,70 @@ class ModelRouter(Protocol):
     ) -> Completion: ...
 
 
+#: Prazo da verificacao de credencial, em segundos.
+#:
+#: Ela roda dentro da requisicao que cadastra, com a pessoa esperando a pagina.
+#: Dez segundos e mais do que qualquer provedor saudavel leva para recusar uma
+#: chave, e pouco o bastante para a tela nao parecer travada.
+PRAZO_DA_VERIFICACAO_S = 10
+
+
+def _completar_minimo(params: dict[str, Any]) -> None:  # pragma: no cover - rede
+    """Menor chamada possivel que prova que a chave serve."""
+    import litellm
+
+    litellm.completion(
+        messages=[{"role": "user", "content": "ok"}],
+        max_tokens=1,
+        num_retries=0,
+        timeout=PRAZO_DA_VERIFICACAO_S,
+        **params,
+    )
+
+
+def verificar_credencial(provider, secret: str, chamar=None) -> bool:
+    """A chave serve? Recusa apenas quando o provedor nega a credencial.
+
+    O cofre prometia validar antes de guardar, e no app em execucao nada
+    validava: `validate_credential` nascia como "sempre aceita" e nenhum
+    chamador a substituia. Chave com um caractere errado entrava em silencio e
+    so falhava no run seguinte -- depois de meia hora de coleta, na hora de
+    gastar o modelo.
+
+    A assimetria e deliberada. Recusa de credencial e definitiva: a chave esta
+    errada agora e vai continuar errada, e aceita-la seria guardar um destino
+    morto na cadeia. Qualquer outra falha -- sobrecarga, limite de uso, tempo
+    esgotado, rede -- nao fala sobre a chave, e recusar por ela faria uma queda
+    do provedor impedir o cadastro de uma chave boa. Nesse caso a credencial
+    entra, com aviso no log, e a primeira falha real explica o resto: a
+    mensagem do run agora diz qual foi a categoria.
+
+    `chamar` existe para o teste: a verificacao de verdade sai pela rede, e
+    nenhum teste deste repositorio sai.
+    """
+    destino = Destination(
+        provider_id=provider.id,
+        endereco=provider.endereco,
+        modelo=provider.modelos[0],
+        credencial=(secret or None),
+    )
+    try:
+        (chamar or _completar_minimo)(_params(destino))
+    except Exception as exc:
+        categoria, _transitoria, _frase = classificar(exc)
+        if categoria == "credencial":
+            logger.warning(
+                "o provedor %s recusou a credencial no cadastro: %s",
+                provider.id, exc,
+            )
+            return False
+        logger.warning(
+            "credencial de %s aceita sem verificacao (%s): %s",
+            provider.id, categoria, exc,
+        )
+    return True
+
+
 def nome_do_grupo(destino: Destination) -> str:
     """Nome que a biblioteca usa para este destino, unico dentro da cadeia.
 
