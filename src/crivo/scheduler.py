@@ -133,7 +133,11 @@ class Scheduler:
     #: Alcances que a interface oferece, em horas. A janela permanece `ampla`
     #: em todos: ela diz que o run foi pedido por alguem, e nao quanto ele
     #: alcanca -- e e por `ampla` que a cota diaria conta.
-    ALCANCES = {"30d": 720, "7d": 168, "1d": 24}
+    #: `3d` existe para o fim de semana. Com `1d` o sabado perde o que foi
+    #: publicado na sexta a tarde, e com `7d` a lista volta cheia do que ja foi
+    #: lido na semana; tres dias e a janela que cobre o intervalo entre duas
+    #: leituras de quem olha o relatorio uma vez por semana.
+    ALCANCES = {"30d": 720, "7d": 168, "3d": 72, "1d": 24}
     ALCANCE_PADRAO = "30d"
 
     def request_immediate(self, user_id: str, alcance: str | None = None) -> str:

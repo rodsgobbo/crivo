@@ -213,6 +213,10 @@
             <legend>Vagas publicadas nos últimos</legend>
             <label><input type="radio" name="alcance" value="30d" checked> 30 dias</label>
             <label><input type="radio" name="alcance" value="7d"> 7 dias</label>
+            {# Tres dias cobre o fim de semana: no sabado, `1 dia` perde o que
+               saiu na sexta a tarde, e `7 dias` devolve a semana que voce ja
+               leu. #}
+            <label><input type="radio" name="alcance" value="3d"> 3 dias</label>
             <label><input type="radio" name="alcance" value="1d"> 1 dia</label>
           </fieldset>
           <button class="acao" type="submit">Buscar vagas agora</button>

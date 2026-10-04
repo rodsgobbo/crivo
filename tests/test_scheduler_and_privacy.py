@@ -433,7 +433,7 @@ def test_the_default_reach_is_the_configured_wide_window(env):
     assert linha["janela_horas"] == config.collection.janela_ampla_horas
 
 
-@pytest.mark.parametrize("alcance,horas", [("30d", 720), ("7d", 168), ("1d", 24)])
+@pytest.mark.parametrize("alcance,horas", [("30d", 720), ("7d", 168), ("3d", 72), ("1d", 24)])
 def test_the_chosen_reach_is_stored_with_the_run(env, alcance, horas):
     """A escolha precisa sobreviver ao proprio run.
 

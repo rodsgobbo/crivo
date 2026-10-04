@@ -426,7 +426,7 @@ def test_the_office_preference_is_saved_kept_and_clearable(cliente):
     assert _preferencia(cliente, user_id) is None
 
 
-@pytest.mark.parametrize("alcance,horas", [("30d", 720), ("7d", 168), ("1d", 24)])
+@pytest.mark.parametrize("alcance,horas", [("30d", 720), ("7d", 168), ("3d", 72), ("1d", 24)])
 def test_the_reach_chosen_in_the_form_reaches_the_run(cliente, alcance, horas):
     """O radio da pagina precisa chegar ate a linha do run.
 
