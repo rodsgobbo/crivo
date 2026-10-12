@@ -269,6 +269,24 @@ def test_a_second_enricher_is_refused_while_the_first_lives(env):
         _processo(env).acquire()
 
 
+def test_the_refusal_says_how_long_since_the_last_sign_of_life(env):
+    """A recusa mandava encerrar o outro, e quase nunca havia outro.
+
+    A trava costuma ser de um processo morto sem solta-la -- fechar a janela no
+    X e o jeito mais comum --, e a frase antiga mandava procurar uma janela que
+    nao existe. O numero distingue os dois casos sozinho: segundos significam
+    processo vivo, minutos significam espera.
+    """
+    from crivo.worker.enricher_process import AlreadyRunning
+
+    _processo(env).acquire()
+    with pytest.raises(AlreadyRunning) as err:
+        _processo(env).acquire()
+    mensagem = str(err.value)
+    assert "Ultimo sinal de vida ha 0 min" in mensagem
+    assert "15 min sem sinal" in mensagem, "o prazo de abandono precisa estar dito"
+
+
 def test_an_abandoned_lock_is_taken_over(env):
     """Um processo morto nao pode impedir a partida seguinte para sempre.
 

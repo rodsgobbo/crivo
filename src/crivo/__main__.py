@@ -349,10 +349,20 @@ def _executar(args) -> int:
 
     if args.modo == "enricher":  # pragma: no cover - laco longo
         from .pipeline.sources.guest import MultiPortalSource
+        from .store.locks import AlreadyRunning
         from .worker.enricher_process import EnricherProcess
 
         processo = EnricherProcess(banco(), config, MultiPortalSource())
-        processo.serve_forever(ciclos=1 if args.once else None)
+        try:
+            processo.serve_forever(ciclos=1 if args.once else None)
+        except AlreadyRunning as erro:
+            # Uma linha, como o modo `runs` ja fazia. A recusa por trava e
+            # estado previsto e nao defeito, e ela chegava aqui como traceback
+            # de dez linhas -- no modo `tudo`, no meio da saida dos outros dois
+            # processos. Quem le um traceback conclui que o programa quebrou, e
+            # o que precisava fazer era encerrar o outro crivo ou esperar.
+            print(f"[enricher] {erro}", file=sys.stderr)
+            return 1
         return 0
 
     from .scheduler import Scheduler

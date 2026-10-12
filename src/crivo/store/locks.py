@@ -58,6 +58,39 @@ def vencida(carimbo: str | None, agora: datetime | None = None) -> bool:
     return referencia - marcado > timedelta(seconds=SILENCIO_ATE_ABANDONO_S)
 
 
+def _desde_o_ultimo_sinal(carimbo: str | None, agora: datetime | None = None) -> str:
+    """Quanto tempo faz que a trava deu sinal de vida, e o que fazer com isso.
+
+    A recusa dizia "encerre o outro antes de subir este", e na maior parte das
+    vezes nao havia outro: a trava era de um processo morto sem solta-la, e o
+    que restava era esperar. Quem lia a frase ia procurar uma janela que nao
+    existe -- e, no Windows, fechar no X e o jeito mais comum de morrer assim.
+
+    O numero resolve isso sozinho. Sinal de segundos atras significa processo
+    vivo; de minutos, processo morto e espera.
+    """
+    minutos = int(_silencio_em_segundos(carimbo, agora) // 60)
+    limite = SILENCIO_ATE_ABANDONO_S // 60
+    return (
+        f"Ultimo sinal de vida ha {minutos} min. Se nenhum outro crivo esta "
+        f"rodando, a trava e de um processo que morreu sem solta-la e sai "
+        f"sozinha apos {limite} min sem sinal"
+    )
+
+
+def _silencio_em_segundos(carimbo: str | None, agora: datetime | None = None) -> float:
+    if not carimbo:
+        return float("inf")
+    try:
+        marcado = datetime.fromisoformat(str(carimbo))
+    except ValueError:
+        return float("inf")
+    if marcado.tzinfo is None:
+        marcado = marcado.replace(tzinfo=timezone.utc)
+    referencia = agora or datetime.now(timezone.utc)
+    return (referencia - marcado).total_seconds()
+
+
 def ativo(repository, chave: str) -> bool:
     """Ha um detentor vivo desta trava nesta instalacao?"""
     linhas = repository.select("schema_meta", where="chave = ?", params=(chave,))
@@ -95,8 +128,8 @@ class InstanceLock:
         if linhas and not vencida(linhas[0]["aplicada_em"]):
             raise AlreadyRunning(
                 f"ja ha um processo de {self._rotulo} ativo; a contencao de "
-                "taxa depende de haver apenas um. Encerre o outro antes de "
-                "subir este"
+                "taxa depende de haver apenas um. "
+                + _desde_o_ultimo_sinal(linhas[0]["aplicada_em"])
             )
         if linhas:
             if self._logger:
