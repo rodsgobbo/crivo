@@ -760,6 +760,15 @@ body.relatorio h2::before { height: 4px; width: 18px; }
 }
 .chip.remoto { color: var(--ok); background: var(--ok-fundo); font-weight: 600; }
 .chip.busca { background: transparent; border: 1px dashed var(--borda); }
+/* A moeda citada na descricao. A moeda forte ganha a cor da marca porque e o
+   que o usuario esta procurando; o real fica neutro, e nao vermelho: pagar em
+   real nao e defeito da vaga. */
+.chip.moeda { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+.chip.moeda.forte {
+  color: var(--novo);
+  background: var(--novo-fundo);
+  font-weight: 700;
+}
 
 /* Vaga publicada antes da janela pedida. A origem não cumpre o filtro de
  * recência, e quem pediu 24 horas precisa ver isso na própria linha da vaga --

@@ -198,9 +198,16 @@ class MultiPortalSource:
         return self._scrape
 
     def search(
-        self, termo: str, local: str, janela_horas: int, quantidade: int
+        self, termo: str, local: str, janela_horas: int, quantidade: int,
+        remoto: bool = False,
     ) -> SearchOutcome:
-        """Descoberta: cards sem descricao, deliberadamente."""
+        """Descoberta: cards sem descricao, deliberadamente.
+
+        `remoto` liga o filtro de remoto da origem. Ele existe para a frente
+        internacional: sem ele, procurar nos Estados Unidos devolve vaga
+        presencial em Austin -- que nao serve a quem mora no Brasil, e ainda
+        gasta o teto de buscas do run.
+        """
         scraper = self._scraper()
         try:
             with _escuta_a_recusa() as recusa:
@@ -208,6 +215,7 @@ class MultiPortalSource:
                     site_name=list(self._portais),
                     search_term=termo,
                     location=local,
+                    is_remote=remoto,
                     hours_old=janela_horas,
                     results_wanted=quantidade,
                     # Nao trazer descricao aqui e a decisao central deste adaptador.

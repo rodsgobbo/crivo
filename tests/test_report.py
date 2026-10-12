@@ -511,6 +511,67 @@ def test_only_new_jobs_hides_what_earlier_runs_already_showed():
     assert [v["job_id"] for v in restantes] == ["nova"]
 
 
+# ------------------------------------------------------------------ moeda
+def test_a_salary_in_reais_is_never_read_as_dollars():
+    """O erro mais caro deste sinal, e o que a ordem das marcas impede.
+
+    "R$" contem "$", entao qualquer regra que procure dolar primeiro leria uma
+    vaga brasileira como vaga em moeda forte -- e o filtro passaria a devolver
+    exatamente o que ele existe para esconder.
+    """
+    from crivo.report.renderer import detectar_moeda
+
+    assert detectar_moeda("Salário: R$ 25.000 a R$ 30.000") == "BRL"
+    assert detectar_moeda("remuneração em reais, CLT") == "BRL"
+
+
+def test_strong_currencies_are_recognized():
+    from crivo.report.renderer import detectar_moeda
+
+    assert detectar_moeda("Base salary: US$ 180,000/year") == "USD"
+    assert detectar_moeda("Compensation in USD, contractor") == "USD"
+    assert detectar_moeda("Gehalt: 95.000 € pro Jahr") == "EUR"
+    assert detectar_moeda("Salary up to £110,000 GBP") == "GBP"
+
+
+def test_a_description_that_says_nothing_about_money_has_no_currency():
+    """`None` e frequente e legitimo, e nunca quer dizer "paga em real"."""
+    from crivo.report.renderer import detectar_moeda
+
+    assert detectar_moeda("Sobre a vaga: Kubernetes e Terraform") is None
+    assert detectar_moeda("") is None
+    assert detectar_moeda(None) is None
+
+
+def test_the_first_currency_mentioned_wins():
+    """Vaga que paga em dolar e cita beneficio em real paga em dolar."""
+    from crivo.report.renderer import detectar_moeda
+
+    assert detectar_moeda("Salary in USD. Benefício de R$ 800 para home office") == "USD"
+
+
+def test_only_strong_currency_hides_what_pays_in_reais_and_what_is_silent():
+    from crivo.report.renderer import _aplicar_filtros
+
+    vagas = [
+        _vaga(job_id="dolar"), _vaga(job_id="real"), _vaga(job_id="calada"),
+    ]
+    vagas[0]["moeda"] = "USD"
+    vagas[1]["moeda"] = "BRL"
+    vagas[2]["moeda"] = None
+    restantes = _aplicar_filtros(vagas, {"so_moeda_forte": True})
+    assert [v["job_id"] for v in restantes] == ["dolar"]
+
+
+def test_the_report_shows_the_currency_and_offers_its_filter(env):
+    connection, repo = env
+    add_vaga(repo, descricao="Base salary: US$ 190,000 — fully remote")
+    pagina = render(env)
+    assert 'class="chip moeda forte"' in pagina
+    assert "USD" in pagina
+    assert 'name="moeda"' in pagina
+
+
 def test_the_new_only_filter_ignores_the_user_state():
     """Vaga nunca tocada fica `novo` para sempre, e o filtro nao se engana.
 

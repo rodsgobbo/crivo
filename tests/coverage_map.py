@@ -224,6 +224,22 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_the_report_shows_who_is_hiring",
     ],
 
+    # ------------------------------------------------- REQ-8.8/8.9 frentes
+    "8.8": [
+        "test_collector::test_each_term_reaches_every_front_with_its_remote_filter",
+        "test_collector::test_the_fronts_are_interleaved_and_not_drained_one_at_a_time",
+        "test_stages::test_every_term_is_searched_in_every_front",
+    ],
+    "8.9": ["test_collector::test_the_search_cap_counts_requests_and_not_terms"],
+
+    # ----------------------------------------------- REQ-18.16 moeda da vaga
+    "18.16": [
+        "test_report::test_a_salary_in_reais_is_never_read_as_dollars",
+        "test_report::test_strong_currencies_are_recognized",
+        "test_report::test_only_strong_currency_hides_what_pays_in_reais_and_what_is_silent",
+        "test_report::test_the_report_shows_the_currency_and_offers_its_filter",
+    ],
+
     # ------------------------------------------- REQ-18.15 nova ou ja vista
     "18.15": [
         "test_report::test_a_job_that_never_appeared_before_is_marked_new",

@@ -182,6 +182,54 @@ def recomendar(vaga: dict, limiar: int) -> tuple[str, str]:
     )
 
 
+#: Moedas reconhecidas na descricao, da marca mais especifica para a mais
+#: ambigua. A ordem decide: "R$" tem de ser testado antes de qualquer coisa que
+#: contenha "$", senao um salario em reais seria lido como dolar.
+#:
+#: O "$" solto ficou de fora de proposito. Ele aparece em vaga brasileira
+#: ("$ a combinar"), em vaga americana e em trecho de codigo dentro da
+#: descricao, e adivinhar entre os tres produziria o erro mais caro que existe
+#: aqui: dizer que paga em dolar o que paga em real.
+MOEDAS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("BRL", ("r$", "reais", "real brasileiro")),
+    ("USD", ("us$", "usd", "u$d", "dolar", "dólar", "dollars", "us dollar")),
+    ("EUR", ("eur", "€", "euros")),
+    ("GBP", ("gbp", "£", "libras")),
+)
+
+#: Moedas que respondem ao pedido "quero receber em moeda forte".
+MOEDAS_FORTES = ("USD", "EUR", "GBP")
+
+
+def detectar_moeda(descricao: str | None) -> str | None:
+    """A moeda citada na descricao, ou `None` quando ela nao diz.
+
+    Derivado da descricao a cada leitura, e nao gravado: a descricao ja esta
+    carregada aqui, o custo e um `in` por vaga, e gravar exigiria migracao mais
+    o reprocessamento das descricoes que o banco ja tem.
+
+    `None` e um estado legitimo e frequente -- vaga sem descricao lida nao tem
+    como dizer moeda, e a maioria das descricoes nao fala de dinheiro. Ele nunca
+    deve ser lido como "paga em real".
+    """
+    texto = (descricao or "").lower()
+    if not texto:
+        return None
+    achados = [
+        (texto.index(marca), moeda)
+        for moeda, marcas in MOEDAS
+        for marca in marcas
+        if marca in texto
+    ]
+    if not achados:
+        return None
+    # A primeira mencao vence. Uma vaga que diz "salario em USD" e mais adiante
+    # cita "R$ de beneficio" paga em dolar, e a ordem no texto e o unico sinal
+    # disponivel sem ler o sentido da frase.
+    achados.sort()
+    return achados[0][1]
+
+
 def _aplicar_filtros(vagas: list[dict], filtros: dict) -> list[dict]:
     """Recorta a lista pelo que o leitor pediu, sem reordenar nada.
 
@@ -213,6 +261,12 @@ def _aplicar_filtros(vagas: list[dict], filtros: dict) -> list[dict]:
         resultado = [v for v in resultado if v.get("modelo") == "remote"]
     if filtros.get("ocultar_fora_do_raio"):
         resultado = [v for v in resultado if not v.get("blocker")]
+    if filtros.get("so_moeda_forte"):
+        # Vaga sem moeda reconhecida sai junto, e isso precisa estar dito: o
+        # filtro responde "quais dizem pagar em moeda forte", e nao "quais
+        # pagam". A maioria das descricoes nao fala de dinheiro, e vaga sem
+        # descricao lida nao tem como falar.
+        resultado = [v for v in resultado if v.get("moeda") in MOEDAS_FORTES]
     if filtros.get("so_novas"):
         # Novidade e do dado, e nao do estado: a vaga que nunca foi pontuada em
         # outro run. Quem roda todo dia quer ver so o que chegou desde ontem, e
@@ -533,6 +587,7 @@ class ReportRenderer:
                 "emails": json.loads(linha["emails_contato"] or "[]"),
                 "candidatos": linha["candidatos"],
                 "vista_antes": bool(linha["vista_antes"]),
+                "moeda": detectar_moeda(linha["descricao"]),
             }
             for linha in linhas
         ]

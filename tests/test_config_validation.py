@@ -23,6 +23,14 @@ def _dump(value, prefix=""):
         path = f"{prefix}{key}"
         if isinstance(item, dict):
             tables.append(f"[{path}]\n{_dump(item, path + '.')}")
+        elif isinstance(item, list) and item and all(isinstance(x, dict) for x in item):
+            # Array de tabelas, como `[[collection.frentes]]`. Sem este caso o
+            # serializador caia no ramo escalar e escrevia o `repr` do
+            # dicionario Python no arquivo -- TOML invalido, e todo teste deste
+            # arquivo falhava citando um erro de sintaxe na linha 9 em vez da
+            # chave que ele estava verificando.
+            for entrada in item:
+                tables.append(f"[[{path}]]\n{_dump(entrada, path + '.')}")
         else:
             scalars.append(f"{key} = {_scalar(item)}")
     return "\n".join(scalars) + ("\n" if scalars else "") + "\n".join(tables)

@@ -51,6 +51,33 @@ orcamento_diario_coleta = 400
 # escritas pelo proprio usuario nunca entram no corte.
 max_buscas_por_run = 25
 
+# Frentes de busca: onde procurar, e se a vaga precisa ser remota.
+#
+# Cada termo do planejamento e consultado em TODAS as frentes, entao o numero de
+# requisicoes a origem e termos x frentes. O teto acima passa a valer sobre esse
+# produto e nao sobre os termos: com duas frentes, cada uma recebe metade dos
+# termos. Isso e deliberado -- o teto existe porque noventa buscas em rajada
+# provocaram bloqueio, e duas frentes sem divisao dobrariam a exposicao em
+# silencio. Para cobrir mais termos por frente, suba o teto de propósito.
+#
+# A ordem importa quando os termos nao cabem: as primeiras frentes ficam com
+# eles. A frente de casa vem primeiro porque e a que o usuario consegue aceitar
+# sem mudar de pais nem de moeda.
+
+[[collection.frentes]]
+rotulo = "aqui"
+# Vazio = a localizacao do perfil. Nao escreva a cidade aqui: ela e de quem usa.
+local = ""
+remoto = false
+
+# A rota do pagamento em moeda forte. `remoto = true` liga o filtro de remoto da
+# origem, e sem ele uma busca nos Estados Unidos devolve vaga presencial em
+# Austin -- inalcancavel para quem mora no Brasil, e ainda consumindo o teto.
+[[collection.frentes]]
+rotulo = "remoto nos EUA"
+local = "United States"
+remoto = true
+
 [run]
 duracao_maxima_s = 21600
 runs_imediatos_por_dia = 3

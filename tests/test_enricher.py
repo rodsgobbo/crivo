@@ -37,7 +37,7 @@ class FakeSource:
         self.candidatos = candidatos
         self.chamadas = []
 
-    def search(self, termo, local, janela_horas, quantidade):
+    def search(self, termo, local, janela_horas, quantidade, remoto=False):
         raise AssertionError("o enriquecedor nao deve buscar")
 
     def describe(self, job_id, url):

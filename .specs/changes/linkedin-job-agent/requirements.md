@@ -226,6 +226,10 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 8.7 THE Collector SHALL store cada card sob o identificador de usuário do run corrente.
 
+8.8 THE Collector SHALL execute cada termo de busca em todas as frentes configuradas, onde uma frente declara a localização consultada e se a vaga precisa ser remota.
+
+8.9 THE Collector SHALL restrict o total de requisições de busca de um run ao teto configurado, contando uma requisição por par de termo e frente.
+
 ### REQ-9: Pré-filtro antes do enriquecimento
 
 **User Story:** As a candidato, I want que vagas irrelevantes sejam descartadas antes da etapa cara, so that a capacidade de coleta seja gasta apenas com o que tem chance de servir.
@@ -437,6 +441,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 18.14 THE Report Renderer SHALL display, para cada empresa com mais de um título distinto coletado dentro da janela de contratação configurada, a quantidade de títulos distintos e a data da coleta mais recente.
 
 18.15 THE Report Renderer SHALL display, para cada vaga, se ela já foi pontuada em outro run do mesmo usuário ou se aparece em relatório pela primeira vez.
+
+18.16 THE Report Renderer SHALL display, para cada vaga cuja descrição cita uma moeda, qual moeda foi citada, e SHALL offer um filtro que mantém apenas as vagas cuja moeda citada é dólar, euro ou libra.
 
 ### REQ-19: Isolamento entre usuários
 

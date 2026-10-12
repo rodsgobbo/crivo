@@ -142,6 +142,11 @@
            {{ 'checked' if ctx.filtros.get('so_novas') }}>
     só vagas novas
   </label>
+  <label title="descrição que cita dólar, euro ou libra">
+    <input type="checkbox" name="moeda" value="1"
+           {{ 'checked' if ctx.filtros.get('so_moeda_forte') }}>
+    só em dólar ou euro
+  </label>
   <button class="acao discreta" type="submit">Filtrar</button>
   {% if ctx.vagas|length != ctx.total_sem_filtro %}
     <a class="acao discreta" href="?">Limpar</a>
@@ -205,6 +210,14 @@
        ficava impossível de identificar a partir do relatório. #}
     {% if vaga.busca %}
       <span class="chip busca">achada por {{ vaga.busca }}</span>
+    {% endif %}
+    {# A moeda citada na descricao. Ausente na maioria das vagas -- descricao
+       nao lida nao tem como dizer, e a maioria das lidas nao fala de dinheiro --
+       e por isso o chip so aparece quando ha sinal. #}
+    {% if vaga.moeda %}
+      <span class="chip moeda{{ ' forte' if vaga.moeda in ('USD', 'EUR', 'GBP') }}">
+        {{ vaga.moeda }}
+      </span>
     {% endif %}
   </p>
 

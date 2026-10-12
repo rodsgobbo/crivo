@@ -36,7 +36,7 @@ from ..worker.queue import RunQueue
 from ..worker.runner import Cancelled, RunContext, Suspend
 from .collector import CollectionCancelled, Collector
 from .governor import RateGovernor
-from .planner import Filters, load_filters, plan
+from .planner import Filters, load_filters, plan, teto_por_frente
 from .prefilter import Prefilter
 from .sources.guest import REMOTO, Card
 
@@ -122,7 +122,13 @@ class PlanejamentoStage:
             perfil.get("nivel_inferido") or "pleno",
             self._filters,
             extras=self._extras(context),
-            limite=getattr(config.collection, "max_buscas_por_run", None),
+            # O teto conta requisicao, e nao termo: cada termo e consultado em
+            # todas as frentes. Dividir aqui e o que impede uma frente nova de
+            # dobrar a exposicao a origem sem ninguem ter decidido isso.
+            limite=teto_por_frente(
+                getattr(config.collection, "max_buscas_por_run", None),
+                len(frentes_de_busca(config, perfil.get("localizacao") or "")),
+            ),
             rendimento=self._rendimento(context),
         )
         context.dados["buscas"] = buscas
@@ -184,7 +190,9 @@ class ColetaStage:
             resultado = self._collector.collect(
                 context.user_id,
                 buscas,
-                local=perfil.get("localizacao") or "",
+                frentes=frentes_de_busca(
+                    self._config, perfil.get("localizacao") or ""
+                ),
                 janela_horas=janela,
                 progresso=self._passo(context),
             )
@@ -311,6 +319,33 @@ class PreFiltroStage:
 
 class RunSemBuscas(RuntimeError):
     """Retomada sem termo de busca em lugar nenhum."""
+
+
+def frentes_de_busca(config, localizacao_do_perfil: str):
+    """As frentes do run, com a localizacao do perfil ja resolvida.
+
+    Frente com `local` vazio significa "onde a pessoa mora", e e aqui que isso
+    deixa de ser um buraco na configuracao e passa a ser um endereco. Guardar a
+    cidade no arquivo de configuracao seria pior: ela pertence a cada usuario, e
+    o arquivo e do operador.
+
+    Configuracao sem nenhuma frente declarada devolve a frente unica de antes --
+    a do perfil, sem exigir remoto. E o comportamento anterior a este campo, e
+    um arquivo escrito antes dele continua valendo.
+    """
+    from ..config import Frente
+
+    declaradas = getattr(config.collection, "frentes", ()) or ()
+    if not declaradas:
+        return (Frente(rotulo="aqui", local=localizacao_do_perfil, remoto=False),)
+    return tuple(
+        Frente(
+            rotulo=f.rotulo,
+            local=f.local or localizacao_do_perfil,
+            remoto=f.remoto,
+        )
+        for f in declaradas
+    )
 
 
 def carregar_buscas(connection, context: RunContext) -> list[str]:

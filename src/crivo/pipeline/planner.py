@@ -206,6 +206,28 @@ def improdutivas(rendimento: dict[str, tuple[int, int]]) -> frozenset[str]:
     )
 
 
+def teto_por_frente(limite: int | None, frentes: int) -> int | None:
+    """Divide o teto de buscas pelo numero de frentes.
+
+    O teto conta REQUISICOES a origem, e nao termos. Ele existe porque noventa
+    buscas em rajada gastaram mais requisicao do que um dia inteiro de
+    enriquecimento e provocaram bloqueio -- e cada termo passou a valer uma
+    requisicao por frente. Manter o teto sobre os termos faria duas frentes
+    dobrarem a exposicao em silencio, que e exatamente o defeito que ele existe
+    para impedir.
+
+    O preco esta dito: com duas frentes, cada uma recebe metade dos termos.
+    Quem quiser mais cobertura por frente sobe o teto de proposito, com a
+    exposicao a mais declarada.
+
+    Nunca devolve zero: uma frente declarada tem de receber ao menos um termo,
+    senao a configuracao diria para procurar num lugar onde nada e procurado.
+    """
+    if limite is None:
+        return None
+    return max(1, limite // max(1, frentes))
+
+
 def plan(
     profile_fields: dict,
     nivel: str,

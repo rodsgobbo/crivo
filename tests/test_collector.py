@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 
+from crivo.config import Frente
 from crivo.pipeline.collector import CollectionCancelled, Collector
 from crivo.pipeline.sources.guest import (
     PRESENCIAL,
@@ -14,6 +15,9 @@ from crivo.pipeline.sources.guest import (
 )
 from crivo.store.migrations import open_database
 from crivo.store.repository import Repository
+
+#: Uma frente so, em casa: o que a coleta fazia antes de ter frentes.
+AQUI = (Frente(rotulo="aqui", local="Brasil", remoto=False),)
 
 
 def linha(**over):
@@ -43,9 +47,13 @@ class FakeSource:
     def __init__(self, por_busca=None):
         self.por_busca = por_busca or {}
         self.chamadas = []
+        self.frentes_chamadas = []
 
-    def search(self, termo, local, janela_horas, quantidade):
+    def search(self, termo, local, janela_horas, quantidade, remoto=False):
         self.chamadas.append((termo, local, janela_horas, quantidade))
+        # A frente fica a parte: as asserções antigas comparam a tupla acima, e
+        # quem precisa da frente precisa dela inteira (local e remoto juntos).
+        self.frentes_chamadas.append((local, remoto))
         return self.por_busca.get(termo, SearchOutcome(busca=termo, improdutiva=True))
 
     def describe(self, job_id, url):
@@ -122,7 +130,7 @@ def test_the_discovery_call_never_asks_for_descriptions():
         capturado.update(kwargs)
         return [linha()]
 
-    MultiPortalSource(scrape=scrape).search("SRE Manager", "Brasil", 24, 25)
+    MultiPortalSource(scrape=scrape).search("SRE Manager", AQUI, 24, 25)
     assert capturado["linkedin_fetch_description"] is False
     assert capturado["hours_old"] == 24
 
@@ -131,13 +139,13 @@ def test_a_source_error_becomes_a_recorded_failure():
     def scrape(**kwargs):
         raise TimeoutError("sem resposta")
 
-    saida = MultiPortalSource(scrape=scrape).search("SRE", "Brasil", 24, 25)
+    saida = MultiPortalSource(scrape=scrape).search("SRE", AQUI, 24, 25)
     assert saida.falha and "TimeoutError" in saida.falha
     assert saida.cards == []
 
 
 def test_an_empty_result_is_unproductive_not_a_failure():
-    saida = MultiPortalSource(scrape=lambda **k: []).search("SRE", "Brasil", 24, 25)
+    saida = MultiPortalSource(scrape=lambda **k: []).search("SRE", AQUI, 24, 25)
     assert saida.improdutiva is True
     assert saida.falha is None
 
@@ -307,10 +315,81 @@ def test_a_body_without_the_description_block_is_an_error():
     assert "mudou de forma" in str(err.value)
 
 
+# ------------------------------------------------------------------ frentes
+#: Casa e a frente internacional, que e o par que motiva o campo.
+DUAS = (
+    Frente(rotulo="aqui", local="Brasil", remoto=False),
+    Frente(rotulo="remoto nos EUA", local="United States", remoto=True),
+)
+
+
+def test_each_term_reaches_every_front_with_its_remote_filter(collector):
+    fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
+    Collector(collector, fonte).collect("ana", ["A", "B"], DUAS, 24)
+    assert fonte.frentes_chamadas == [
+        ("Brasil", False), ("United States", True),
+        ("Brasil", False), ("United States", True),
+    ]
+
+
+def test_the_fronts_are_interleaved_and_not_drained_one_at_a_time(collector):
+    """Barrado no meio, o run precisa ter visto as duas frentes.
+
+    Esgotar a primeira frente antes de comecar a segunda faria um bloqueio na
+    metade apagar a frente internacional inteira -- e ela e a que existe para
+    achar vaga paga em moeda forte.
+    """
+    fonte = FakeSource()
+    Collector(collector, fonte).collect("ana", ["A", "B", "C"], DUAS, 24)
+    rotulos = [local for local, _remoto in fonte.frentes_chamadas]
+    assert rotulos == ["Brasil", "United States"] * 3
+
+
+def test_the_same_job_found_in_two_fronts_enters_once(collector):
+    """O card e unico no run, e nao por frente."""
+    mesma = SearchOutcome(busca="A", cards=[card(job_id="li-7")])
+    fonte = FakeSource({"A": mesma})
+    resultado = Collector(collector, fonte).collect("ana", ["A"], DUAS, 24)
+    assert resultado.novos == ["li-7"]
+    assert resultado.repetidos == 1
+    assert collector.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 1
+
+
+def test_a_block_reports_each_remaining_term_once(collector):
+    """O relatorio fala de termos; a coleta agora conta pares (termo, frente).
+
+    O termo barrado tambem entra na lista, e isso e proposito: ele foi tentado
+    na frente de casa e nunca na internacional, entao a cobertura que o run
+    prometeu para ele nao aconteceu. Sem a deduplicacao, cada termo apareceria
+    uma vez por frente.
+    """
+    fonte = FakeSource({
+        "A": SearchOutcome(busca="A", bloqueada=True, falha="429"),
+    })
+    resultado = Collector(collector, fonte).collect("ana", ["A", "B", "C"], DUAS, 24)
+    assert resultado.nao_tentadas == ["A", "B", "C"]
+
+
+def test_the_search_cap_counts_requests_and_not_terms():
+    """Duas frentes nao podem dobrar a exposicao a origem em silencio.
+
+    O teto existe porque noventa buscas em rajada provocaram bloqueio. Ele conta
+    requisicao, e cada termo passou a valer uma por frente.
+    """
+    from crivo.pipeline.planner import teto_por_frente
+
+    assert teto_por_frente(25, 1) == 25
+    assert teto_por_frente(25, 2) == 12
+    assert teto_por_frente(None, 3) is None, "sem teto continua sem teto"
+    # Frente declarada recebe ao menos um termo: zero diria para procurar num
+    # lugar onde nada e procurado.
+    assert teto_por_frente(2, 5) == 1
+
+
 # ------------------------------------------------------------------ coleta
 def test_cards_are_stored_under_the_run_owner(collector):
     fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
-    resultado = Collector(collector, fonte).collect("ana", ["A"], "Brasil", 24)
+    resultado = Collector(collector, fonte).collect("ana", ["A"], AQUI, 24)
     assert resultado.novos == ["li-1"]
     row = collector.execute("SELECT user_id, estado FROM jobs").fetchone()
     assert (row["user_id"], row["estado"]) == ("ana", "novo")
@@ -321,7 +400,7 @@ def test_a_repeated_identifier_within_the_run_is_discarded(collector):
         "A": SearchOutcome(busca="A", cards=[card()]),
         "B": SearchOutcome(busca="B", cards=[card()]),
     })
-    resultado = Collector(collector, fonte).collect("ana", ["A", "B"], "Brasil", 24)
+    resultado = Collector(collector, fonte).collect("ana", ["A", "B"], AQUI, 24)
     assert len(resultado.cards) == 1
     assert resultado.repetidos == 1
     assert resultado.brutos == 2
@@ -334,7 +413,7 @@ def test_unproductive_and_failed_searches_are_recorded_apart(collector):
         "boa": SearchOutcome(busca="boa", cards=[card()]),
     })
     resultado = Collector(collector, fonte).collect(
-        "ana", ["vazia", "quebrada", "boa"], "Brasil", 24
+        "ana", ["vazia", "quebrada", "boa"], AQUI, 24
     )
     assert resultado.improdutivas == ["vazia"]
     assert list(resultado.falhas) == ["quebrada"]
@@ -346,17 +425,17 @@ def test_a_failed_search_does_not_stop_the_remaining_ones(collector):
         "quebrada": SearchOutcome(busca="quebrada", falha="erro"),
         "boa": SearchOutcome(busca="boa", cards=[card()]),
     })
-    Collector(collector, fonte).collect("ana", ["quebrada", "boa"], "Brasil", 24)
+    Collector(collector, fonte).collect("ana", ["quebrada", "boa"], AQUI, 24)
     assert len(fonte.chamadas) == 2
 
 
 def test_a_job_seen_again_is_not_new_and_keeps_its_first_sighting(collector):
     fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
     c = Collector(collector, fonte)
-    c.collect("ana", ["A"], "Brasil", 24)
+    c.collect("ana", ["A"], AQUI, 24)
     primeira = collector.execute("SELECT primeira_vez_em FROM jobs").fetchone()[0]
 
-    segunda = c.collect("ana", ["A"], "Brasil", 24)
+    segunda = c.collect("ana", ["A"], AQUI, 24)
     assert segunda.novos == []
     row = collector.execute("SELECT primeira_vez_em, ausencias_elegiveis FROM jobs").fetchone()
     assert row["primeira_vez_em"] == primeira
@@ -366,15 +445,15 @@ def test_a_job_seen_again_is_not_new_and_keeps_its_first_sighting(collector):
 def test_reappearing_resets_the_eligible_absence_counter(collector):
     fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
     c = Collector(collector, fonte)
-    c.collect("ana", ["A"], "Brasil", 24)
+    c.collect("ana", ["A"], AQUI, 24)
     collector.execute("UPDATE jobs SET ausencias_elegiveis = 2")
-    c.collect("ana", ["A"], "Brasil", 24)
+    c.collect("ana", ["A"], AQUI, 24)
     assert collector.execute("SELECT ausencias_elegiveis FROM jobs").fetchone()[0] == 0
 
 
 def test_the_window_reaches_the_source(collector):
     fonte = FakeSource()
-    Collector(collector, fonte).collect("ana", ["A"], "Brasil", 720)
+    Collector(collector, fonte).collect("ana", ["A"], AQUI, 720)
     assert fonte.chamadas[0][2] == 720
 
 
@@ -383,7 +462,7 @@ def test_the_window_reaches_the_source(collector):
 def test_card_signals_are_recorded_on_the_card(collector):
     fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
     c = Collector(collector, fonte)
-    c.collect("ana", ["A"], "Brasil", 24)
+    c.collect("ana", ["A"], AQUI, 24)
     c.record_signals("ana", "li-1", ["top_applicant", "early_applicant"])
     assert c.signals_for("ana", "li-1") == ["early_applicant", "top_applicant"]
 
@@ -391,7 +470,7 @@ def test_card_signals_are_recorded_on_the_card(collector):
 def test_a_card_without_signals_has_an_empty_list(collector):
     fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
     c = Collector(collector, fonte)
-    c.collect("ana", ["A"], "Brasil", 24)
+    c.collect("ana", ["A"], AQUI, 24)
     assert c.signals_for("ana", "li-1") == []
 
 
@@ -404,7 +483,7 @@ def test_a_block_is_not_recorded_as_an_empty_market(collector):
     que houve foi um portao fechado.
     """
     fonte = FakeSource({"A": SearchOutcome(busca="A", bloqueada=True, falha="429")})
-    resultado = Collector(collector, fonte).collect("ana", ["A"], "Brasil", 24)
+    resultado = Collector(collector, fonte).collect("ana", ["A"], AQUI, 24)
 
     assert resultado.bloqueadas == ["A"]
     assert resultado.improdutivas == []
@@ -419,7 +498,7 @@ def test_after_a_block_the_remaining_searches_are_not_attempted(collector):
         "C": SearchOutcome(busca="C", cards=[card("li-2")]),
     })
     resultado = Collector(collector, fonte).collect(
-        "ana", ["A", "B", "C"], "Brasil", 24
+        "ana", ["A", "B", "C"], AQUI, 24
     )
 
     assert [c[0] for c in fonte.chamadas] == ["A", "B"]
@@ -432,7 +511,7 @@ def test_what_was_collected_before_a_block_stays_in_the_database(collector):
         "A": SearchOutcome(busca="A", cards=[card()]),
         "B": SearchOutcome(busca="B", bloqueada=True, falha="429"),
     })
-    Collector(collector, fonte).collect("ana", ["A", "B"], "Brasil", 24)
+    Collector(collector, fonte).collect("ana", ["A", "B"], AQUI, 24)
 
     assert collector.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 1
 
@@ -445,7 +524,7 @@ def test_progress_is_reported_after_each_search(collector):
     })
     vistos = []
     Collector(collector, fonte).collect(
-        "ana", ["A", "B"], "Brasil", 24,
+        "ana", ["A", "B"], AQUI, 24,
         progresso=lambda r, feitas, total: vistos.append(
             (feitas, total, len(r.cards))
         ),
@@ -467,7 +546,7 @@ def test_a_cancelled_collection_stops_between_searches(collector):
 
     with pytest.raises(CollectionCancelled):
         Collector(collector, fonte).collect(
-            "ana", ["A", "B", "C"], "Brasil", 24, progresso=parar
+            "ana", ["A", "B", "C"], AQUI, 24, progresso=parar
         )
 
     assert [c[0] for c in fonte.chamadas] == ["A"]
@@ -491,7 +570,7 @@ def test_every_search_passes_through_the_governor(collector):
         "C": SearchOutcome(busca="C", cards=[card("li-3")]),
     })
     Collector(collector, fonte, governador).collect(
-        "ana", ["A", "B", "C"], "Brasil", 24
+        "ana", ["A", "B", "C"], AQUI, 24
     )
 
     # Tres buscas, dois intervalos: a primeira nao espera por nada.
@@ -514,7 +593,7 @@ def test_a_standing_block_turns_the_search_into_a_blocked_outcome(collector):
     fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
 
     resultado = Collector(collector, fonte, governador).collect(
-        "ana", ["A"], "Brasil", 24
+        "ana", ["A"], AQUI, 24
     )
 
     assert resultado.bloqueadas == ["A"]
@@ -544,7 +623,7 @@ def _raspador_que_e_barrado(mensagem="429 Response - Blocked by LinkedIn"):
 
 def test_a_swallowed_block_becomes_a_blocked_outcome():
     fonte = MultiPortalSource(scrape=_raspador_que_e_barrado())
-    saida = fonte.search("SRE Manager", "Brasil", 24, 25)
+    saida = fonte.search("SRE Manager", AQUI, 24, 25)
 
     assert saida.bloqueada is True
     assert saida.improdutiva is False
@@ -554,7 +633,7 @@ def test_a_swallowed_block_becomes_a_blocked_outcome():
 def test_an_empty_window_is_still_reported_as_unproductive():
     """Vazio de verdade nao pode virar bloqueio: ele calibra o planejador."""
     fonte = MultiPortalSource(scrape=lambda **_k: [])
-    saida = fonte.search("cargo que nao existe", "Brasil", 24, 25)
+    saida = fonte.search("cargo que nao existe", AQUI, 24, 25)
 
     assert saida.improdutiva is True
     assert saida.bloqueada is False
@@ -565,10 +644,10 @@ def test_the_listener_does_not_outlive_the_call():
     import logging
 
     fonte = MultiPortalSource(scrape=_raspador_que_e_barrado())
-    fonte.search("A", "Brasil", 24, 25)
+    fonte.search("A", AQUI, 24, 25)
     antes = len(logging.getLogger("JobSpy:LinkedIn").handlers)
 
-    fonte.search("B", "Brasil", 24, 25)
+    fonte.search("B", AQUI, 24, 25)
     assert len(logging.getLogger("JobSpy:LinkedIn").handlers) == antes
 
 
@@ -578,7 +657,7 @@ def test_the_search_that_found_a_job_is_recorded(collector):
     fonte = FakeSource({"SRE Manager": SearchOutcome(
         busca="SRE Manager", cards=[card(busca="SRE Manager")]
     )})
-    Collector(collector, fonte).collect("ana", ["SRE Manager"], "Brasil", 24)
+    Collector(collector, fonte).collect("ana", ["SRE Manager"], AQUI, 24)
     assert collector.execute(
         "SELECT busca FROM jobs WHERE job_id = 'li-1'"
     ).fetchone()["busca"] == "SRE Manager"
@@ -589,12 +668,12 @@ def test_a_reappearance_does_not_rewrite_where_the_job_came_from(collector):
     c = Collector(collector, FakeSource({"primeira": SearchOutcome(
         busca="primeira", cards=[card(busca="primeira")]
     )}))
-    c.collect("ana", ["primeira"], "Brasil", 24)
+    c.collect("ana", ["primeira"], AQUI, 24)
 
     c2 = Collector(collector, FakeSource({"segunda": SearchOutcome(
         busca="segunda", cards=[card(busca="segunda")]
     )}))
-    resultado = c2.collect("ana", ["segunda"], "Brasil", 24)
+    resultado = c2.collect("ana", ["segunda"], AQUI, 24)
 
     assert resultado.novos == [], "a vaga ja existia"
     assert collector.execute(
@@ -653,12 +732,12 @@ def test_a_reappearing_job_gets_its_publication_date_refreshed(collector):
     c1 = Collector(collector, FakeSource({"a": SearchOutcome(
         busca="a", cards=[card(publicada_em="2026-08-04")]
     )}))
-    c1.collect("ana", ["a"], "Brasil", 720)
+    c1.collect("ana", ["a"], AQUI, 720)
 
     c2 = Collector(collector, FakeSource({"b": SearchOutcome(
         busca="b", cards=[card(publicada_em="2026-08-26")]
     )}))
-    c2.collect("ana", ["b"], "Brasil", 24)
+    c2.collect("ana", ["b"], AQUI, 24)
 
     assert collector.execute(
         "SELECT publicada_em FROM jobs WHERE job_id = 'li-1'"
@@ -674,12 +753,12 @@ def test_a_card_without_a_date_does_not_erase_the_one_we_have(collector):
     c1 = Collector(collector, FakeSource({"a": SearchOutcome(
         busca="a", cards=[card(publicada_em="2026-08-04")]
     )}))
-    c1.collect("ana", ["a"], "Brasil", 720)
+    c1.collect("ana", ["a"], AQUI, 720)
 
     c2 = Collector(collector, FakeSource({"b": SearchOutcome(
         busca="b", cards=[card(publicada_em=None)]
     )}))
-    c2.collect("ana", ["b"], "Brasil", 24)
+    c2.collect("ana", ["b"], AQUI, 24)
 
     assert collector.execute(
         "SELECT publicada_em FROM jobs WHERE job_id = 'li-1'"
@@ -691,7 +770,7 @@ def test_the_first_sighting_is_still_never_rewritten(collector):
     c1 = Collector(collector, FakeSource({"a": SearchOutcome(
         busca="a", cards=[card(publicada_em="2026-08-04")]
     )}))
-    c1.collect("ana", ["a"], "Brasil", 720)
+    c1.collect("ana", ["a"], AQUI, 720)
     primeira = collector.execute(
         "SELECT primeira_vez_em FROM jobs WHERE job_id = 'li-1'"
     ).fetchone()["primeira_vez_em"]
@@ -699,7 +778,7 @@ def test_the_first_sighting_is_still_never_rewritten(collector):
     c2 = Collector(collector, FakeSource({"b": SearchOutcome(
         busca="b", cards=[card(publicada_em="2026-08-26")]
     )}))
-    c2.collect("ana", ["b"], "Brasil", 24)
+    c2.collect("ana", ["b"], AQUI, 24)
 
     assert collector.execute(
         "SELECT primeira_vez_em FROM jobs WHERE job_id = 'li-1'"

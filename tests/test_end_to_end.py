@@ -14,7 +14,7 @@ import json
 
 import pytest
 
-from crivo.config import load_config
+from crivo.config import Frente, load_config
 from crivo.pipeline.collector import Collector
 from crivo.pipeline.enricher import Enricher
 from crivo.pipeline.governor import RateGovernor
@@ -101,7 +101,7 @@ class FakeSource:
         self.buscas = []
         self.descricoes_pedidas = []
 
-    def search(self, termo, local, janela_horas, quantidade):
+    def search(self, termo, local, janela_horas, quantidade, remoto=False):
         self.buscas.append(termo)
         # So a primeira busca traz resultado, para o run nao multiplicar cards.
         if len(self.buscas) > 1:
@@ -167,7 +167,10 @@ def executar_run(
 
     buscas = plan(perfil.campos, perfil.nivel_inferido, filtros)
     coletor = Collector(connection, fonte)
-    coleta = coletor.collect("ana", [b.texto for b in buscas], "Brasil", 24)
+    coleta = coletor.collect(
+        "ana", [b.texto for b in buscas],
+        (Frente(rotulo="aqui", local="Brasil", remoto=False),), 24,
+    )
 
     pre = Prefilter(filtros, config, load_cities())
     filtrado = pre.evaluate(coleta.cards, perfil.campos.get("localizacao"))

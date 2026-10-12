@@ -20,6 +20,24 @@ class ConfigError(Exception):
 
 
 @dataclass(frozen=True)
+class Frente:
+    """Onde procurar, e se a vaga precisa ser remota.
+
+    A coleta perguntava por uma localizacao so -- a do perfil --, e isso fazia
+    do crivo um buscador nacional por construcao: vaga remota paga em dolar ou
+    euro so aparecia por acidente, quando a origem a devolvia numa busca
+    brasileira. Uma frente e um par (localizacao, remoto), e cada termo do
+    planejamento e consultado em todas as frentes declaradas.
+    """
+
+    rotulo: str
+    #: Vazio significa "a localizacao do perfil". E o que mantem a frente de
+    #: casa correta para qualquer usuario sem repetir a cidade na configuracao.
+    local: str
+    remoto: bool
+
+
+@dataclass(frozen=True)
 class CollectionConfig:
     janela_incremental_horas: int
     janela_ampla_horas: int
@@ -31,6 +49,10 @@ class CollectionConfig:
     #: configuracao anterior a este campo; nulo quer dizer "sem teto", que e o
     #: comportamento antigo.
     max_buscas_por_run: int | None = None
+    #: Frentes de busca. Vazio significa uma frente so, na localizacao do
+    #: perfil e sem exigir remoto -- exatamente o comportamento anterior a este
+    #: campo, para que configuracao escrita antes dele continue valendo.
+    frentes: tuple[Frente, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -218,6 +240,52 @@ def _validate_flat(raw: dict[str, Any], name: str) -> dict[str, Any]:
     return out
 
 
+def _validate_frentes(section: dict[str, Any]) -> tuple[Frente, ...]:
+    """Le `[[collection.frentes]]`, ou devolve vazio quando nao ha nenhuma.
+
+    Ausencia e um estado legitimo e nao um erro: ela significa a frente unica de
+    antes, na localizacao do perfil. Por isso a validacao e so do que estiver
+    declarado -- mas ai e estrita, porque frente mal escrita gasta requisicao
+    contra a origem antes de alguem notar que o endereco nao existia.
+    """
+    declaradas = section.get("frentes")
+    if declaradas is None:
+        return ()
+    if not isinstance(declaradas, list):
+        raise ConfigError(
+            "collection.frentes: esperada lista de tabelas, recebido "
+            f"{type(declaradas).__name__}"
+        )
+    frentes: list[Frente] = []
+    for indice, bruta in enumerate(declaradas):
+        onde = f"collection.frentes[{indice}]"
+        if not isinstance(bruta, dict):
+            raise ConfigError(f"{onde}: esperada tabela, recebido {type(bruta).__name__}")
+        desconhecidas = sorted(set(bruta) - {"rotulo", "local", "remoto"})
+        if desconhecidas:
+            raise ConfigError(
+                f"{onde}: chave desconhecida {desconhecidas}; esperado rotulo, "
+                "local e remoto"
+            )
+        rotulo = bruta.get("rotulo")
+        local = bruta.get("local", "")
+        remoto = bruta.get("remoto", False)
+        if not isinstance(rotulo, str) or not rotulo.strip():
+            raise ConfigError(f"{onde}.rotulo: esperado texto nao vazio")
+        if not isinstance(local, str):
+            raise ConfigError(f"{onde}.local: esperado texto, recebido {type(local).__name__}")
+        if not isinstance(remoto, bool):
+            raise ConfigError(
+                f"{onde}.remoto: esperado booleano, recebido {type(remoto).__name__}"
+            )
+        frentes.append(Frente(rotulo=rotulo.strip(), local=local.strip(), remoto=remoto))
+    rotulos = [f.rotulo for f in frentes]
+    repetidos = sorted({r for r in rotulos if rotulos.count(r) > 1})
+    if repetidos:
+        raise ConfigError(f"collection.frentes: rotulo repetido {repetidos}")
+    return tuple(frentes)
+
+
 def _validate_scoring(raw: dict[str, Any]) -> ScoringConfig:
     section = _section(raw, "scoring")
     tables: dict[str, dict[str, Any]] = {}
@@ -260,6 +328,7 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
             _section(raw, "collection")["max_buscas_por_run"],
             (int, 1, 1000),
         )
+    collection["frentes"] = _validate_frentes(_section(raw, "collection"))
     if (
         collection["intervalo_enriquecimento_min_s"]
         > collection["intervalo_enriquecimento_max_s"]

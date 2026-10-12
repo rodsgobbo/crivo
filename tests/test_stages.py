@@ -48,7 +48,7 @@ class FonteFalsa:
     def __init__(self) -> None:
         self.buscas: list[str] = []
 
-    def search(self, termo, local, janela_horas, quantidade):
+    def search(self, termo, local, janela_horas, quantidade, remoto=False):
         self.buscas.append(termo)
         indice = len(self.buscas)
         titulos = [
@@ -197,7 +197,32 @@ def test_searches_come_from_the_profile_and_are_recorded(env):
     assert fonte.buscas, "o coletor precisa receber as buscas do planejador"
     # O contador guarda o texto e nao a contagem: quando o run traz pouca
     # coisa, a primeira pergunta e o que ele procurou.
-    assert contexto.contadores["buscas"] == fonte.buscas
+    #
+    # A fonte recebe cada termo uma vez por frente, entao a lista dela repete;
+    # o que bate com o contador e a sequencia de termos distintos.
+    assert list(dict.fromkeys(fonte.buscas)) == contexto.contadores["buscas"]
+
+
+def test_every_term_is_searched_in_every_front(env):
+    """Frente declarada e frente consultada, e com o filtro de remoto dela.
+
+    Sem isso o crivo continuava um buscador nacional: a localizacao era uma so,
+    a do perfil, e vaga remota paga em dolar ou euro aparecia por acidente.
+    """
+    from crivo.config import Frente
+    from crivo.pipeline.stages import frentes_de_busca
+
+    connection, fila, config = env
+    consolidar(connection, config)
+
+    frentes = frentes_de_busca(config, "Osasco, SP")
+    assert [f.rotulo for f in frentes] == ["aqui", "remoto nos EUA"]
+    # A frente de casa herda a localizacao do perfil; a internacional traz a
+    # propria e exige remoto.
+    assert frentes[0] == Frente(rotulo="aqui", local="Osasco, SP", remoto=False)
+    assert frentes[1] == Frente(
+        rotulo="remoto nos EUA", local="United States", remoto=True
+    )
 
 
 def test_semantic_noise_is_discarded_with_a_reason(env):

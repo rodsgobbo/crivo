@@ -722,7 +722,8 @@ def _rendimento_historico(repositorio, user_id: str) -> dict[str, tuple[int, int
 
 def _buscas_previstas(context: WebContext, repositorio, user_id: str) -> dict:
     """As buscas que o proximo run executaria, e as que o usuario acrescentou."""
-    from ..pipeline.planner import PlannerError, load_filters, plan
+    from ..pipeline.planner import PlannerError, load_filters, plan, teto_por_frente
+    from ..pipeline.stages import frentes_de_busca
 
     minhas = [
         linha["texto"]
@@ -742,8 +743,12 @@ def _buscas_previstas(context: WebContext, repositorio, user_id: str) -> dict:
             # O mesmo teto e o mesmo historico que o run aplica. A pagina existe
             # para responder "por que este cargo nao apareceu?", e ela
             # responderia errado se listasse buscas que o run nao executa.
-            limite=getattr(
-                context.config.collection, "max_buscas_por_run", None
+            # O teto e dividido pelas frentes, como o run divide: cada termo
+            # vale uma requisicao por frente. Sem a divisao aqui, a pagina
+            # prometeria o dobro de termos do que o run executa.
+            limite=teto_por_frente(
+                getattr(context.config.collection, "max_buscas_por_run", None),
+                len(frentes_de_busca(context.config, versao.campos.get("localizacao") or "")),
             ),
             rendimento=_rendimento_historico(repositorio, user_id),
         )
@@ -1069,6 +1074,7 @@ def build_reports_router(context: WebContext) -> APIRouter:
             "so_remoto": parametros.get("remoto") == "1",
             "ocultar_fora_do_raio": parametros.get("no_raio") == "1",
             "so_novas": parametros.get("novas") == "1",
+            "so_moeda_forte": parametros.get("moeda") == "1",
             "estado": parametros.get("estado") or None,
         }
         try:

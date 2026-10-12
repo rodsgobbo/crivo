@@ -24,6 +24,19 @@ NOVO = "novo"
 SEMENTE = "recomendacao"
 
 
+def _termos_restantes(pedidos, indice: int) -> list[str]:
+    """Termos que nao serao tentados, contados uma vez cada.
+
+    O que sobrou e uma lista de pares (termo, frente), e o relatorio fala de
+    termos: sem a deduplicacao, uma coleta barrada com duas frentes diria que
+    "Head of Platform" nao foi tentada duas vezes.
+    """
+    vistos: dict[str, None] = {}
+    for termo, _frente in pedidos[indice + 1:]:
+        vistos.setdefault(termo, None)
+    return list(vistos)
+
+
 class CollectionCancelled(Exception):
     """O usuario pediu para parar esta coleta."""
 
@@ -72,12 +85,20 @@ class Collector:
         self,
         user_id: str,
         buscas: list[str],
-        local: str,
+        frentes,
         janela_horas: int,
         quantidade: int = 25,
         progresso=None,
     ) -> CollectionResult:
-        """Executa as buscas e devolve os cards unicos do run.
+        """Executa as buscas em cada frente e devolve os cards unicos do run.
+
+        `frentes` diz onde procurar: cada uma e um par (localizacao, remoto), e
+        cada termo e consultado em todas elas. Antes havia uma localizacao so --
+        a do perfil --, e por isso vaga remota paga em moeda forte so aparecia
+        por acidente.
+
+        O card e unico no run inteiro, e nao por frente: a mesma vaga achada
+        aqui e na frente internacional entra uma vez.
 
         `progresso` e chamado ao fim de cada busca com o resultado parcial. E
         por ele que o run renova o sinal de vida e publica o quanto ja andou:
@@ -89,10 +110,16 @@ class Collector:
         """
         resultado = CollectionResult()
         vistos: set[str] = set()
-        pendentes = list(buscas)
+        # Um pedido por par (termo, frente). A ordem intercala as frentes em vez
+        # de esgotar uma antes de comecar a outra: coleta barrada no meio ainda
+        # deixa as duas frentes representadas, e esgotar a primeira faria o
+        # bloqueio apagar a segunda inteira.
+        pedidos = [(termo, frente) for termo in buscas for frente in frentes]
 
-        for indice, termo in enumerate(pendentes):
-            saida = self._buscar(termo, local, janela_horas, quantidade)
+        for indice, (termo, frente) in enumerate(pedidos):
+            saida = self._buscar(
+                termo, frente.local, janela_horas, quantidade, frente.remoto
+            )
             self._absorve(saida, resultado, vistos)
             self._grava_novos(user_id, resultado)
             if saida.bloqueada:
@@ -100,33 +127,38 @@ class Collector:
                 # contra um portao fechado -- e cada tentativa a mais alonga o
                 # bloqueio. O que sobrou fica registrado como nao tentado, e nao
                 # como mercado vazio.
-                resultado.nao_tentadas.extend(pendentes[indice + 1:])
+                resultado.nao_tentadas.extend(_termos_restantes(pedidos, indice))
                 logger.warning(
-                    "coleta barrada em %r; %s buscas restantes nao serao tentadas",
-                    termo, len(resultado.nao_tentadas),
+                    "coleta barrada em %r na frente %r; %s termo(s) restante(s) "
+                    "nao serao tentados",
+                    termo, frente.rotulo, len(resultado.nao_tentadas),
                 )
                 break
             if progresso is not None:
                 try:
-                    progresso(resultado, indice + 1, len(pendentes))
+                    # O total e de requisicoes, e nao de termos: e ele que mede
+                    # o tempo que a coleta ainda vai levar.
+                    progresso(resultado, indice + 1, len(pedidos))
                 except CollectionCancelled:
                     resultado.interrompida = True
-                    resultado.nao_tentadas.extend(pendentes[indice + 1:])
-                    logger.info("coleta cancelada apos %s buscas", indice + 1)
+                    resultado.nao_tentadas.extend(_termos_restantes(pedidos, indice))
+                    logger.info("coleta cancelada apos %s requisicoes", indice + 1)
                     raise
         return resultado
 
     # ------------------------------------------------------------ interno
     def _buscar(
-        self, termo: str, local: str, janela_horas: int, quantidade: int
+        self, termo: str, local: str, janela_horas: int, quantidade: int,
+        remoto: bool = False,
     ) -> SearchOutcome:
         """Uma busca, sob contencao quando ha governador."""
+        def pedir():
+            return self._source.search(termo, local, janela_horas, quantidade, remoto)
+
         if self._governor is None:
-            return self._source.search(termo, local, janela_horas, quantidade)
+            return pedir()
         try:
-            return self._governor.run(
-                lambda: self._source.search(termo, local, janela_horas, quantidade)
-            )
+            return self._governor.run(pedir)
         except CollectionBlocked as exc:
             return SearchOutcome(busca=termo, bloqueada=True, falha=str(exc))
 
