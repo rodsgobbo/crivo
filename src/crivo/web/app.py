@@ -1075,6 +1075,7 @@ def build_reports_router(context: WebContext) -> APIRouter:
             "ocultar_fora_do_raio": parametros.get("no_raio") == "1",
             "so_novas": parametros.get("novas") == "1",
             "so_moeda_forte": parametros.get("moeda") == "1",
+            "so_na_regiao": parametros.get("regiao") == "1",
             "estado": parametros.get("estado") or None,
         }
         try:

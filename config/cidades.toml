@@ -8,12 +8,39 @@
 # Acrescentar cidade aqui e mudanca de configuracao, nao de codigo.
 
 [cidades]
+# Grande Sao Paulo. A lista era de seis municipios e o filtro metropolitano
+# precisa reconhecer a regiao inteira: sem Diadema, Cotia ou Taboao, vaga nessas
+# cidades caia como "distancia desconhecida" -- e, com o filtro, ficaria de fora
+# da propria regiao em que esta.
 "sao paulo" = { lat = -23.5505, lon = -46.6333, uf = "SP" }
 "osasco" = { lat = -23.5329, lon = -46.7918, uf = "SP" }
 "barueri" = { lat = -23.5107, lon = -46.8761, uf = "SP" }
 "guarulhos" = { lat = -23.4543, lon = -46.5337, uf = "SP" }
 "santo andre" = { lat = -23.6639, lon = -46.5383, uf = "SP" }
 "sao bernardo do campo" = { lat = -23.6914, lon = -46.5646, uf = "SP" }
+"sao caetano do sul" = { lat = -23.6229, lon = -46.5543, uf = "SP" }
+"diadema" = { lat = -23.6861, lon = -46.6228, uf = "SP" }
+"maua" = { lat = -23.6677, lon = -46.4613, uf = "SP" }
+"ribeirao pires" = { lat = -23.7111, lon = -46.4133, uf = "SP" }
+"taboao da serra" = { lat = -23.6019, lon = -46.7919, uf = "SP" }
+"embu das artes" = { lat = -23.6491, lon = -46.8523, uf = "SP" }
+"itapecerica da serra" = { lat = -23.7169, lon = -46.8494, uf = "SP" }
+"cotia" = { lat = -23.6039, lon = -46.9192, uf = "SP" }
+"vargem grande paulista" = { lat = -23.5994, lon = -47.0294, uf = "SP" }
+"carapicuiba" = { lat = -23.5235, lon = -46.8406, uf = "SP" }
+"jandira" = { lat = -23.5275, lon = -46.9025, uf = "SP" }
+"itapevi" = { lat = -23.5489, lon = -46.9342, uf = "SP" }
+"santana de parnaiba" = { lat = -23.4440, lon = -46.9178, uf = "SP" }
+"cajamar" = { lat = -23.3558, lon = -46.8769, uf = "SP" }
+"caieiras" = { lat = -23.3647, lon = -46.7406, uf = "SP" }
+"franco da rocha" = { lat = -23.3286, lon = -46.7267, uf = "SP" }
+"mairipora" = { lat = -23.3186, lon = -46.5869, uf = "SP" }
+"aruja" = { lat = -23.3966, lon = -46.3211, uf = "SP" }
+"itaquaquecetuba" = { lat = -23.4863, lon = -46.3482, uf = "SP" }
+"poa" = { lat = -23.5281, lon = -46.3450, uf = "SP" }
+"ferraz de vasconcelos" = { lat = -23.5411, lon = -46.3690, uf = "SP" }
+"suzano" = { lat = -23.5423, lon = -46.3109, uf = "SP" }
+"mogi das cruzes" = { lat = -23.5225, lon = -46.1883, uf = "SP" }
 "campinas" = { lat = -22.9099, lon = -47.0626, uf = "SP" }
 "sao jose dos campos" = { lat = -23.2237, lon = -45.9009, uf = "SP" }
 "sorocaba" = { lat = -23.5015, lon = -47.4526, uf = "SP" }

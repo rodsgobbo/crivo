@@ -147,6 +147,15 @@
            {{ 'checked' if ctx.filtros.get('so_moeda_forte') }}>
     só em dólar ou euro
   </label>
+  {# O rotulo vem da configuracao, e a caixa so existe quando ha regiao
+     declarada: "Grande São Paulo" nao serve a quem mora em Recife. #}
+  {% if ctx.regiao %}
+  <label title="cidade da vaga dentro da região; vaga de cidade desconhecida sai">
+    <input type="checkbox" name="regiao" value="1"
+           {{ 'checked' if ctx.filtros.get('so_na_regiao') }}>
+    só na {{ ctx.regiao }}
+  </label>
+  {% endif %}
   <button class="acao discreta" type="submit">Filtrar</button>
   {% if ctx.vagas|length != ctx.total_sem_filtro %}
     <a class="acao discreta" href="?">Limpar</a>

@@ -87,10 +87,29 @@ class SynthesisConfig:
 
 
 @dataclass(frozen=True)
+class Regiao:
+    """Uma regiao metropolitana, declarada por cidade-ancora e raio.
+
+    Existe para o filtro "so nesta regiao" do relatorio. Nao e lista de
+    municipios: a tabela de cidades e curta de proposito, e uma lista exigiria
+    manter os dois arquivos em acordo. O raio resolve isso -- cidade nova entra
+    na regiao assim que ganha coordenada.
+    """
+
+    rotulo: str
+    cidade: str
+    raio_km: int
+
+
+@dataclass(frozen=True)
 class ReportConfig:
     limiar_destaque: int
     vagas_relidas: int
     dias_de_contratacao: int
+    #: Regiao oferecida como filtro. Ausente significa que a instalacao nao
+    #: declarou nenhuma, e o filtro nao aparece -- uma caixa chamada "Grande Sao
+    #: Paulo" nao faz sentido para quem mora em Recife.
+    regiao: Regiao | None = None
 
 
 @dataclass(frozen=True)
@@ -240,6 +259,33 @@ def _validate_flat(raw: dict[str, Any], name: str) -> dict[str, Any]:
     return out
 
 
+def _validate_regiao(section: dict[str, Any]) -> Regiao | None:
+    """Le `[report.regiao]`, ou devolve `None` quando ela nao esta declarada."""
+    bruta = section.get("regiao")
+    if bruta is None:
+        return None
+    if not isinstance(bruta, dict):
+        raise ConfigError(
+            f"report.regiao: esperada tabela, recebido {type(bruta).__name__}"
+        )
+    desconhecidas = sorted(set(bruta) - {"rotulo", "cidade", "raio_km"})
+    if desconhecidas:
+        raise ConfigError(
+            f"report.regiao: chave desconhecida {desconhecidas}; esperado "
+            "rotulo, cidade e raio_km"
+        )
+    for chave in ("rotulo", "cidade"):
+        valor = bruta.get(chave)
+        if not isinstance(valor, str) or not valor.strip():
+            raise ConfigError(f"report.regiao.{chave}: esperado texto nao vazio")
+    raio = _check("report.regiao", "raio_km", bruta.get("raio_km"), (int, 1, 2000))
+    return Regiao(
+        rotulo=bruta["rotulo"].strip(),
+        cidade=bruta["cidade"].strip(),
+        raio_km=raio,
+    )
+
+
 def _validate_frentes(section: dict[str, Any]) -> tuple[Frente, ...]:
     """Le `[[collection.frentes]]`, ou devolve vazio quando nao ha nenhuma.
 
@@ -362,7 +408,10 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
             **{**resume, "formatos_aceitos": tuple(resume["formatos_aceitos"])}
         ),
         synthesis=SynthesisConfig(**_validate_flat(raw, "synthesis")),
-        report=ReportConfig(**_validate_flat(raw, "report")),
+        report=ReportConfig(
+            **_validate_flat(raw, "report"),
+            regiao=_validate_regiao(_section(raw, "report")),
+        ),
         profile=ProfileConfig(
             **{**profile, "precedencia_origens": tuple(profile["precedencia_origens"])}
         ),

@@ -240,6 +240,14 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_the_report_shows_the_currency_and_offers_its_filter",
     ],
 
+    # ------------------------------------------ REQ-18.17 regiao declarada
+    "18.17": [
+        "test_report::test_the_region_reaches_the_far_edge_and_stops_before_the_next_city",
+        "test_report::test_a_city_outside_the_table_is_not_claimed_to_be_in_the_region",
+        "test_report::test_only_the_region_keeps_the_jobs_inside_it",
+        "test_report::test_the_report_offers_the_region_filter_with_the_configured_label",
+    ],
+
     # ------------------------------------------- REQ-18.15 nova ou ja vista
     "18.15": [
         "test_report::test_a_job_that_never_appeared_before_is_marked_new",

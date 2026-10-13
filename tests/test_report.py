@@ -511,6 +511,80 @@ def test_only_new_jobs_hides_what_earlier_runs_already_showed():
     assert [v["job_id"] for v in restantes] == ["nova"]
 
 
+# ----------------------------------------------------------------- regiao
+def _regiao():
+    from crivo.config import Regiao
+
+    return Regiao(rotulo="Grande São Paulo", cidade="sao paulo", raio_km=60)
+
+
+def test_the_region_reaches_the_far_edge_and_stops_before_the_next_city():
+    """O raio foi medido, e nao estimado.
+
+    Da capital, o municipio mais distante da Grande Sao Paulo na tabela e Mogi
+    das Cruzes, a 45 km; os seguintes -- Sao Jose dos Campos, Campinas e
+    Sorocaba -- estao a 83 km. 60 km cai no vazio entre os dois grupos, e e o
+    que faz a regiao nao vazar para o interior.
+    """
+    from crivo.pipeline.prefilter import load_cities
+    from crivo.report.renderer import na_regiao
+
+    cidades = load_cities()
+    for dentro in ("Mogi das Cruzes, SP", "Diadema, SP", "Cotia - SP", "Osasco"):
+        assert na_regiao(dentro, _regiao(), cidades), dentro
+    for fora in ("Campinas, SP", "Sorocaba, SP", "São José dos Campos, SP",
+                 "Rio de Janeiro, RJ"):
+        assert not na_regiao(fora, _regiao(), cidades), fora
+
+
+def test_a_city_outside_the_table_is_not_claimed_to_be_in_the_region():
+    """Sem coordenada nao da para afirmar que esta na regiao."""
+    from crivo.pipeline.prefilter import load_cities
+    from crivo.report.renderer import na_regiao
+
+    assert not na_regiao("Itu, SP", _regiao(), load_cities())
+    assert not na_regiao(None, _regiao(), load_cities())
+
+
+def test_without_a_declared_region_nothing_is_in_it():
+    from crivo.pipeline.prefilter import load_cities
+    from crivo.report.renderer import na_regiao
+
+    assert not na_regiao("Sao Paulo, SP", None, load_cities())
+
+
+def test_only_the_region_keeps_the_jobs_inside_it():
+    from crivo.report.renderer import _aplicar_filtros
+
+    vagas = [_vaga(job_id="perto"), _vaga(job_id="longe"), _vaga(job_id="sem_cidade")]
+    vagas[0]["na_regiao"] = True
+    vagas[1]["na_regiao"] = False
+    vagas[2]["na_regiao"] = False
+    restantes = _aplicar_filtros(vagas, {"so_na_regiao": True})
+    assert [v["job_id"] for v in restantes] == ["perto"]
+
+
+def test_the_report_offers_the_region_filter_with_the_configured_label(env):
+    connection, repo = env
+    add_vaga(repo)
+    pagina = render(env)
+    assert 'name="regiao"' in pagina
+    assert "Grande São Paulo" in pagina
+
+
+def test_a_job_in_the_metro_area_is_marked_as_such(env):
+    """Diadema entrou na tabela com esta mudanca; antes era cidade desconhecida."""
+    connection, repo = env
+    add_vaga(repo)
+    repo.for_user("ana").update(
+        "jobs", {"local": "Diadema, São Paulo, Brasil"},
+        where="job_id = ?", params=("li-1",),
+    )
+    renderer = ReportRenderer(connection, load_config())
+    vaga = renderer.build_context("ana", "run-1").vagas[0]
+    assert vaga["na_regiao"] is True
+
+
 # ------------------------------------------------------------------ moeda
 def test_a_salary_in_reais_is_never_read_as_dollars():
     """O erro mais caro deste sinal, e o que a ordem das marcas impede.

@@ -444,6 +444,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.16 THE Report Renderer SHALL display, para cada vaga cuja descrição cita uma moeda, qual moeda foi citada, e SHALL offer um filtro que mantém apenas as vagas cuja moeda citada é dólar, euro ou libra.
 
+18.17 IF a configuração declara uma região metropolitana, THEN the Report Renderer SHALL offer um filtro que mantém apenas as vagas cuja cidade está dentro do raio declarado a partir da cidade-âncora dessa região.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.

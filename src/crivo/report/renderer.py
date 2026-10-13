@@ -24,6 +24,14 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+# O calculo geografico vem do pre-filtro e nao e reescrito aqui: duas
+# implementacoes da mesma distancia discordariam sobre a mesma vaga. Os apelidos
+# existem para que a assinatura de `na_regiao` diga que a distancia e a mesma
+# que marca a vaga presencial distante.
+from ..pipeline.prefilter import find_city as encontrar_cidade
+from ..pipeline.prefilter import haversine_km as distancia_km
+from ..pipeline.prefilter import load_cities
+from ..pipeline.prefilter import normalize as normalizar_cidade
 from ..web import tempo
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -61,6 +69,8 @@ class ReportContext:
     dias_de_contratacao: int = 30
     #: Janela de publicacao que o usuario pediu, em horas.
     janela_horas: int | None = None
+    #: Nome da regiao oferecida como filtro, quando a instalacao declarou uma.
+    regiao: str | None = None
 
     @property
     def fora_da_janela(self) -> list[dict]:
@@ -201,6 +211,28 @@ MOEDAS: tuple[tuple[str, tuple[str, ...]], ...] = (
 MOEDAS_FORTES = ("USD", "EUR", "GBP")
 
 
+def na_regiao(local: str | None, regiao, cidades: dict) -> bool:
+    """A vaga esta na regiao declarada?
+
+    Usa a mesma tabela de cidades e a mesma distancia do pre-filtro, de
+    proposito: duas implementacoes da mesma distancia discordariam sobre a mesma
+    vaga, que e o defeito que o calculo compartilhado existe para evitar.
+
+    Cidade que a tabela nao conhece responde `False`. O filtro pergunta "esta na
+    regiao", e sem coordenada nao da para afirmar que esta -- afirmar que nao
+    esta tambem seria falso, mas aqui a assimetria e deliberada: quem liga o
+    filtro quer uma lista curta de vagas que ele pode frequentar, e vaga de
+    cidade desconhecida continua inteira na lista sem o filtro.
+    """
+    if regiao is None:
+        return False
+    ancora = cidades.get(normalizar_cidade(regiao.cidade))
+    destino = encontrar_cidade(local, cidades)
+    if ancora is None or destino is None:
+        return False
+    return distancia_km(ancora, destino[1]) <= regiao.raio_km
+
+
 def detectar_moeda(descricao: str | None) -> str | None:
     """A moeda citada na descricao, ou `None` quando ela nao diz.
 
@@ -261,6 +293,11 @@ def _aplicar_filtros(vagas: list[dict], filtros: dict) -> list[dict]:
         resultado = [v for v in resultado if v.get("modelo") == "remote"]
     if filtros.get("ocultar_fora_do_raio"):
         resultado = [v for v in resultado if not v.get("blocker")]
+    if filtros.get("so_na_regiao"):
+        # Vaga cuja cidade a tabela nao conhece sai junto, e isso esta dito no
+        # rotulo do filtro: ele responde "quais estao na regiao", e cidade sem
+        # coordenada nao permite afirmar que esta.
+        resultado = [v for v in resultado if v.get("na_regiao")]
     if filtros.get("so_moeda_forte"):
         # Vaga sem moeda reconhecida sai junto, e isso precisa estar dito: o
         # filtro responde "quais dizem pagar em moeda forte", e nao "quais
@@ -405,6 +442,9 @@ class ReportRenderer:
         self._repository = Repository(connection)
         self._config = config
         self._env = build_environment()
+        # A tabela e lida uma vez por renderizador, e nao por vaga: o relatorio
+        # pode trazer centenas de linhas, e o arquivo nao muda no meio.
+        self._cidades = load_cities()
 
     # ------------------------------------------------------------ montagem
     def build_context(
@@ -471,6 +511,13 @@ class ReportRenderer:
             ),
             dias_de_contratacao=self._config.report.dias_de_contratacao,
             janela_horas=janela,
+            # Rotulo da regiao declarada, ou `None`. E ele que decide se a tela
+            # oferece o filtro: instalacao sem regiao declarada nao mostra uma
+            # caixa com o nome de uma cidade que nao e a de quem le.
+            regiao=(
+                self._config.report.regiao.rotulo
+                if self._config.report.regiao is not None else None
+            ),
         )
 
     #: Uma vaga sozinha nao e sinal de nada: e a vaga que voce ja esta lendo.
@@ -588,6 +635,9 @@ class ReportRenderer:
                 "candidatos": linha["candidatos"],
                 "vista_antes": bool(linha["vista_antes"]),
                 "moeda": detectar_moeda(linha["descricao"]),
+                "na_regiao": na_regiao(
+                    linha["local"], self._config.report.regiao, self._cidades
+                ),
             }
             for linha in linhas
         ]

@@ -145,6 +145,25 @@ vagas_relidas = 20
 # empresa apareceria contratando pelo que fez no mes retrasado.
 dias_de_contratacao = 30
 
+# Regiao oferecida como filtro no relatorio, declarada por cidade-ancora e raio.
+#
+# Nao e lista de municipios: a tabela de cidades e curta de proposito, e manter
+# as duas em acordo daria trabalho a cada cidade nova. O raio resolve sozinho --
+# cidade entra na regiao assim que ganha coordenada em `cidades.toml`.
+#
+# 60 km foi medido, e nao estimado. A partir da capital, o municipio mais
+# distante da Grande Sao Paulo na tabela e Mogi das Cruzes, a 45 km; os
+# seguintes sao Sao Jose dos Campos, Campinas e Sorocaba, todos a 83 km. 60 cai
+# no vazio entre os dois grupos, e e tambem o raio de deslocamento que o perfil
+# usa -- o mesmo numero com o mesmo significado, visto de outra ancora.
+#
+# Sem esta secao o filtro nao aparece na tela: uma caixa chamada "Grande Sao
+# Paulo" nao serve a quem mora em Recife.
+[report.regiao]
+rotulo = "Grande São Paulo"
+cidade = "sao paulo"
+raio_km = 60
+
 [profile]
 # Precedencia entre origens: a primeira vence em caso de conflito.
 precedencia_origens = ["manual", "resume", "linkedin"]
