@@ -24,6 +24,38 @@ NOVO = "novo"
 SEMENTE = "recomendacao"
 
 
+def _registra_frentes(resultado) -> None:
+    """Escreve no log quantos cards cada frente devolveu.
+
+    A frente e um texto de localizacao que a origem resolve no catalogo dela, e
+    endereco que nao resolve se parece com mercado vazio: zero cards, sem erro.
+    Esta linha e o unico lugar onde os dois casos se distinguem -- uma frente em
+    zero enquanto as outras trazem dezenas e um endereco invalido, e todas em
+    zero e uma janela sem vaga nenhuma.
+
+    Sai tambem no cancelamento, porque e justamente o run interrompido cujo
+    motivo alguem vai procurar depois.
+    """
+    if not resultado.por_frente:
+        return
+    logger.info(
+        "coleta por frente: %s",
+        "; ".join(
+            f"{rotulo} {cards} card(s)"
+            for rotulo, cards in resultado.por_frente.items()
+        ),
+    )
+    vazias = [rotulo for rotulo, cards in resultado.por_frente.items() if not cards]
+    if vazias and len(vazias) < len(resultado.por_frente):
+        # Avisa so quando ha com o que comparar. Todas em zero e outra coisa: e
+        # a janela que nao tinha vaga, e nao o endereco que nao existe.
+        logger.warning(
+            "frente(s) sem nenhum card: %s; confira se a localizacao existe no "
+            "catalogo da origem",
+            ", ".join(vazias),
+        )
+
+
 def _termos_restantes(pedidos, indice: int) -> list[str]:
     """Termos que nao serao tentados, contados uma vez cada.
 
@@ -59,6 +91,15 @@ class CollectionResult:
     #: Cards ja gravados, para que a gravacao por busca nao reescreva o que a
     #: busca anterior ja passou pelo banco.
     gravados: list[str] = field(default_factory=list)
+    #: Cards que cada frente devolveu, pelo rotulo dela, antes da deduplicacao.
+    #:
+    #: Sem esta conta nao ha como saber se uma frente esta funcionando. A
+    #: localizacao e um texto que a origem resolve no catalogo dela: "European
+    #: Union" ou "Canada" ou nao resolvem, e o sintoma de um endereco que nao
+    #: existe e identico ao de um mercado vazio -- zero cards, sem erro. Antes
+    #: da deduplicacao de proposito: a frente que achou a vaga depois de outra
+    #: tambem a achou, e descontar isso faria a ultima frente parecer inutil.
+    por_frente: dict[str, int] = field(default_factory=dict)
 
     @property
     def brutos(self) -> int:
@@ -112,14 +153,19 @@ class Collector:
         vistos: set[str] = set()
         # Um pedido por par (termo, frente). A ordem intercala as frentes em vez
         # de esgotar uma antes de comecar a outra: coleta barrada no meio ainda
-        # deixa as duas frentes representadas, e esgotar a primeira faria o
-        # bloqueio apagar a segunda inteira.
+        # deixa todas as frentes representadas, e esgotar a primeira faria o
+        # bloqueio apagar as seguintes inteiras.
         pedidos = [(termo, frente) for termo in buscas for frente in frentes]
+        # Toda frente declarada aparece na conta, inclusive a que nao for
+        # alcancada: ausente e zero dizem coisas diferentes -- uma frente que
+        # nunca rodou nao e uma frente que nao achou nada.
+        resultado.por_frente = {frente.rotulo: 0 for frente in frentes}
 
         for indice, (termo, frente) in enumerate(pedidos):
             saida = self._buscar(
                 termo, frente.local, janela_horas, quantidade, frente.remoto
             )
+            resultado.por_frente[frente.rotulo] += len(saida.cards)
             self._absorve(saida, resultado, vistos)
             self._grava_novos(user_id, resultado)
             if saida.bloqueada:
@@ -143,7 +189,9 @@ class Collector:
                     resultado.interrompida = True
                     resultado.nao_tentadas.extend(_termos_restantes(pedidos, indice))
                     logger.info("coleta cancelada apos %s requisicoes", indice + 1)
+                    _registra_frentes(resultado)
                     raise
+        _registra_frentes(resultado)
         return resultado
 
     # ------------------------------------------------------------ interno

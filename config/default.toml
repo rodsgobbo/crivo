@@ -49,16 +49,32 @@ orcamento_diario_coleta = 400
 # 25 cobre as ancoras do nivel e do nivel acima mais as combinacoes de eixo mais
 # proximas, e cabe em cerca de seis minutos no intervalo de 8 a 20s. As buscas
 # escritas pelo proprio usuario nunca entram no corte.
-max_buscas_por_run = 25
+#
+# Historico deste numero, porque ele governa exposicao e nao deve mudar sem
+# motivo escrito:
+#
+# 1. 25, quando havia uma frente so. O valor cobria as ancoras do nivel e do
+#    nivel acima, e substituiu as noventa buscas em rajada que provocaram
+#    bloqueio.
+# 2. 36, em 12/10/2026, ao passar para quatro frentes (casa, Canada, EUA,
+#    Europa). O teto conta requisicao: manter 25 daria seis termos por frente,
+#    metade da cobertura que uma frente tinha antes. 36 devolve nove.
+#
+# O custo esta dito: 36 requisicoes espacadas de 8 a 20s pelo governador dao
+# cerca de oito minutos de coleta, contra cinco antes. A intensidade nao muda --
+# o intervalo entre requisicoes e o que protege, e ele continua o mesmo --, e o
+# que cresce e a duracao da exposicao.
+max_buscas_por_run = 36
 
 # Frentes de busca: onde procurar, e se a vaga precisa ser remota.
 #
 # Cada termo do planejamento e consultado em TODAS as frentes, entao o numero de
 # requisicoes a origem e termos x frentes. O teto acima passa a valer sobre esse
-# produto e nao sobre os termos: com duas frentes, cada uma recebe metade dos
-# termos. Isso e deliberado -- o teto existe porque noventa buscas em rajada
-# provocaram bloqueio, e duas frentes sem divisao dobrariam a exposicao em
-# silencio. Para cobrir mais termos por frente, suba o teto de propósito.
+# produto e nao sobre os termos: com as quatro frentes abaixo, cada uma recebe um
+# quarto deles -- nove. Isso e deliberado: o teto existe porque noventa buscas em
+# rajada provocaram bloqueio, e frente nova sem divisao multiplicaria a exposicao
+# em silencio. Para cobrir mais termos por frente, suba o teto de propósito, com
+# o motivo escrito no historico acima.
 #
 # A ordem importa quando os termos nao cabem: as primeiras frentes ficam com
 # eles. A frente de casa vem primeiro porque e a que o usuario consegue aceitar
@@ -70,12 +86,30 @@ rotulo = "aqui"
 local = ""
 remoto = false
 
-# A rota do pagamento em moeda forte. `remoto = true` liga o filtro de remoto da
-# origem, e sem ele uma busca nos Estados Unidos devolve vaga presencial em
+# As rotas do pagamento em moeda forte. `remoto = true` liga o filtro de remoto
+# da origem, e sem ele uma busca nos Estados Unidos devolve vaga presencial em
 # Austin -- inalcancavel para quem mora no Brasil, e ainda consumindo o teto.
+#
+# Canada antes dos EUA de proposito: o fuso e o mesmo, a contratacao de
+# estrangeiro por contrato e mais comum e a concorrencia e menor. Quando os
+# termos nao couberem, a ordem decide quem fica.
+[[collection.frentes]]
+rotulo = "remoto no Canada"
+local = "Canada"
+remoto = true
+
 [[collection.frentes]]
 rotulo = "remoto nos EUA"
 local = "United States"
+remoto = true
+
+# "European Union" e o nome que a origem reconhece como regiao; "Europe" nao e
+# uma entidade geografica no catalogo dela. Se esta frente voltar vazia em dois
+# runs seguidos, o endereco e que nao resolveu -- e a linha "coleta por frente"
+# no log e onde isso aparece, com zero cards contra as outras tres.
+[[collection.frentes]]
+rotulo = "remoto na Europa"
+local = "European Union"
 remoto = true
 
 [run]

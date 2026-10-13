@@ -216,13 +216,14 @@ def test_every_term_is_searched_in_every_front(env):
     consolidar(connection, config)
 
     frentes = frentes_de_busca(config, "Osasco, SP")
-    assert [f.rotulo for f in frentes] == ["aqui", "remoto nos EUA"]
-    # A frente de casa herda a localizacao do perfil; a internacional traz a
-    # propria e exige remoto.
+    # A frente de casa herda a localizacao do perfil e nao exige remoto.
     assert frentes[0] == Frente(rotulo="aqui", local="Osasco, SP", remoto=False)
-    assert frentes[1] == Frente(
-        rotulo="remoto nos EUA", local="United States", remoto=True
-    )
+    # As demais trazem a propria localizacao e TODAS exigem remoto: vaga
+    # presencial em Toronto ou em Berlim nao serve a quem mora aqui, e ainda
+    # consumiria o teto de buscas do run.
+    assert all(f.remoto for f in frentes[1:]), "frente de fora sem filtro de remoto"
+    assert all(f.local for f in frentes[1:]), "frente de fora sem localizacao propria"
+    assert [f.local for f in frentes[1:]] == ["Canada", "United States", "European Union"]
 
 
 def test_semantic_noise_is_discarded_with_a_reason(env):

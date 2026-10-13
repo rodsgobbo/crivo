@@ -370,6 +370,80 @@ def test_a_block_reports_each_remaining_term_once(collector):
     assert resultado.nao_tentadas == ["A", "B", "C"]
 
 
+def test_each_front_reports_how_many_cards_it_returned(collector):
+    """Endereco que a origem nao reconhece e identico a mercado vazio.
+
+    A localizacao e um texto que a origem resolve no catalogo dela. "European
+    Union" resolvendo ou nao produz a mesma coisa quando nao resolve: zero
+    cards, sem erro. A conta por frente e o unico lugar onde os dois casos se
+    distinguem.
+    """
+    fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
+    resultado = Collector(collector, fonte).collect("ana", ["A"], DUAS, 24)
+    # A mesma busca roda nas duas frentes, e as duas devolvem o card: a conta e
+    # antes da deduplicacao, senao a segunda frente pareceria inutil.
+    assert resultado.por_frente == {"aqui": 1, "remoto nos EUA": 1}
+
+
+def test_a_front_that_never_ran_is_zero_and_not_absent(collector):
+    """Frente declarada entra na conta mesmo quando a coleta nem a alcanca.
+
+    Ausente e zero dizem coisas diferentes: uma frente que nunca rodou nao e
+    uma frente que nao achou nada, e a coleta barrada na primeira requisicao
+    para antes de tocar as demais.
+    """
+    fonte = FakeSource({"A": SearchOutcome(busca="A", bloqueada=True, falha="429")})
+    resultado = Collector(collector, fonte).collect("ana", ["A"], DUAS, 24)
+    assert resultado.por_frente == {"aqui": 0, "remoto nos EUA": 0}
+
+
+def test_the_per_front_count_reaches_the_log(collector, caplog):
+    """E log, e nao relatorio: quem precisa disso e quem opera a instalacao."""
+    import logging
+
+    fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card()])})
+    with caplog.at_level(logging.INFO, logger="crivo.pipeline.collector"):
+        Collector(collector, fonte).collect("ana", ["A"], DUAS, 24)
+    assert "coleta por frente" in caplog.text
+    assert "aqui 1 card(s)" in caplog.text
+
+
+class SoEmCasa:
+    """Fonte que atende a frente local e devolve vazio em qualquer remota.
+
+    E o sintoma de um endereco que a origem nao reconhece: a requisicao volta
+    sem erro e sem card.
+    """
+
+    def search(self, termo, local, janela_horas, quantidade, remoto=False):
+        if remoto:
+            return SearchOutcome(busca=termo, improdutiva=True)
+        return SearchOutcome(busca=termo, cards=[card()])
+
+    def describe(self, job_id, url):
+        return {"texto": "descricao", "emails": []}
+
+
+def test_a_single_empty_front_is_warned_but_an_empty_run_is_not(collector, caplog):
+    """O aviso compara frentes; sem com o que comparar, ele seria ruido.
+
+    Uma frente em zero enquanto as outras trazem dezenas e endereco invalido.
+    Todas em zero e uma janela sem vaga nenhuma -- culpar a localizacao ali
+    seria apontar o lugar errado.
+    """
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="crivo.pipeline.collector"):
+        Collector(collector, SoEmCasa()).collect("ana", ["A"], DUAS, 24)
+    assert "frente(s) sem nenhum card" in caplog.text
+    assert "remoto nos EUA" in caplog.text
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="crivo.pipeline.collector"):
+        Collector(collector, FakeSource()).collect("ana", ["B"], DUAS, 24)
+    assert "frente(s) sem nenhum card" not in caplog.text
+
+
 def test_the_search_cap_counts_requests_and_not_terms():
     """Duas frentes nao podem dobrar a exposicao a origem em silencio.
 
