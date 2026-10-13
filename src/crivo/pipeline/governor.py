@@ -24,6 +24,11 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+
+# A fonte nao importa o governador, entao esta direcao nao fecha ciclo. O
+# governador precisa conhecer a recusa porque e ele quem decide o que fazer com
+# ela: contar, recuar e, no terceiro fracasso seguido, bloquear.
+from .sources.guest import CollectionRefused
 from typing import Any, Callable
 
 from ..store.repository import Repository
@@ -151,12 +156,21 @@ class RateGovernor:
         for tentativa in range(1, tentativas + 1):
             try:
                 resultado = operacao()
-            except AttemptTimeout as exc:
+            except (AttemptTimeout, CollectionRefused) as exc:
+                # A recusa da origem conta como fracasso desde que ela existe
+                # como tipo proprio, e nao contava antes. O governador prometia
+                # no proprio docstring gravar bloqueio ao terceiro fracasso
+                # consecutivo, e so somava tempo esgotado: um 429 atravessava
+                # este laco intacto, o contador ficava em zero e o recuo nunca
+                # crescia. Em uso real, um terco dos pedidos de descricao de um
+                # dia foi recusado sem que nenhum bloqueio fosse registrado, e o
+                # enriquecedor seguiu pedindo no mesmo ritmo -- exatamente o
+                # comportamento que esta classe existe para impedir.
                 ultimo_erro = exc
                 self.stats.fracassos_consecutivos += 1
                 logger.info(
-                    "tentativa %s de %s esgotou o tempo; recuando %.0fs",
-                    tentativa, tentativas, recuo,
+                    "tentativa %s de %s falhou (%s); recuando %.0fs",
+                    tentativa, tentativas, type(exc).__name__, recuo,
                 )
                 if tentativa < tentativas:
                     self.stats.esperas.append(recuo)

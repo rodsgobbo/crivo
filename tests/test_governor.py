@@ -123,6 +123,45 @@ def test_three_consecutive_failures_record_a_block(env):
     assert governor.stats.bloqueios == 1
 
 
+def test_a_refusal_by_the_source_also_records_a_block(env):
+    """O defeito que custou um dia de pedidos contra uma origem que recusava.
+
+    O governador promete, no proprio docstring, gravar bloqueio ao terceiro
+    fracasso consecutivo. Ele so contava tempo esgotado: a recusa por excesso
+    atravessava o laco intacto, o contador ficava em zero e o recuo nunca
+    crescia. Em 13/10/2026, 31 de 100 pedidos de descricao voltaram recusados em
+    dezesseis minutos, e a tabela de bloqueios estava vazia -- prova de que
+    nenhum dos 856 fracassos acumulados jamais chegou a esta contagem.
+    """
+    from crivo.pipeline.sources.guest import CollectionRefused
+
+    governor, _clock, connection = env
+
+    def recusada():
+        raise CollectionRefused("a origem recusou a descricao da vaga li-1: HTTP 429")
+
+    with pytest.raises(CollectionBlocked):
+        governor.run(recusada)
+    assert connection.execute("SELECT count(*) FROM collection_blocks").fetchone()[0] == 1
+    assert governor.stats.bloqueios == 1
+
+
+def test_a_refusal_backs_off_between_attempts(env):
+    """Recuo crescente, e nao tres pedidos seguidos contra quem acabou de recusar."""
+    from crivo.pipeline.sources.guest import CollectionRefused
+
+    governor, _clock, _c = env
+
+    def recusada():
+        raise CollectionRefused("HTTP 429")
+
+    with pytest.raises(CollectionBlocked):
+        governor.run(recusada)
+    recuos = [e for e in governor.stats.esperas if e > 0]
+    assert len(recuos) == 2, "duas esperas entre as tres tentativas"
+    assert recuos[1] > recuos[0], "o recuo precisa crescer"
+
+
 def test_after_a_block_every_new_call_is_refused(env):
     governor, _clock, _c = env
     with pytest.raises(CollectionBlocked):

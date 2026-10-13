@@ -84,6 +84,30 @@ class CollectionError(Exception):
     """A busca falhou por erro de rede ou resposta invalida da origem."""
 
 
+#: Estados HTTP em que a origem esta dizendo "pare de pedir", e nao "nao tenho".
+#:
+#: 429 e o limite de taxa. 403 entra junto porque o LinkedIn responde com ele
+#: quando passa a tratar o endereco de saida como automacao, e 503 porque ele e
+#: a forma que a recusa assume quando a borda dela e que barra.
+RECUSAS_DA_ORIGEM = (403, 429, 503)
+
+
+class CollectionRefused(CollectionError):
+    """A origem recusou a requisicao por excesso, e nao por nao ter a vaga.
+
+    Precisa de tipo proprio porque a resposta a ela e oposta a de qualquer outro
+    erro. Pagina que mudou de forma pede correcao de codigo e insistir nao
+    ajuda; rede que caiu pede nova tentativa. Recusa por excesso pede PARAR --
+    e cada tentativa a mais alonga o castigo.
+
+    Enquanto ela era um `CollectionError` como os outros, o governador nao a
+    contava: `_tentar` so somava tempo esgotado, entao o contador de fracassos
+    consecutivos ficava em zero, o recuo nunca crescia e o bloqueio nunca era
+    gravado. O enriquecedor registrava "vaga sem descricao" e pedia a seguinte,
+    no mesmo ritmo, contra uma origem que estava recusando um terco dos pedidos.
+    """
+
+
 #: Quantos dias cada unidade da frase de recencia vale. Mes e ano usam a media
 #: do calendario: a frase ja e aproximada e fingir precisao maior seria falso.
 _DIAS_POR_UNIDADE = (
@@ -262,6 +286,11 @@ class MultiPortalSource:
             raise CollectionError(
                 f"descricao da vaga {job_id} indisponivel: {type(exc).__name__}: {exc}"
             ) from exc
+        if resposta.status_code in RECUSAS_DA_ORIGEM:
+            raise CollectionRefused(
+                f"a origem recusou a descricao da vaga {job_id}: HTTP "
+                f"{resposta.status_code}"
+            )
         if resposta.status_code != 200:
             raise CollectionError(
                 f"descricao da vaga {job_id} indisponivel: HTTP "

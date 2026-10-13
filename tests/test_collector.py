@@ -306,6 +306,38 @@ def test_a_refused_request_is_an_error():
     assert "429" in str(err.value)
 
 
+@pytest.mark.parametrize("status", [403, 429, 503])
+def test_a_refusal_has_its_own_type_so_the_governor_can_count_it(status):
+    """Recusa por excesso nao e "a vaga nao esta disponivel".
+
+    Enquanto ela era um `CollectionError` como qualquer outro, o governador nao
+    a contava como fracasso: o contador ficava em zero, o recuo nunca crescia e
+    nenhum bloqueio era gravado. Num dia de uso real, um terco dos pedidos de
+    descricao voltou recusado e o enriquecedor seguiu pedindo no mesmo ritmo.
+    """
+    from crivo.pipeline.sources.guest import CollectionRefused
+
+    with pytest.raises(CollectionRefused) as err:
+        MultiPortalSource(http=FakeHTTP(status=status)).describe("li-1", "")
+    assert str(status) in str(err.value)
+    assert "recusou" in str(err.value)
+
+
+def test_a_page_that_changed_shape_is_not_a_refusal():
+    """Pagina diferente pede correcao de codigo, e nao recuo de uma hora.
+
+    Tratar as duas do mesmo jeito faria uma mudanca de marcacao no LinkedIn
+    parecer limite de taxa, e o diagnostico iria para o lado errado.
+    """
+    from crivo.pipeline.sources.guest import CollectionRefused
+
+    with pytest.raises(CollectionError) as err:
+        MultiPortalSource(http=FakeHTTP("<html><body>nada</body></html>")).describe(
+            "li-9", ""
+        )
+    assert not isinstance(err.value, CollectionRefused)
+
+
 def test_a_body_without_the_description_block_is_an_error():
     with pytest.raises(CollectionError) as err:
         MultiPortalSource(http=FakeHTTP("<html><body>nada</body></html>")).describe(
