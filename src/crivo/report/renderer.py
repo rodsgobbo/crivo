@@ -71,6 +71,12 @@ class ReportContext:
     janela_horas: int | None = None
     #: Nome da regiao oferecida como filtro, quando a instalacao declarou uma.
     regiao: str | None = None
+    #: A pagina mostra a passada provisoria porque a final ainda nao existe.
+    #: Dito na pagina, e nao so no codigo: a nota provisoria e lida so de
+    #: titulo, empresa e sinais, e vai mudar quando a descricao entrar.
+    previa: bool = False
+    descricoes_pedidas: int = 0
+    descricoes_lidas: int = 0
 
     @property
     def fora_da_janela(self) -> list[dict]:
@@ -464,7 +470,10 @@ class ReportRenderer:
             raise ValueError(f"run {run_id} nao encontrado para este usuario")
         run = runs[0]
 
-        todas = ordenar(self._vagas(user_id, run_id))
+        passada = self._passada_disponivel(run_id)
+        todas = ordenar(self._vagas(user_id, run_id, passada))
+        previa = passada == "provisoria"
+        pedidas, lidas = self._andamento_das_descricoes(run_id) if previa else (0, 0)
         # A janela gravada com o run, e nao a configuracao de hoje: e ela que
         # diz o que este run prometeu cobrir.
         janela = run["janela_horas"]
@@ -518,6 +527,9 @@ class ReportRenderer:
                 self._config.report.regiao.rotulo
                 if self._config.report.regiao is not None else None
             ),
+            previa=previa,
+            descricoes_pedidas=pedidas,
+            descricoes_lidas=lidas,
         )
 
     #: Uma vaga sozinha nao e sinal de nada: e a vaga que voce ja esta lendo.
@@ -563,8 +575,48 @@ class ReportRenderer:
         return self.render(self.build_context(user_id, run_id, **extras))
 
     # ------------------------------------------------------------ interno
-    def _vagas(self, user_id: str, run_id: str) -> list[dict]:
-        """Junta score final, dados do card e descricao compartilhada."""
+    def _passada_disponivel(self, run_id: str) -> str:
+        """A passada final quando ela existe; a provisoria enquanto nao existe.
+
+        O relatorio so lia a final, e a final so existe depois que todas as
+        descricoes chegam -- num run de quatro frentes, uma hora e meia depois
+        da coleta. Ate la o run ja tinha a lista inteira pontuada pela
+        provisoria, e a pagina respondia vazio. A provisoria e o que permite
+        comecar a ler quinze minutos depois de pedir a busca.
+
+        A final vence assim que existe uma linha dela: nunca se mistura as duas
+        passadas na mesma pagina, porque elas nao medem a mesma coisa.
+        """
+        for passada in ("final", "provisoria"):
+            achou = self._repository.execute(
+                "SELECT 1 FROM scores WHERE run_id = ? AND passada = ? LIMIT 1",
+                (run_id, passada),
+            ).fetchone()
+            if achou:
+                return passada
+        return "final"
+
+    def _andamento_das_descricoes(self, run_id: str) -> tuple[int, int]:
+        """Quantas descricoes o run pediu, e quantas ja estao no registro.
+
+        Conta a descricao gravada, e nao o pedido marcado como atendido: o
+        enriquecedor marca por lote, no fim de cada ciclo, e a fila parece
+        parada por minutos enquanto as descricoes ja estao chegando uma a uma.
+        """
+        pedidas, lidas = self._repository.execute(
+            """
+            SELECT COUNT(*),
+                   SUM(CASE WHEN d.job_id IS NOT NULL THEN 1 ELSE 0 END)
+            FROM enrichment_requests e
+            LEFT JOIN job_descriptions d ON d.job_id = e.job_id
+            WHERE e.run_id = ?
+            """,
+            (run_id,),
+        ).fetchone()
+        return int(pedidas or 0), int(lidas or 0)
+
+    def _vagas(self, user_id: str, run_id: str, passada: str = "final") -> list[dict]:
+        """Junta score da passada pedida, dados do card e descricao compartilhada."""
         linhas = self._repository.execute(
             """
             SELECT s.job_id, s.score, s.lacunas, s.diferenciais, s.componentes,
@@ -593,7 +645,7 @@ class ReportRenderer:
             FROM scores s
             JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
             LEFT JOIN job_descriptions d ON d.job_id = s.job_id
-            WHERE s.user_id = ? AND s.run_id = ? AND s.passada = 'final'
+            WHERE s.user_id = ? AND s.run_id = ? AND s.passada = ?
             -- A descricao vem primeiro na ordenacao porque score sem descricao
             -- e score com descricao nao medem a mesma coisa. Sem descricao o
             -- componente de competencias devolve o valor neutro de 0.5, que
@@ -604,7 +656,7 @@ class ReportRenderer:
             -- requisicao para saber a verdade.
             ORDER BY s.descricao_disponivel DESC, s.score DESC, s.job_id
             """,
-            (user_id, run_id),
+            (user_id, run_id, passada),
         ).fetchall()
         return [
             {

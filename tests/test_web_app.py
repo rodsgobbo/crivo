@@ -1387,6 +1387,27 @@ def _enfileirar(banco, user_id):
     return RunQueue(banco()).enqueue(user_id, janela="ampla")
 
 
+def test_a_run_reading_descriptions_is_listed_as_a_preview(cliente):
+    """O resultado existia desde o minuto quinze e so aparecia aqui no fim.
+
+    Um run em `aguardando_enriquecimento` ja tem a lista inteira pontuada pela
+    provisoria. Sem esta linha na pagina inicial, o unico caminho ate a previa
+    era digitar o endereco do relatorio.
+    """
+    from crivo.store.repository import Repository
+
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    run_id = _enfileirar(banco, user_id)
+    Repository(banco()).for_user(user_id).update(
+        "runs", {"estado": "aguardando_enriquecimento"},
+        where="run_id = ?", params=(run_id,),
+    )
+    pagina = c.get("/").text
+    assert "prévia — lendo descrições" in pagina
+    assert f"/reports/{run_id}" in pagina
+
+
 def test_the_cancel_button_appears_while_a_run_is_in_flight(cliente):
     c, _i, banco = cliente
     user_id = entrar(cliente)

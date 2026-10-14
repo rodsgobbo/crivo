@@ -240,6 +240,14 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_the_report_shows_the_currency_and_offers_its_filter",
     ],
 
+    # --------------------------------------- REQ-18.18 previa do relatorio
+    "18.18": [
+        "test_report::test_without_a_final_pass_the_report_is_a_preview_of_the_provisional_one",
+        "test_report::test_the_final_pass_replaces_the_preview_as_soon_as_it_exists",
+        "test_report::test_the_preview_counts_descriptions_as_they_arrive_and_not_as_batches_close",
+        "test_web_app::test_a_run_reading_descriptions_is_listed_as_a_preview",
+    ],
+
     # ------------------------------------------ REQ-18.17 regiao declarada
     "18.17": [
         "test_report::test_the_region_reaches_the_far_edge_and_stops_before_the_next_city",

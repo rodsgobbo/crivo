@@ -41,6 +41,26 @@
   </div>
 </div>
 
+{# -------------------------------------------------------------- previa #}
+{# A passada final so existe depois de todas as descricoes, e num run de
+   quatro frentes isso e uma hora e meia depois da coleta. A previa mostra a
+   lista pontuada pela provisoria, e diz isso em cima de tudo: a nota de agora
+   foi lida so de titulo, empresa e sinais, e vai mudar. #}
+{% if ctx.previa %}
+<div class="aviso previa">
+  <strong>Prévia — a busca ainda está lendo as descrições.</strong>
+  {% if ctx.descricoes_pedidas %}
+    {{ ctx.descricoes_lidas }} de {{ ctx.descricoes_pedidas }} lidas
+    ({{ (100 * ctx.descricoes_lidas / ctx.descricoes_pedidas) | round | int }}%).
+    <div class="barra"><div class="barra-cheia"
+      style="width: {{ (100 * ctx.descricoes_lidas / ctx.descricoes_pedidas) | round | int }}%"></div></div>
+  {% endif %}
+  As notas abaixo foram calculadas só pelo título, pela empresa e pelos sinais
+  do anúncio. Quando as descrições terminarem, elas mudam e o relatório final
+  substitui esta página. Recarregue para ver o andamento.
+</div>
+{% endif %}
+
 {# ---------------------------------------------------- estados degradados #}
 {% if ctx.modo_deterministico %}
 <p class="aviso">
@@ -251,9 +271,18 @@
   {% endif %}
 
   {% if not vaga.descricao_disponivel %}
-  <p class="bloqueio">
-    Avaliada por título, empresa e sinais, sem leitura da descrição.
-  </p>
+    {# Na previa, a descricao pode ja ter chegado enquanto a nota ainda e a
+       provisoria. Dizer "sem leitura da descricao" com o texto dela logo
+       abaixo seria contradicao visivel. #}
+    {% if ctx.previa and vaga.descricao %}
+    <p class="meta">
+      Descrição já lida; a nota acima ainda não a considera — muda no relatório final.
+    </p>
+    {% else %}
+    <p class="bloqueio">
+      Avaliada por título, empresa e sinais, sem leitura da descrição.
+    </p>
+    {% endif %}
   {% endif %}
 
   {# O que o perfil tem e o que falta, separados tambem pela cor. O sinal

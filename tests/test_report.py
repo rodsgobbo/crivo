@@ -511,6 +511,102 @@ def test_only_new_jobs_hides_what_earlier_runs_already_showed():
     assert [v["job_id"] for v in restantes] == ["nova"]
 
 
+# ------------------------------------------------------------------ previa
+def pontuar(repo, job_id, passada, score, run_id="run-1"):
+    repo.for_user("ana").insert(
+        "scores",
+        {
+            "job_id": job_id, "run_id": run_id, "passada": passada,
+            "score": score, "componentes": json.dumps({"componentes": {}}),
+            "lacunas": "[]", "diferenciais": "[]",
+            "descricao_disponivel": int(passada == "final"),
+            "sinais_sessao_disponiveis": 1, "criado_em": "2026-08-21",
+        },
+    )
+
+
+def vaga_so_provisoria(repo, job_id="li-p", score=64):
+    """Vaga coletada e pontuada pela provisoria, esperando a descricao."""
+    repo.for_user("ana").insert(
+        "jobs",
+        {
+            "job_id": job_id, "titulo": "SRE Manager", "empresa": "Fintech",
+            "url": f"https://exemplo.br/{job_id}", "local": "Sao Paulo, SP",
+            "modelo_trabalho": "remote", "publicada_em": "2026-08-20",
+            "flags": "[]", "estado": "novo", "primeira_vez_em": "2026-08-20",
+            "ultima_vez_em": "2026-08-21",
+        },
+    )
+    pontuar(repo, job_id, "provisoria", score)
+
+
+def test_without_a_final_pass_the_report_is_a_preview_of_the_provisional_one(env):
+    """A lista pontuada existe quinze minutos depois da busca, e nao uma hora e meia.
+
+    O relatorio so lia a passada final, que so existe quando todas as descricoes
+    chegam. Num run real de quatro frentes, isso deixava a pagina vazia por uma
+    hora e meia com 448 vagas ja pontuadas no banco.
+    """
+    connection, repo = env
+    vaga_so_provisoria(repo)
+    ctx = ReportRenderer(connection, load_config()).build_context("ana", "run-1")
+    assert ctx.previa is True
+    assert [v["job_id"] for v in ctx.vagas] == ["li-p"]
+    assert "Prévia — a busca ainda está lendo as descrições" in render(env)
+
+
+def test_the_final_pass_replaces_the_preview_as_soon_as_it_exists(env):
+    """As duas passadas nunca se misturam: elas nao medem a mesma coisa."""
+    connection, repo = env
+    vaga_so_provisoria(repo, score=64)
+    pontuar(repo, "li-p", "final", 81)
+    ctx = ReportRenderer(connection, load_config()).build_context("ana", "run-1")
+    assert ctx.previa is False
+    assert ctx.vagas[0]["score"] == 81
+    assert "Prévia" not in render(env)
+
+
+def test_the_preview_counts_descriptions_as_they_arrive_and_not_as_batches_close(env):
+    """O enriquecedor marca os pedidos por lote; a descricao grava na hora.
+
+    Contar pedidos atendidos faria a barra ficar parada por minutos enquanto as
+    descricoes ja chegavam uma a uma -- foi o que pareceu um enriquecedor
+    travado num run real, com 21 descricoes gravadas e zero pedidos marcados.
+    """
+    connection, repo = env
+    vaga_so_provisoria(repo, job_id="li-a")
+    vaga_so_provisoria(repo, job_id="li-b")
+    for job_id in ("li-a", "li-b"):
+        repo.for_user("ana").insert(
+            "enrichment_requests",
+            {
+                "request_id": f"r-{job_id}", "run_id": "run-1", "job_id": job_id,
+                "url": f"https://exemplo.br/{job_id}", "estado": "pendente",
+                "criado_em": "2026-08-21",
+            },
+        )
+    # So uma das duas chegou, e o pedido dela continua `pendente`.
+    repo.insert(
+        "job_descriptions",
+        {"job_id": "li-a", "texto": "Sobre a vaga", "coletada_em": "2026-08-21"},
+    )
+    ctx = ReportRenderer(connection, load_config()).build_context("ana", "run-1")
+    assert (ctx.descricoes_lidas, ctx.descricoes_pedidas) == (1, 2)
+
+
+def test_a_description_that_arrived_is_not_called_unread_in_the_preview(env):
+    """"Sem leitura da descricao" com o texto dela logo abaixo seria contradicao."""
+    connection, repo = env
+    vaga_so_provisoria(repo, job_id="li-a")
+    repo.insert(
+        "job_descriptions",
+        {"job_id": "li-a", "texto": "Sobre a vaga", "coletada_em": "2026-08-21"},
+    )
+    pagina = render(env)
+    assert "Descrição já lida; a nota acima ainda não a considera" in pagina
+    assert "sem leitura da descrição" not in pagina
+
+
 # ----------------------------------------------------------------- regiao
 def _regiao():
     from crivo.config import Regiao

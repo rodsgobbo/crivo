@@ -446,6 +446,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.17 IF a configuração declara uma região metropolitana, THEN the Report Renderer SHALL offer um filtro que mantém apenas as vagas cuja cidade está dentro do raio declarado a partir da cidade-âncora dessa região.
 
+18.18 WHILE um run aguarda o enriquecimento, THE Report Renderer SHALL display as vagas pontuadas pela passada provisória, identificadas como prévia, junto com a quantidade de descrições já lidas e pedidas, e SHALL substituir a prévia pelo relatório da passada final assim que ela existir.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.

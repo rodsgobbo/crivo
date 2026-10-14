@@ -289,10 +289,24 @@
   {% if ctx.user_id %}
     {# ========================================================= RESULTADO === #}
     {% set concluidos = ctx.runs | selectattr("estado", "equalto", "concluido") | list %}
-    {% if concluidos %}
+    {# A busca que esta lendo descricoes ja tem a lista inteira pontuada pela
+       provisoria. Sem esta linha, o resultado so aparecia aqui uma hora e meia
+       depois da coleta -- embora existisse desde o minuto quinze. #}
+    {% set em_previa = ctx.runs | selectattr("estado", "equalto", "aguardando_enriquecimento") | list %}
+    {% if concluidos or em_previa %}
       <h2>Relatórios</h2>
       <div class="cartao">
         <table>
+          {% for run in em_previa %}
+            <tr>
+              <td>
+                <a href="/reports/{{ run.run_id }}">
+                  {{ run.solicitado_em | local }}
+                </a>
+              </td>
+              <td><span class="marca pendente">prévia — lendo descrições</span></td>
+            </tr>
+          {% endfor %}
           {% for run in concluidos %}
             <tr>
               <td>
