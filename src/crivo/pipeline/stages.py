@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from datetime import datetime, timezone
 
 from ..profile.merger import ProfileMerger
@@ -610,9 +611,12 @@ class EnriquecimentoStage:
 
     name = "enriquecimento"
 
-    def __init__(self, connection) -> None:
+    def __init__(self, connection, config=None) -> None:
         self._connection = connection
         self._queue = EnrichmentQueue(connection)
+        self._fracao = getattr(
+            getattr(config, "collection", None), "fracao_enriquecida", 1.0
+        ) or 1.0
 
     def run(self, context: RunContext) -> None:
         # `a_enriquecer` e um subconjunto de `sobreviventes`: o que fica de
@@ -623,6 +627,7 @@ class EnriquecimentoStage:
         if alvos is None:
             alvos = context.dados.get("sobreviventes") or []
         alvos = self._por_prioridade(context.user_id, alvos)
+        alvos = self._dentro_da_fracao(context.user_id, context.run_id, alvos)
         self._queue.enqueue(context.user_id, context.run_id, alvos)
         if not self._queue.is_drained(context.run_id):
             # Suspensao, e nao espera. O intervalo entre requisicoes de
@@ -646,16 +651,99 @@ class EnriquecimentoStage:
         """
         if len(alvos) < 2:
             return alvos
-        marcadas = {
+        marcadas = self._marcadas(user_id)
+        if not marcadas:
+            return alvos
+        return sorted(alvos, key=lambda card: card.job_id not in marcadas)
+
+    def _marcadas(self, user_id: str) -> set[str]:
+        """Vagas deste usuario que o LinkedIn apontou como melhor candidato."""
+        return {
             linha["job_id"]
             for linha in self._connection.execute(
                 "SELECT job_id FROM jobs WHERE user_id = ? AND flags LIKE ?",
                 (user_id, f'%"{SINAL_PRIORITARIO}"%'),
             ).fetchall()
         }
-        if not marcadas:
+
+    def _dentro_da_fracao(self, user_id: str, run_id: str, alvos: list) -> list:
+        """Corta a fila de descricao pela ordem da nota provisoria.
+
+        A descricao e o trecho mais longo do run: uma requisicao a cada 8 a 20
+        segundos de governador. Num run de 1 dia com quatro frentes, foram 380
+        pedidos enfileirados -- cerca de 76 minutos so de espera deliberada,
+        quase todo o tempo do run.
+
+        O corte e pela ORDEM provisoria, e nao por um limiar de nota. A nota
+        provisoria e comprimida -- num run real, 341 de 448 sobreviventes
+        ficaram acima de 60 --, entao um limiar nao separa nada. A ordem
+        separa: no historico de 3201 vagas com descricao lida, os 70% do topo
+        da ordem provisoria de cada run continham 95,6% das que terminaram em
+        destaque; os 60% do topo, 92%.
+
+        Tres coisas passam por cima do corte:
+        - os marcados pelo sinal Premium, que `_por_prioridade` ja pos na
+          frente e que portanto caem dentro da fatia;
+        - a vaga cuja descricao ja esta no registro compartilhado, porque
+          ela nao custa requisicao -- o enriquecedor a reaproveita;
+        - a fracao 1.0, que e o comportamento anterior a esta regra.
+
+        O que fica de fora nao some: segue no relatorio com a nota provisoria
+        e a marca de "avaliada sem leitura da descricao", e pode ser descrita
+        num run seguinte em que suba na ordem.
+        """
+        if self._fracao >= 1.0 or len(alvos) < 2:
             return alvos
-        return sorted(alvos, key=lambda card: card.job_id not in marcadas)
+
+        notas = {
+            linha["job_id"]: linha["score"]
+            for linha in self._connection.execute(
+                "SELECT job_id, score FROM scores WHERE run_id = ? AND passada = ?",
+                (run_id, PROVISORIA),
+            )
+        }
+        ja_descritas = self._ja_descritas([c.job_id for c in alvos])
+        # Lidas uma vez, e nao dentro da chave de ordenacao: consultar o banco
+        # por vaga dentro do `sorted` seria uma lentidao nova escondida na
+        # correcao de lentidao.
+        marcadas = self._marcadas(user_id)
+        indice = {card.job_id: i for i, card in enumerate(alvos)}
+        pagas = sorted(
+            (c for c in alvos if c.job_id not in ja_descritas),
+            # Sinal Premium na frente, depois a nota provisoria, e a ordem de
+            # coleta como desempate -- para o corte ser o mesmo a cada leitura.
+            key=lambda c: (c.job_id not in marcadas,
+                           -notas.get(c.job_id, 0), indice[c.job_id]),
+        )
+        cabem = max(1, math.ceil(len(pagas) * self._fracao))
+        escolhidas = {c.job_id for c in pagas[:cabem]}
+        cortadas = len(pagas) - cabem
+        if cortadas:
+            logger.info(
+                "run %s: %s descricao(oes) fora do corte de %.0f%% pela ordem "
+                "provisoria; %s reaproveitada(s) do registro",
+                run_id[:8], cortadas, 100 * self._fracao, len(ja_descritas),
+            )
+        return [
+            c for c in alvos
+            if c.job_id in escolhidas or c.job_id in ja_descritas
+        ]
+
+    def _ja_descritas(self, ids: list[str]) -> set[str]:
+        """Vagas cuja descricao ja esta no registro compartilhado."""
+        achadas: set[str] = set()
+        # Em lotes: o SQLite antigo limita a 999 parametros por consulta, e um
+        # run de quatro frentes ja passou de 400 alvos.
+        for inicio in range(0, len(ids), 500):
+            lote = ids[inicio:inicio + 500]
+            achadas.update(
+                linha[0] for linha in self._connection.execute(
+                    "SELECT job_id FROM job_descriptions WHERE job_id IN "
+                    f"({', '.join('?' * len(lote))})",
+                    lote,
+                )
+            )
+        return achadas
 
 
 class JulgamentoStage:
@@ -772,7 +860,7 @@ def build_stages(
         ),
         PreFiltroStage(connection, config, filters),
         PontuacaoProvisoriaStage(connection, config, ontology),
-        EnriquecimentoStage(connection),
+        EnriquecimentoStage(connection, config),
         PontuacaoFinalStage(connection, config, ontology),
         JulgamentoStage(connection, config, model_client_factory),
         SinteseStage(connection, config, model_client_factory),

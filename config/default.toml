@@ -66,6 +66,28 @@ orcamento_diario_coleta = 400
 # que cresce e a duracao da exposicao.
 max_buscas_por_run = 36
 
+# Fracao dos sobreviventes que recebe pedido de descricao, pela ORDEM da nota
+# provisoria. A descricao e o trecho mais longo do run: uma requisicao a cada 8
+# a 20 segundos de governador.
+#
+# Medido em 14/10/2026, num run de 1 dia com quatro frentes: 380 pedidos de
+# descricao enfileirados, cerca de 76 minutos de espera -- o run inteiro levaria
+# uma hora e meia, e a coleta, 15 minutos dela.
+#
+# O corte e pela ordem, e nao por limiar de nota: a nota provisoria e comprimida
+# (341 de 448 sobreviventes acima de 60), e um limiar nao separa nada. A ordem
+# separa. No historico de 3201 vagas com descricao lida, a fatia do topo da
+# ordem provisoria de cada run continha esta parte das que terminaram em
+# destaque:
+#
+#   50% do topo -> 85,6%     60% -> 92,0%     70% -> 95,6%     80% -> 97,2%
+#
+# 0.7 corta 30% do tempo de descricao e mantem 95,6% dos destaques. O que fica
+# de fora nao some: segue no relatorio com a nota provisoria e a marca de
+# "avaliada sem leitura da descricao". Vaga cuja descricao ja esta no registro
+# entra sempre, porque nao custa requisicao; 1.0 volta a descrever todas.
+fracao_enriquecida = 0.7
+
 # Frentes de busca: onde procurar, e se a vaga precisa ser remota.
 #
 # Cada termo do planejamento e consultado em TODAS as frentes, entao o numero de

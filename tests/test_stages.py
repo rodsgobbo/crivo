@@ -241,8 +241,21 @@ def test_semantic_noise_is_discarded_with_a_reason(env):
     assert any("Manutencao" in d["titulo"] for d in descartes)
 
 
+def descrevendo_todas(config):
+    """A configuracao padrao com a fila de descricao sem corte.
+
+    Os testes que verificam o caminho da descricao precisam dizer essa premissa
+    em voz alta. Antes ela era implicita -- toda sobrevivente era descrita --, e
+    o corte pela ordem provisoria a tornou falsa sem que eles mudassem de assunto.
+    """
+    from dataclasses import replace
+
+    return replace(config, collection=replace(config.collection, fracao_enriquecida=1.0))
+
+
 def test_only_survivors_are_scored_and_queued_for_description(env):
     connection, fila, config = env
+    config = descrevendo_todas(config)
     consolidar(connection, config)
     run_id = fila.enqueue(USUARIO)
 
@@ -255,6 +268,68 @@ def test_only_survivors_are_scored_and_queued_for_description(env):
     assert provisorios == contexto.contadores["n_filtrados"]
     assert len(EnrichmentQueue(connection).pending_for(run_id)) == provisorios
     assert contexto.contadores["n_brutos"] > contexto.contadores["n_filtrados"]
+
+
+def test_the_description_queue_keeps_the_top_of_the_provisional_order(env):
+    """A descricao e o trecho mais longo do run, e a ordem diz onde vale gasta-la.
+
+    Num run real de 1 dia, 380 pedidos de descricao eram cerca de 76 minutos.
+    No historico, os 70% do topo da ordem provisoria continham 95,6% das vagas
+    que terminaram em destaque.
+    """
+    from dataclasses import replace
+
+    connection, fila, config = env
+    config = replace(config, collection=replace(config.collection, fracao_enriquecida=0.5))
+    consolidar(connection, config)
+    run_id = fila.enqueue(USUARIO)
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    notas = {
+        linha["job_id"]: linha["score"]
+        for linha in connection.execute(
+            "SELECT job_id, score FROM scores WHERE run_id = ? AND passada = 'provisoria'",
+            (run_id,),
+        )
+    }
+    pedidas = {p.job_id for p in EnrichmentQueue(connection).pending_for(run_id)}
+    assert 0 < len(pedidas) < len(notas), "o corte precisa deixar algo de fora"
+    # Nenhuma vaga de fora tem nota provisoria maior que a pior de dentro.
+    pior_de_dentro = min(notas[j] for j in pedidas)
+    melhor_de_fora = max(n for j, n in notas.items() if j not in pedidas)
+    assert melhor_de_fora <= pior_de_dentro
+
+
+def test_a_job_already_described_skips_the_cut_because_it_is_free(env):
+    """Descricao no registro compartilhado nao custa requisicao.
+
+    Cortar uma vaga cuja descricao ja esta guardada economizaria nada e
+    perderia a descricao no relatorio -- o enriquecedor a reaproveita sem
+    tocar a origem.
+    """
+    from dataclasses import replace
+
+    connection, fila, config = env
+    # 5%: com o corte tao fundo, uma vaga sem sinal Premium nunca entraria
+    # pela ordem -- so entra se a regra da descricao gratuita funcionar.
+    config = replace(config, collection=replace(config.collection, fracao_enriquecida=0.05))
+    consolidar(connection, config)
+    # `vaga-1-2` e a vaga de SRE da primeira busca: sobrevive ao pre-filtro e
+    # nao tem o sinal Premium, entao e exatamente a que o corte deixaria fora.
+    Repository(connection).insert(
+        "job_descriptions",
+        {"job_id": "vaga-1-2", "texto": "lida num run anterior", "coletada_em": _agora()},
+    )
+    run_id = fila.enqueue(USUARIO)
+    Runner(connection, config, montar(connection, config)).run_once()
+
+    pedidas = {p.job_id for p in EnrichmentQueue(connection).pending_for(run_id)}
+    sobreviventes = connection.execute(
+        "SELECT COUNT(*) FROM scores WHERE run_id = ? AND passada = 'provisoria'",
+        (run_id,),
+    ).fetchone()[0]
+    assert "vaga-1-2" in pedidas, "a descricao gratuita foi cortada"
+    assert len(pedidas) < sobreviventes, "o corte das pagas tambem precisa ter valido"
 
 
 # --------------------------------------------------------- segundo trecho
@@ -301,6 +376,7 @@ def test_the_second_half_survives_the_loss_of_in_memory_context(env):
 
 def test_the_final_pass_uses_the_collected_description(env):
     connection, fila, config = env
+    config = descrevendo_todas(config)
     consolidar(connection, config)
     run_id = fila.enqueue(USUARIO)
     Runner(connection, config, montar(connection, config)).run_once()

@@ -53,6 +53,9 @@ class CollectionConfig:
     #: perfil e sem exigir remoto -- exatamente o comportamento anterior a este
     #: campo, para que configuracao escrita antes dele continue valendo.
     frentes: tuple[Frente, ...] = ()
+    #: Fracao dos sobreviventes que recebe pedido de descricao, pela ordem da
+    #: nota provisoria. 1.0 e o comportamento anterior: descrever todos.
+    fracao_enriquecida: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -375,6 +378,14 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
             (int, 1, 1000),
         )
     collection["frentes"] = _validate_frentes(_section(raw, "collection"))
+    # Opcional pelo mesmo motivo do teto: arquivo escrito antes do campo
+    # continua valido, e ausencia significa descrever todos os sobreviventes.
+    if "fracao_enriquecida" in _section(raw, "collection"):
+        collection["fracao_enriquecida"] = _check(
+            "collection", "fracao_enriquecida",
+            _section(raw, "collection")["fracao_enriquecida"],
+            (float, 0.05, 1.0),
+        )
     if (
         collection["intervalo_enriquecimento_min_s"]
         > collection["intervalo_enriquecimento_max_s"]
