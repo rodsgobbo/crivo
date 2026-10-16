@@ -56,6 +56,10 @@ class CollectionConfig:
     #: Fracao dos sobreviventes que recebe pedido de descricao, pela ordem da
     #: nota provisoria. 1.0 e o comportamento anterior: descrever todos.
     fracao_enriquecida: float = 1.0
+    #: Fontes de vaga remota consultadas a cada run, pelo nome. Vazio desliga.
+    fontes_remotas: tuple[str, ...] = ()
+    #: Intervalo minimo entre duas chamadas a mesma fonte remota, em horas.
+    intervalo_fontes_remotas_h: int = 6
 
 
 @dataclass(frozen=True)
@@ -378,6 +382,18 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
             (int, 1, 1000),
         )
     collection["frentes"] = _validate_frentes(_section(raw, "collection"))
+    remotas = _section(raw, "collection").get("remotas")
+    if remotas is not None:
+        if not isinstance(remotas, dict):
+            raise ConfigError("collection.remotas: esperada tabela")
+        fontes = remotas.get("fontes", [])
+        if not isinstance(fontes, list) or not all(isinstance(f, str) for f in fontes):
+            raise ConfigError("collection.remotas.fontes: esperada lista de nomes")
+        collection["fontes_remotas"] = tuple(f.strip() for f in fontes if f.strip())
+        collection["intervalo_fontes_remotas_h"] = _check(
+            "collection.remotas", "intervalo_horas",
+            remotas.get("intervalo_horas", 6), (int, 1, 48),
+        )
     # Opcional pelo mesmo motivo do teto: arquivo escrito antes do campo
     # continua valido, e ausencia significa descrever todos os sobreviventes.
     if "fracao_enriquecida" in _section(raw, "collection"):

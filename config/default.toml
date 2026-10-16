@@ -114,6 +114,27 @@ rotulo = "aqui"
 local = ""
 remoto = false
 
+# Fontes de vaga remota: o caminho para vaga paga em moeda forte, no lugar das
+# frentes internacionais do LinkedIn. Cada uma e consultada uma vez por run, e
+# so entra a vaga que contrata de onde voce mora.
+#
+# Escolhidas por medicao em 16/10/2026 -- vagas do perfil que aceitam contratar
+# do Brasil, numa chamada a cada:
+#
+#   jobicy (filtro latam) .. 10 de 14     weworkremotely (devops) .. 10 de 10
+#   remote ok ..............  1 de 27     himalayas ................  0 de 9
+#
+# A descricao vem junto da vaga, entao estas nao passam pela etapa lenta de
+# descricao. Os provedores pedem credito com link para a vaga original: o titulo
+# no relatorio ja e esse link, e a origem aparece como "achada por Jobicy".
+#
+# O intervalo e o minimo entre duas chamadas a mesma fonte. Os provedores pedem
+# pouca frequencia, e a resposta fica guardada: a segunda busca do dia mostra as
+# mesmas vagas remotas sem chamar de novo. Lista vazia desliga.
+[collection.remotas]
+fontes = ["jobicy", "weworkremotely"]
+intervalo_horas = 6
+
 [run]
 duracao_maxima_s = 21600
 runs_imediatos_por_dia = 3

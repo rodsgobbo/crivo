@@ -233,6 +233,20 @@ COVERAGE: dict[str, list[str]] = {
     ],
     "8.9": ["test_collector::test_the_search_cap_counts_requests_and_not_terms"],
 
+    # ---------------------------------------- REQ-8.10/8.11 fontes remotas
+    "8.10": [
+        "test_fontes_remotas::test_these_hiring_regions_exclude_someone_living_in_brazil",
+        "test_fontes_remotas::test_jobicy_becomes_remote_cards_with_the_source_credited",
+        "test_fontes_remotas::test_wwr_splits_company_from_title_and_keeps_only_eligible_jobs",
+        "test_fontes_remotas::test_remote_jobs_reach_the_run_with_their_description_already_stored",
+        "test_fontes_remotas::test_the_linkedin_source_refuses_to_describe_a_job_that_is_not_its_own",
+    ],
+    "8.11": [
+        "test_fontes_remotas::test_a_second_run_within_the_interval_reuses_the_answer",
+        "test_fontes_remotas::test_a_failure_is_not_cached",
+        "test_fontes_remotas::test_a_failing_source_becomes_an_empty_contribution_and_not_a_crash",
+    ],
+
     # ----------------------------------------------- REQ-18.16 moeda da vaga
     "18.16": [
         "test_report::test_a_salary_in_reais_is_never_read_as_dollars",

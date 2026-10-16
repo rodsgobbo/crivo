@@ -290,7 +290,19 @@ class MultiPortalSource:
         sessao, e traz de graca tres coisas que o desenho atribuia a camada
         operacional: a contagem de candidatos, a recencia da publicacao e o
         sinal de baixa concorrencia.
+
+        Recusa vaga que nao e do LinkedIn. O endereco e montado a partir do
+        numero do identificador, de qualquer identificador -- e uma vaga do
+        Jobicy, "jy-123", viraria o anuncio 123 do LinkedIn, que e outra vaga ou
+        nenhuma. As fontes remotas entregam a descricao na coleta e nunca
+        deveriam chegar aqui; a recusa e a rede de seguranca para quando
+        chegarem.
         """
+        if not job_id.startswith("li-"):
+            raise CollectionError(
+                f"vaga {job_id} nao e do LinkedIn; a descricao dela vem da "
+                "propria fonte, na coleta"
+            )
         identificador = job_id.split("-")[-1]
         try:
             resposta = self._http_client().get(

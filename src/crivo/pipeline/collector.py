@@ -194,6 +194,17 @@ class Collector:
         _registra_frentes(resultado)
         return resultado
 
+    def incorporar(self, user_id: str, saida: SearchOutcome, resultado: CollectionResult) -> None:
+        """Absorve o resultado de uma fonte que nao passa pelas frentes.
+
+        O mesmo caminho de uma busca: deduplicacao contra o que o run ja tem,
+        gravacao sob o dono e contagem de novas. Uma vaga que o LinkedIn e uma
+        fonte remota trouxerem ambos entra uma vez.
+        """
+        vistos = {card.job_id for card in resultado.cards}
+        self._absorve(saida, resultado, vistos)
+        self._grava_novos(user_id, resultado)
+
     # ------------------------------------------------------------ interno
     def _buscar(
         self, termo: str, local: str, janela_horas: int, quantidade: int,

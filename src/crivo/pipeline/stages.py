@@ -172,6 +172,7 @@ class ColetaStage:
         self._connection = connection
         self._config = config
         self._fila = RunQueue(connection)
+        self._remotas = _fontes_remotas(config)
 
     def run(self, context: RunContext) -> None:
         buscas = carregar_buscas(self._connection, context)
@@ -199,9 +200,49 @@ class ColetaStage:
             )
         except CollectionCancelled as exc:
             raise Cancelled("coleta cancelada pelo usuario") from exc
+        self._coleta_remota(context, resultado)
         self._registra(context, resultado)
 
     # ------------------------------------------------------------ interno
+    def _coleta_remota(self, context: RunContext, resultado) -> None:
+        """Consulta as fontes de vaga remota e junta o que veio ao run.
+
+        Depois da busca no LinkedIn, e nao no meio dela: sao outros servidores,
+        fora da contencao do governador, e uma chamada por fonte -- nao uma por
+        termo. A descricao ja vem junto, e e gravada aqui, no registro
+        compartilhado: o enriquecedor a encontra la e nao faz requisicao.
+
+        Fonte que falha vira contribuicao vazia e uma linha no log. Ela e
+        acessoria ao run, e nunca o derruba.
+        """
+        if not self._remotas:
+            return
+        from .sources.remotas import CadenciaRemota
+
+        cadencia = CadenciaRemota(
+            self._connection, self._config.collection.intervalo_fontes_remotas_h
+        )
+        for fonte in self._remotas:
+            coleta = cadencia.coletar(fonte)
+            self._grava_descricoes(coleta.descricoes)
+            self._collector.incorporar(context.user_id, coleta.como_busca(), resultado)
+            resultado.por_frente[coleta.fonte] = len(coleta.cards)
+
+    def _grava_descricoes(self, descricoes: dict[str, str]) -> None:
+        """Grava no registro compartilhado a descricao que veio com a vaga.
+
+        `INSERT OR IGNORE`: descricao ja guardada nao e substituida, pelo mesmo
+        motivo que o enriquecedor nao a substitui -- o registro e de todos.
+        """
+        agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for job_id, texto in descricoes.items():
+            if texto:
+                self._connection.execute(
+                    "INSERT OR IGNORE INTO job_descriptions (job_id, texto, coletada_em) "
+                    "VALUES (?, ?, ?)",
+                    (job_id, texto, agora),
+                )
+
     def _passo(self, context: RunContext):
         """Fecha sobre o run para publicar avanco e atender o cancelamento.
 
@@ -320,6 +361,26 @@ class PreFiltroStage:
 
 class RunSemBuscas(RuntimeError):
     """Retomada sem termo de busca em lugar nenhum."""
+
+
+def _fontes_remotas(config) -> list:
+    """As fontes remotas da configuracao, prontas -- ou a recusa nomeando a errada.
+
+    Nome desconhecido impede a partida do processo, e nao vira fonte ignorada:
+    uma fonte que some em silencio e o mesmo defeito das frentes remotas, que
+    pareceram funcionar por quatro dias sem funcionar.
+    """
+    from ..config import ConfigError
+    from .sources.remotas import FONTES
+
+    nomes = getattr(getattr(config, "collection", None), "fontes_remotas", ()) or ()
+    desconhecidas = [n for n in nomes if n not in FONTES]
+    if desconhecidas:
+        raise ConfigError(
+            f"collection.remotas.fontes: fonte desconhecida {desconhecidas}; "
+            f"esperado um de {sorted(FONTES)}"
+        )
+    return [FONTES[nome]() for nome in nomes]
 
 
 def frentes_de_busca(config, localizacao_do_perfil: str):

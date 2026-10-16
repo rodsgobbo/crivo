@@ -14,7 +14,7 @@ Drive que o app nunca obtém — o login pede só `openid email profile` — e a
 interface não a oferece.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-28 requisitos, 219 critérios de aceitação, 21 elementos de design.
+28 requisitos, 221 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
@@ -259,9 +259,24 @@ sistemas, então seria preciso saber o identificador de cada empresa de antemão
 e montar essa lista é um produto diferente do que este é. Reabrir exige
 requisito novo.
 
-### Só o LinkedIn está habilitado no coletor
+### Só o LinkedIn entre os portais da biblioteca de coleta
 
-A biblioteca cobre oito portais. Uma versão anterior deste documento dizia que
+Há duas fontes além dele, e elas são de outra natureza: **Jobicy** e **We Work
+Remotely**, feitas para vaga remota e que dizem de onde a empresa contrata. O
+crivo só aproveita a vaga cuja região inclui o Brasil ("Anywhere", "LATAM",
+"Americas"...) — "USA Only" fica de fora. A descrição vem junto da vaga, então
+elas não passam pela etapa lenta de descrição, e cada uma é chamada no máximo
+uma vez a cada 6 horas (`[collection.remotas]` em `config/default.toml`; lista
+vazia desliga). No relatório aparecem como "achada por Jobicy", com o título
+apontando para o anúncio original, que é o crédito que os provedores pedem.
+
+Elas substituem as frentes internacionais do LinkedIn, retiradas em 16/10/2026:
+a busca sem login dele ignora o filtro de remoto e devolvia vaga presencial em
+Toronto e Nova York. O Remotive e o Remote OK foram medidos e ficaram de fora —
+o primeiro expõe só 15 vagas na API gratuita, o segundo trouxe 1 vaga elegível
+em 27.
+
+Quanto aos outros portais da biblioteca, que cobre oito: Uma versão anterior deste documento dizia que
 ligar os demais era mudança de configuração — **não é**. `describe()` monta o
 endereço público de anúncio do LinkedIn a partir de qualquer identificador, então
 um card de outro portal produziria endereço inválido: falta despacho por portal.

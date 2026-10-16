@@ -230,6 +230,10 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 8.9 THE Collector SHALL restrict o total de requisições de busca de um run ao teto configurado, contando uma requisição por par de termo e frente.
 
+8.10 WHERE fontes de vaga remota estão configuradas, THE Collector SHALL incorporate ao run apenas as vagas dessas fontes cuja região de contratação inclui o Brasil, creditando a fonte no card e gravando a descrição recebida na coleta, sem requisição de descrição à origem do LinkedIn.
+
+8.11 THE Collector SHALL consult cada fonte de vaga remota no máximo uma vez por intervalo configurado, reutilizando a última resposta bem-sucedida dentro dele, e IF a fonte falha, THEN the Collector SHALL record a falha e continue o run.
+
 ### REQ-9: Pré-filtro antes do enriquecimento
 
 **User Story:** As a candidato, I want que vagas irrelevantes sejam descartadas antes da etapa cara, so that a capacidade de coleta seja gasta apenas com o que tem chance de servir.
