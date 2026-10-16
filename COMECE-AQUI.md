@@ -39,14 +39,14 @@ Dicas:
 
 ## Parte 1 — Instalar (uma vez só)
 
-### Passo 1. Instalar o Python 3.12
+### Passo 1. Instalar o Python
 
-O crivo é escrito em Python, e precisa **exatamente da versão 3.12** — a 3.13 e a
-3.14 **não** funcionam.
+O crivo é escrito em Python, e precisa da versão **3.12 ou mais nova**. A mais
+recente serve.
 
-1. Abra <https://www.python.org/downloads/release/python-31210/>.
-2. Role até o fim da página, em **Files**, e clique em
-   **Windows installer (64-bit)**.
+1. Abra <https://www.python.org/downloads/>.
+2. Clique no botão amarelo grande **Download Python** (o número que aparece nele
+   é a versão mais recente — qualquer uma a partir de 3.12 serve).
 3. Abra o arquivo baixado.
 4. Na primeira tela do instalador, **marque a caixa "Add python.exe to PATH"**,
    lá embaixo. Depois clique em **Install Now**.
@@ -55,14 +55,15 @@ O crivo é escrito em Python, e precisa **exatamente da versão 3.12** — a 3.1
 **Confira:** abra um terminal (qualquer pasta serve) e digite:
 
 ```
-py -3.12 --version
+py --version
 ```
 
-Deve aparecer `Python 3.12.10`. Se aparecer erro, veja
+Deve aparecer `Python 3.` seguido de um número **12 ou maior** — por exemplo
+`Python 3.14.5`. Se aparecer `3.11` ou menor, ou um erro, veja
 [Deu errado?](#deu-errado).
 
-> Já tem outro Python instalado? Tudo bem, pode manter. O comando `py -3.12`
-> escolhe a versão certa.
+> Já tem outro Python instalado? Tudo bem, pode manter. O comando `py` escolhe
+> sozinho a versão mais nova que estiver no computador.
 
 ### Passo 2. Baixar o crivo
 
@@ -85,7 +86,7 @@ Abra um terminal **na pasta do crivo** (veja
 dois comandos abaixo, **um de cada vez**:
 
 ```
-py -3.12 -m venv .venv
+py -m venv .venv
 ```
 
 ```
@@ -281,10 +282,10 @@ que fazer.
 | O que aparece | O que fazer |
 |---|---|
 | `'py' não é reconhecido como nome de cmdlet...` | O Python não foi instalado, ou foi sem a caixa **Add python.exe to PATH**. Rode o instalador do Passo 1 de novo, escolha **Modify**/**Repair**, ou desinstale e instale marcando a caixa. Depois **feche e abra** o terminal. |
-| `No suitable Python runtime found` ou `Python 3.12 not found` | Você instalou outra versão do Python. Instale a **3.12** pelo link do Passo 1. |
+| `No suitable Python runtime found`, ou `py --version` mostra `3.11` ou menor | O Python instalado é antigo demais. Instale a versão mais recente pelo link do Passo 1. |
 | `Não foi possível carregar o módulo '.venv'` (ou `.venv\Scripts\python não é reconhecido`) | O terminal não está na pasta do crivo, ou o Passo 3 não foi feito. Confira se na pasta aberta existem `README.md` e `pyproject.toml`. |
 | `No module named crivo` | Você digitou `python -m crivo ...` em vez de `.venv\Scripts\python -m crivo ...`. Use a forma completa, como no guia. |
-| `requires a different Python` durante o `pip install` | O `.venv` foi criado com outra versão. Apague a pasta `.venv` e refaça o Passo 3, começando por `py -3.12`. |
+| `requires a different Python` durante o `pip install` | O `.venv` foi criado com um Python antigo (3.11 ou menor). Instale a versão mais recente (Passo 1), apague a pasta `.venv` e refaça o Passo 3. |
 | `nao foi possivel subir: modo tudo: variaveis de ambiente ausentes [...]` | Falta preencher uma linha do `.env` — a mensagem diz qual. Refaça o Passo 4. Confira também se o arquivo se chama `.env` mesmo, e não `.env.txt`. |
 | `chave mestra ilegivel` ou `chave mestra com N bytes; esperado 32` | A `CRIVO_MASTER_KEY` foi copiada pela metade ou com algo a mais. Gere e cole de novo (Passo 4.2), sem espaços e sem aspas. |
 | `WARNING ... trava de enricher sem sinal de vida desde ...; assumindo que o processo anterior morreu e tomando o lugar dele` | **Não é erro, e não precisa fazer nada.** Da última vez o crivo foi fechado no X, e esta partida assumiu o lugar do anterior. Para não ver de novo, feche com **Ctrl+C**. |
@@ -347,7 +348,8 @@ valores**, rode isto na pasta do crivo e cole o resultado:
 
 Pergunte **"isso está no guia?"** antes de fazer qualquer uma destas coisas:
 
-- instalar outra versão do Python (3.13, 3.14, "a mais recente");
+- instalar uma versão **antiga** do Python (3.11 ou menor) — o crivo precisa da
+  3.12 ou mais nova;
 - rodar `pip install crivo` (sem o `-e .`): isso baixa outra coisa da internet;
 - mudar a "política de execução" (`Set-ExecutionPolicy`), desligar o antivírus ou
   o firewall;
@@ -422,10 +424,10 @@ projetos Python.
 
 **Fatos que você não adivinharia:**
 
-- O Python é **exatamente 3.12**, com `requires-python = ">=3.12,<3.13"`. Uma
-  dependência fixa `numpy==1.26.3`, que só tem instalador até o 3.12. Com 3.13 ou
-  3.14 a instalação falha. O 3.12.10 é a última versão 3.12 com instalador para
-  Windows.
+- O Python é **3.12 ou mais novo**, com `requires-python = ">=3.12"`. A suíte de
+  testes roda no 3.12 e no 3.14. Ate 16/10/2026 o projeto exigia exatamente o
+  3.12, por causa de uma dependencia que fixava o numpy; isso acabou. Se encontrar
+  instrucao antiga falando em "exatamente 3.12", ela esta desatualizada.
 - O crivo é instalado a partir da pasta (`pip install -e .`), **não do PyPI**.
 - Todo comando usa `.venv\Scripts\python` **sem ativar** o ambiente virtual. É
   proposital: evita `Activate.ps1` e a política de execução. Não mande ativar.

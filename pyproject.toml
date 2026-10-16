@@ -9,9 +9,10 @@ description = "Triagem automatizada de vagas do LinkedIn"
 # setuptools antigo, que e exatamente quem o piso existe para proteger.
 license = "MIT"
 license-files = ["LICENSE"]
-# Teto de 3.13: python-jobspy fixa NUMPY==1.26.3, cujo ultimo wheel e
-# cp312. O teto sai quando esse pin for relaxado a montante.
-requires-python = ">=3.12,<3.13"
+# Sem teto desde a python-jobspy 1.2.0, que tirou a fixacao NUMPY==1.26.3 --
+# a fixacao cujo ultimo wheel era cp312 e que prendia o projeto no 3.12. O piso
+# fica no 3.12 porque e o que esta verificado: a suite roda no 3.12 e no 3.14.
+requires-python = ">=3.12"
 dependencies = [
   "fastapi",
   "python-multipart",
@@ -19,7 +20,11 @@ dependencies = [
   "jinja2",
   "httpx",
   "cryptography",
-  "python-jobspy==1.1.82",
+  # Fixada exata, e nao com faixa: o crivo le o LOG desta biblioteca para saber
+  # que foi barrado, e mensagem de log nao e contrato -- muda entre versoes sem
+  # aviso. Toda atualizacao precisa conferir `_MARCAS_DE_RECUSA` contra o codigo
+  # novo, como foi feito na 1.3.0.
+  "python-jobspy==1.3.0",
   "litellm",
   "python-docx",
   "pypdf",

@@ -20,12 +20,13 @@ O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
 ## Como rodar
 
-Requer **Python 3.12** — não 3.13 nem 3.14. O teto existe porque `python-jobspy`
-fixa `numpy==1.26.3`, cujo último wheel é cp312. Sai quando o pin for relaxado a
-montante.
+Requer **Python 3.12 ou mais novo**; a suíte roda no 3.12 e no 3.14. Até
+16/10/2026 o projeto exigia exatamente o 3.12, porque `python-jobspy` fixava
+`numpy==1.26.3`, cujo último wheel era cp312. A 1.2.0 da biblioteca tirou a
+fixação, e o crivo usa a 1.3.0.
 
 ```bash
-py -3.12 -m venv .venv
+py -m venv .venv
 .venv/Scripts/python -m pip install -e .
 cp .env.example .env      # preencha os segredos
 ```

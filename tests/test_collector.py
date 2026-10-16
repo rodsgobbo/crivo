@@ -130,22 +130,64 @@ def test_the_discovery_call_never_asks_for_descriptions():
         capturado.update(kwargs)
         return [linha()]
 
-    MultiPortalSource(scrape=scrape).search("SRE Manager", AQUI, 24, 25)
-    assert capturado["linkedin_fetch_description"] is False
+    MultiPortalSource(scrape=scrape).search("SRE Manager", "Brasil", 24, 25)
+    assert capturado["fetch_description"] is False
+    # O nome antigo sai na 2.0 da biblioteca; manda-lo junto faria a chamada
+    # quebrar no dia da atualizacao, em vez de hoje.
+    assert "linkedin_fetch_description" not in capturado
     assert capturado["hours_old"] == 24
+
+
+def test_the_library_page_block_without_status_code_is_a_refusal():
+    """A 1.3.0 registra como ERROR a pagina barrada que chega sem codigo de erro.
+
+    A mensagem e "LinkedIn: unexpected page with no jobs (blocked?)", e nenhuma
+    marca antiga casava com ela -- "blocked by" nao e "(blocked?)". Sem a marca
+    nova, esse bloqueio viraria "mercado vazio" em silencio.
+    """
+    import logging
+
+    def scrape(**kwargs):
+        logging.getLogger("JobSpy:LinkedIn").error(
+            "LinkedIn: unexpected page with no jobs (blocked?)"
+        )
+        return []
+
+    logging.getLogger("JobSpy:LinkedIn")  # o registrador nasce no import do raspador
+    saida = MultiPortalSource(scrape=scrape).search("SRE", "Brasil", 24, 25)
+    assert saida.bloqueada
+
+
+def test_an_ambiguous_end_of_results_is_not_a_refusal():
+    """"Fim dos resultados ou limitacao" e ambiguo pela propria biblioteca.
+
+    Trata-lo como bloqueio pararia a coleta toda vez que uma busca chega ao
+    fim. Ele sai como WARNING, e o ouvinte do crivo escuta ERROR.
+    """
+    import logging
+
+    def scrape(**kwargs):
+        logging.getLogger("JobSpy:LinkedIn").warning(
+            "LinkedIn: empty page at start=20 (the end of the results, or throttled)"
+        )
+        return []
+
+    logging.getLogger("JobSpy:LinkedIn")
+    saida = MultiPortalSource(scrape=scrape).search("SRE", "Brasil", 24, 25)
+    assert not saida.bloqueada
 
 
 def test_a_source_error_becomes_a_recorded_failure():
     def scrape(**kwargs):
         raise TimeoutError("sem resposta")
 
-    saida = MultiPortalSource(scrape=scrape).search("SRE", AQUI, 24, 25)
+    saida = MultiPortalSource(scrape=scrape).search("SRE", "Brasil", 24, 25)
     assert saida.falha and "TimeoutError" in saida.falha
     assert saida.cards == []
 
 
 def test_an_empty_result_is_unproductive_not_a_failure():
-    saida = MultiPortalSource(scrape=lambda **k: []).search("SRE", AQUI, 24, 25)
+    saida = MultiPortalSource(scrape=lambda **k: []).search("SRE", "Brasil", 24, 25)
     assert saida.improdutiva is True
     assert saida.falha is None
 
@@ -729,7 +771,7 @@ def _raspador_que_e_barrado(mensagem="429 Response - Blocked by LinkedIn"):
 
 def test_a_swallowed_block_becomes_a_blocked_outcome():
     fonte = MultiPortalSource(scrape=_raspador_que_e_barrado())
-    saida = fonte.search("SRE Manager", AQUI, 24, 25)
+    saida = fonte.search("SRE Manager", "Brasil", 24, 25)
 
     assert saida.bloqueada is True
     assert saida.improdutiva is False
@@ -739,7 +781,7 @@ def test_a_swallowed_block_becomes_a_blocked_outcome():
 def test_an_empty_window_is_still_reported_as_unproductive():
     """Vazio de verdade nao pode virar bloqueio: ele calibra o planejador."""
     fonte = MultiPortalSource(scrape=lambda **_k: [])
-    saida = fonte.search("cargo que nao existe", AQUI, 24, 25)
+    saida = fonte.search("cargo que nao existe", "Brasil", 24, 25)
 
     assert saida.improdutiva is True
     assert saida.bloqueada is False
@@ -750,10 +792,10 @@ def test_the_listener_does_not_outlive_the_call():
     import logging
 
     fonte = MultiPortalSource(scrape=_raspador_que_e_barrado())
-    fonte.search("A", AQUI, 24, 25)
+    fonte.search("A", "Brasil", 24, 25)
     antes = len(logging.getLogger("JobSpy:LinkedIn").handlers)
 
-    fonte.search("B", AQUI, 24, 25)
+    fonte.search("B", "Brasil", 24, 25)
     assert len(logging.getLogger("JobSpy:LinkedIn").handlers) == antes
 
 

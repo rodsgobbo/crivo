@@ -20,7 +20,8 @@ melhor que pareça.
 | **HTML servidor puro, sem JavaScript** | Decisão de produto. Qualquer proposta que dependa de JS no navegador é inaceitável, inclusive diálogo de confirmação. Vale para as telas do app: a extensão em `tools/extensao/` é JavaScript por natureza, roda dentro do LinkedIn e não abre exceção para elas. |
 | **Nunca aceitar credencial, cookie ou sessão de LinkedIn do usuário** | Escrito no contrato do módulo: a recusa acontece antes de qualquer gravação. Esteve em revisão de 26/ago a 09/set e **continua valendo**: os sinais Premium chegam pela extensão, que envia números lidos e nunca credencial (§3.5). |
 | **Governador de taxa é obrigatório** | Bloqueio de coleta custa **1 hora de recuperação no IP do usuário**. Toda requisição nova a origem passa por ele. |
-| **Python 3.12, não 3.13** | `python-jobspy` fixa `numpy==1.26.3`, cujo último wheel é cp312. Sai quando o pin relaxar a montante. |
+| ~~**Python 3.12, não 3.13**~~ — **resolvida em 16/10/2026** | `python-jobspy` fixava `numpy==1.26.3`, cujo último wheel era cp312. A 1.2.0 tirou a fixação; o crivo passou à 1.3.0, e a suíte roda no 3.12 e no 3.14. |
+| **A versão da `python-jobspy` é fixada exata** | O crivo descobre que foi barrado lendo o **log** da biblioteca, e mensagem de log não é contrato. Toda atualização confere `_MARCAS_DE_RECUSA` contra o código novo: a 1.3.0 trouxe um bloqueio sem código de erro (`unexpected page with no jobs (blocked?)`) que nenhuma marca antiga pegava. |
 
 ---
 

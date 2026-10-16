@@ -249,7 +249,15 @@ class MultiPortalSource:
                     hours_old=janela_horas,
                     results_wanted=quantidade,
                     # Nao trazer descricao aqui e a decisao central deste adaptador.
-                    linkedin_fetch_description=False,
+                    # `fetch_description` substituiu `linkedin_fetch_description`
+                    # na 1.2.0; o nome antigo ainda funciona e sai na 2.0.
+                    fetch_description=False,
+                    # Fixado, e nao herdado: a 1.3.0 mudou o padrao de 0 para 1.
+                    # Com 1, o aviso ambiguo de "fim dos resultados ou limitacao"
+                    # sairia no console a cada busca que chega ao fim. A deteccao
+                    # de recusa nao depende disto -- `_Ouvinte` escuta ERROR, que
+                    # passa em qualquer nivel.
+                    verbose=0,
                 )
         except Exception as exc:
             logger.warning("busca %r falhou: %s", termo, exc)
@@ -493,6 +501,15 @@ _MARCAS_DE_RECUSA = (
     "blocked by",
     "status code 403",
     "too many requests",
+    # A 1.3.0 passou a registrar como ERROR a pagina barrada que chega SEM
+    # codigo de erro: "LinkedIn: unexpected page with no jobs (blocked?)". Nenhuma
+    # marca acima casava com ela -- "blocked by" nao e "(blocked?)" --, e esse
+    # bloqueio viraria "mercado vazio" em silencio.
+    #
+    # Fica de fora, de proposito, o aviso "empty page ... (the end of the
+    # results, or throttled)": a propria biblioteca diz que e ambiguo, e trata-lo
+    # como bloqueio pararia a coleta toda vez que uma busca chega ao fim.
+    "unexpected page with no jobs",
 )
 
 
