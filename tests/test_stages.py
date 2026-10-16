@@ -203,27 +203,48 @@ def test_searches_come_from_the_profile_and_are_recorded(env):
     assert list(dict.fromkeys(fonte.buscas)) == contexto.contadores["buscas"]
 
 
-def test_every_term_is_searched_in_every_front(env):
-    """Frente declarada e frente consultada, e com o filtro de remoto dela.
-
-    Sem isso o crivo continuava um buscador nacional: a localizacao era uma so,
-    a do perfil, e vaga remota paga em dolar ou euro aparecia por acidente.
-    """
+def test_the_home_front_inherits_the_profile_location(env):
+    """A frente de casa vem com `local` vazio e recebe a cidade do perfil."""
     from crivo.config import Frente
     from crivo.pipeline.stages import frentes_de_busca
 
     connection, fila, config = env
     consolidar(connection, config)
-
     frentes = frentes_de_busca(config, "Osasco, SP")
-    # A frente de casa herda a localizacao do perfil e nao exige remoto.
     assert frentes[0] == Frente(rotulo="aqui", local="Osasco, SP", remoto=False)
-    # As demais trazem a propria localizacao e TODAS exigem remoto: vaga
-    # presencial em Toronto ou em Berlim nao serve a quem mora aqui, e ainda
-    # consumiria o teto de buscas do run.
-    assert all(f.remoto for f in frentes[1:]), "frente de fora sem filtro de remoto"
-    assert all(f.local for f in frentes[1:]), "frente de fora sem localizacao propria"
-    assert [f.local for f in frentes[1:]] == ["Canada", "United States", "European Union"]
+
+
+def test_the_default_configuration_declares_no_remote_front(env):
+    """A busca sem login do LinkedIn descarta o filtro de remoto.
+
+    Tres frentes internacionais com `remoto = true` existiram de 12 a 16/10/2026
+    e trouxeram, num run de 1 dia, 267 vagas presenciais no exterior contra 1
+    remota -- custando 27 das 36 buscas. Este teste impede que a configuracao
+    padrao volte a declarar uma frente que promete o que a origem nao entrega.
+    """
+    from crivo.pipeline.stages import frentes_de_busca
+
+    connection, fila, config = env
+    assert not [f for f in frentes_de_busca(config, "Osasco, SP") if f.remoto]
+
+
+def test_a_remote_front_is_warned_because_the_source_ignores_it(env, caplog):
+    """Quem declarar de novo uma frente remota precisa ser avisado no log."""
+    import logging
+    from dataclasses import replace
+
+    from crivo.config import Frente
+    from crivo.pipeline.stages import frentes_de_busca
+
+    connection, fila, config = env
+    com_remota = replace(config, collection=replace(
+        config.collection,
+        frentes=(Frente(rotulo="remoto nos EUA", local="United States", remoto=True),),
+    ))
+    with caplog.at_level(logging.WARNING, logger="crivo.pipeline.stages"):
+        frentes_de_busca(com_remota, "Osasco, SP")
+    assert "ignora esse filtro" in caplog.text
+    assert "remoto nos EUA" in caplog.text
 
 
 def test_semantic_noise_is_discarded_with_a_reason(env):

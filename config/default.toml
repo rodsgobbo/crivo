@@ -59,12 +59,10 @@ orcamento_diario_coleta = 400
 # 2. 36, em 12/10/2026, ao passar para quatro frentes (casa, Canada, EUA,
 #    Europa). O teto conta requisicao: manter 25 daria seis termos por frente,
 #    metade da cobertura que uma frente tinha antes. 36 devolve nove.
-#
-# O custo esta dito: 36 requisicoes espacadas de 8 a 20s pelo governador dao
-# cerca de oito minutos de coleta, contra cinco antes. A intensidade nao muda --
-# o intervalo entre requisicoes e o que protege, e ele continua o mesmo --, e o
-# que cresce e a duracao da exposicao.
-max_buscas_por_run = 36
+# 3. 25 de novo, em 16/10/2026, ao voltar para uma frente so. As tres frentes
+#    internacionais nao entregavam o que prometiam -- ver o comentario das
+#    frentes abaixo --, e o aumento existia so para elas.
+max_buscas_por_run = 25
 
 # Fracao dos sobreviventes que recebe pedido de descricao, pela ORDEM da nota
 # provisoria. A descricao e o trecho mais longo do run: uma requisicao a cada 8
@@ -88,51 +86,33 @@ max_buscas_por_run = 36
 # entra sempre, porque nao custa requisicao; 1.0 volta a descrever todas.
 fracao_enriquecida = 0.7
 
-# Frentes de busca: onde procurar, e se a vaga precisa ser remota.
+# Frentes de busca: onde procurar.
 #
 # Cada termo do planejamento e consultado em TODAS as frentes, entao o numero de
-# requisicoes a origem e termos x frentes. O teto acima passa a valer sobre esse
-# produto e nao sobre os termos: com as quatro frentes abaixo, cada uma recebe um
-# quarto deles -- nove. Isso e deliberado: o teto existe porque noventa buscas em
-# rajada provocaram bloqueio, e frente nova sem divisao multiplicaria a exposicao
-# em silencio. Para cobrir mais termos por frente, suba o teto de propósito, com
-# o motivo escrito no historico acima.
+# requisicoes a origem e termos x frentes, e o teto acima vale sobre esse
+# produto. Isso e deliberado: o teto existe porque noventa buscas em rajada
+# provocaram bloqueio, e frente nova sem divisao multiplicaria a exposicao em
+# silencio. Para cobrir mais termos por frente, suba o teto de propósito, com o
+# motivo escrito no historico acima.
 #
-# A ordem importa quando os termos nao cabem: as primeiras frentes ficam com
-# eles. A frente de casa vem primeiro porque e a que o usuario consegue aceitar
-# sem mudar de pais nem de moeda.
+# POR QUE NAO HA FRENTE INTERNACIONAL. De 12 a 16/10/2026 houve tres -- remoto
+# no Canada, nos EUA e na Europa, com `remoto = true` --, para achar vaga remota
+# paga em moeda forte. Elas nao achavam: a busca sem login do LinkedIn IGNORA o
+# filtro de remoto. A propria biblioteca de coleta passou a avisar disso na
+# versao 1.3.0 ("the logged-out search ignores both"). Medido no run de 1 dia de
+# 14/10/2026, as tres trouxeram 92, 102 e 73 vagas presenciais -- Toronto, New
+# York, Madrid -- contra 0, 1 e 0 remotas, e custaram 27 das 36 buscas e a maior
+# parte dos 76 minutos de descricao daquele run.
+#
+# Uma frente de outro pais, aqui, devolve vaga presencial naquele pais. Vaga
+# remota internacional pede fonte feita para remoto, que diga quem pode ser
+# contratado -- nao um filtro que a origem descarta sem avisar.
 
 [[collection.frentes]]
 rotulo = "aqui"
 # Vazio = a localizacao do perfil. Nao escreva a cidade aqui: ela e de quem usa.
 local = ""
 remoto = false
-
-# As rotas do pagamento em moeda forte. `remoto = true` liga o filtro de remoto
-# da origem, e sem ele uma busca nos Estados Unidos devolve vaga presencial em
-# Austin -- inalcancavel para quem mora no Brasil, e ainda consumindo o teto.
-#
-# Canada antes dos EUA de proposito: o fuso e o mesmo, a contratacao de
-# estrangeiro por contrato e mais comum e a concorrencia e menor. Quando os
-# termos nao couberem, a ordem decide quem fica.
-[[collection.frentes]]
-rotulo = "remoto no Canada"
-local = "Canada"
-remoto = true
-
-[[collection.frentes]]
-rotulo = "remoto nos EUA"
-local = "United States"
-remoto = true
-
-# "European Union" e o nome que a origem reconhece como regiao; "Europe" nao e
-# uma entidade geografica no catalogo dela. Se esta frente voltar vazia em dois
-# runs seguidos, o endereco e que nao resolveu -- e a linha "coleta por frente"
-# no log e onde isso aparece, com zero cards contra as outras tres.
-[[collection.frentes]]
-rotulo = "remoto na Europa"
-local = "European Union"
-remoto = true
 
 [run]
 duracao_maxima_s = 21600

@@ -337,6 +337,18 @@ def frentes_de_busca(config, localizacao_do_perfil: str):
     from ..config import Frente
 
     declaradas = getattr(config.collection, "frentes", ()) or ()
+    remotas = [f.rotulo for f in declaradas if f.remoto]
+    if remotas:
+        # A busca sem login do LinkedIn descarta o filtro de remoto. Tres
+        # frentes foram declaradas assim e trouxeram vaga presencial no
+        # exterior por quatro dias, sem nenhum sinal -- gastando a maior parte
+        # das buscas e das descricoes do run. O aviso existe para que a mesma
+        # configuracao nao volte a parecer que funciona.
+        logger.warning(
+            "frente(s) %s pedem vaga remota, mas a busca sem login do LinkedIn "
+            "ignora esse filtro: elas vao trazer vaga presencial naquela "
+            "localizacao", ", ".join(remotas),
+        )
     if not declaradas:
         return (Frente(rotulo="aqui", local=localizacao_do_perfil, remoto=False),)
     return tuple(

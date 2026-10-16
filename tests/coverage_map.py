@@ -228,7 +228,8 @@ COVERAGE: dict[str, list[str]] = {
     "8.8": [
         "test_collector::test_each_term_reaches_every_front_with_its_remote_filter",
         "test_collector::test_the_fronts_are_interleaved_and_not_drained_one_at_a_time",
-        "test_stages::test_every_term_is_searched_in_every_front",
+        "test_stages::test_the_home_front_inherits_the_profile_location",
+        "test_stages::test_a_remote_front_is_warned_because_the_source_ignores_it",
     ],
     "8.9": ["test_collector::test_the_search_cap_counts_requests_and_not_terms"],
 

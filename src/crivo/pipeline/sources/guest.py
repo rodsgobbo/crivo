@@ -227,10 +227,16 @@ class MultiPortalSource:
     ) -> SearchOutcome:
         """Descoberta: cards sem descricao, deliberadamente.
 
-        `remoto` liga o filtro de remoto da origem. Ele existe para a frente
-        internacional: sem ele, procurar nos Estados Unidos devolve vaga
-        presencial em Austin -- que nao serve a quem mora no Brasil, e ainda
-        gasta o teto de buscas do run.
+        `remoto` e repassado a biblioteca, e a busca sem login do LinkedIn o
+        DESCARTA. Este docstring dizia o contrario -- que o parametro ligava o
+        filtro de remoto da origem -- e tres frentes internacionais foram
+        construidas sobre essa afirmacao. Medido em 14/10/2026: 267 vagas
+        presenciais em Toronto, New York e Madrid contra 1 remota. A propria
+        biblioteca passou a avisar na versao 1.3.0 que a busca sem login ignora
+        o filtro.
+
+        O parametro fica porque a fonte o recebe pelo contrato comum e outra
+        fonte pode honra-lo. Para esta, ele nao filtra nada.
         """
         scraper = self._scraper()
         try:
