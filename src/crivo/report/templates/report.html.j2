@@ -234,6 +234,12 @@
     {% if vaga.candidatos %}
       <span class="chip">{{ vaga.candidatos }} candidatos</span>
     {% endif %}
+    {# O mesmo cargo na mesma empresa ja apareceu antes com outro numero: a
+       vaga esta aberta ha mais tempo do que a data de publicacao diz. #}
+    {% if 'repostada_antiga' in vaga.sinais %}
+      <span class="chip republicada"
+            title="A mesma empresa já anunciou este cargo antes, com outro número. A vaga está aberta há mais tempo do que a data diz.">republicada</span>
+    {% endif %}
     {# A busca que a trouxe. Sem isto, "por que esta vaga apareceu?" só tinha
        resposta lendo o código do planejador -- e um termo que só traz ruído
        ficava impossível de identificar a partir do relatório. #}

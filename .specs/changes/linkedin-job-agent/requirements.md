@@ -234,6 +234,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 8.11 THE Collector SHALL consult cada fonte de vaga remota no máximo uma vez por intervalo configurado, reutilizando a última resposta bem-sucedida dentro dele, e IF a fonte falha, THEN the Collector SHALL record a falha e continue o run.
 
+8.12 WHEN uma vaga tem a mesma empresa e o mesmo conjunto de palavras no título de outra vaga do usuário vista ao menos um dia antes e dentro da janela configurada, THEN the Collector SHALL record o sinal de vaga republicada, exceto para empresas declaradas como agência, e the Enricher SHALL preserve esse sinal ao gravar os sinais da descrição.
+
 ### REQ-9: Pré-filtro antes do enriquecimento
 
 **User Story:** As a candidato, I want que vagas irrelevantes sejam descartadas antes da etapa cara, so that a capacidade de coleta seja gasta apenas com o que tem chance de servir.

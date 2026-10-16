@@ -760,6 +760,14 @@ body.relatorio h2::before { height: 4px; width: 18px; }
 }
 .chip.remoto { color: var(--ok); background: var(--ok-fundo); font-weight: 600; }
 .chip.busca { background: transparent; border: 1px dashed var(--borda); }
+/* Ambar, e nao vermelho: vaga republicada ainda pode ser boa, so esta aberta ha
+   mais tempo do que parece -- e a cor de "repare", a mesma do pendente. */
+.chip.republicada {
+  color: var(--pendente);
+  background: var(--pendente-fundo);
+  font-weight: 600;
+  cursor: help;
+}
 /* A moeda citada na descricao. A moeda forte ganha a cor da marca porque e o
    que o usuario esta procurando; o real fica neutro, e nao vermelho: pagar em
    real nao e defeito da vaga. */

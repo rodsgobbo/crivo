@@ -135,6 +135,17 @@ remoto = false
 fontes = ["jobicy", "weworkremotely"]
 intervalo_horas = 6
 
+# Vaga republicada: mesma empresa e mesmo cargo, ja visto ao menos um dia antes
+# com outro numero. Ganha o selo "republicada" e a penalidade `repostada_antiga`.
+# Medido em 16/10/2026: 262 de 5076 vagas do historico.
+#
+# As agencias ficam de fora porque anunciar o mesmo cargo toda semana e o
+# trabalho delas, e nao sinal de vaga parada: Jobbol (19 repeticoes) e BairesDev
+# (10) lideravam a contagem. Acrescente aqui a agencia que voce reconhecer.
+[collection.republicacao]
+janela_dias = 90
+empresas_ignoradas = ["Jobbol", "BairesDev"]
+
 [run]
 duracao_maxima_s = 21600
 runs_imediatos_por_dia = 3

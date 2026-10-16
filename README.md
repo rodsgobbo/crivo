@@ -14,7 +14,7 @@ Drive que o app nunca obtém — o login pede só `openid email profile` — e a
 interface não a oferece.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-28 requisitos, 221 critérios de aceitação, 21 elementos de design.
+28 requisitos, 222 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
@@ -172,6 +172,7 @@ nem credencial de provedor. O banco guarda só o hash.
 | `top_applicant` | +10 na nota, e a recomendação vira “aplicar agora” |
 | `early_applicant` | +5 |
 | `muitos_candidatos` | −5 |
+| `repostada_antiga` | −10, e o selo “republicada” no relatório |
 | `premium_insight` | gravado, sem efeito na nota nem na recomendação |
 
 Os valores vêm de `[scoring.bonus]` e `[scoring.penalidades]` em `config/default.toml`.
@@ -180,6 +181,13 @@ Os valores vêm de `[scoring.bonus]` e `[scoring.penalidades]` em `config/defaul
 falam da mesma fila e dizem coisas opostas — um conta quantos entraram, o outro
 diz onde você entra. Ele **não** atropela requisito eliminatório: o LinkedIn
 ordena candidatos, não lê o que o anúncio exige.
+
+`repostada_antiga` é o único que o crivo deduz sozinho, sem ler da página: a
+mesma empresa já anunciou o mesmo cargo pelo menos um dia antes, com outro
+número de vaga. O LinkedIn dá número novo a cada republicação, então sem isso a
+vaga parada há um mês chega como nova. Duas vagas iguais no **mesmo** dia não
+contam — é a mesma posição aberta em várias cidades. Agências que repetem
+anúncio por ofício ficam de fora (`[collection.republicacao]`).
 
 Vaga que o crivo ainda não conhece é criada ali mesmo, com origem `extensao`
 gravada, e entra no run seguinte. Sem isso a varredura seria um beco sem saída:

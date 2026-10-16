@@ -36,6 +36,7 @@ from ..worker.enrichment_queue import EnrichmentQueue
 from ..worker.queue import RunQueue
 from ..worker.runner import Cancelled, RunContext, Suspend
 from .collector import CollectionCancelled, Collector
+from .republicacao import Republicacao
 from .governor import RateGovernor
 from .planner import Filters, load_filters, plan, teto_por_frente
 from .prefilter import Prefilter
@@ -168,7 +169,13 @@ class ColetaStage:
         # que este parametro corrige e exatamente o de alguem montar a coleta
         # sem pensar em taxa, e um padrao silencioso deixaria esse caminho
         # aberto de novo.
-        self._collector = Collector(connection, source, governor)
+        self._collector = Collector(
+            connection, source, governor,
+            Republicacao(
+                config.collection.republicacao_janela_dias,
+                config.collection.republicacao_ignoradas,
+            ),
+        )
         self._connection = connection
         self._config = config
         self._fila = RunQueue(connection)

@@ -987,6 +987,18 @@ def test_the_report_names_the_search_that_found_each_job(env):
     assert "achada por" in html
 
 
+def test_a_reposted_job_carries_a_visible_mark(env):
+    connection, repo = env
+    add_vaga(repo, job_id="li-1")
+    add_vaga(repo, job_id="li-2", titulo="Platform Lead")
+    connection.execute(
+        "UPDATE jobs SET flags = ? WHERE job_id = 'li-2'",
+        (json.dumps(["repostada_antiga"]),),
+    )
+    html = ReportRenderer(connection, load_config()).render_run("ana", "run-1")
+    assert html.count('class="chip republicada"') == 1
+
+
 # ----------------------------------------- janela que a origem nao cumpre
 def test_a_job_published_before_the_window_is_marked():
     """A origem nao cumpre o filtro de recencia que a busca envia.

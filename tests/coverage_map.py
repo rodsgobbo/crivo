@@ -247,6 +247,17 @@ COVERAGE: dict[str, list[str]] = {
         "test_fontes_remotas::test_a_failing_source_becomes_an_empty_contribution_and_not_a_crash",
     ],
 
+    # ------------------------------------------- REQ-8.12 vaga republicada
+    "8.12": [
+        "test_republicacao::test_the_same_title_at_the_same_company_days_later_is_a_repost",
+        "test_republicacao::test_the_same_title_on_the_same_day_is_one_opening_in_several_cities",
+        "test_republicacao::test_beyond_the_window_the_same_title_is_a_new_hiring",
+        "test_republicacao::test_an_agency_reposting_is_its_business_and_not_a_stale_job",
+        "test_republicacao::test_a_job_stored_before_the_rule_gets_the_mark_when_it_reappears",
+        "test_republicacao::test_reading_the_description_does_not_erase_the_mark",
+        "test_report::test_a_reposted_job_carries_a_visible_mark",
+    ],
+
     # ----------------------------------------------- REQ-18.16 moeda da vaga
     "18.16": [
         "test_report::test_a_salary_in_reais_is_never_read_as_dollars",

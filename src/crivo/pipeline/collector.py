@@ -9,11 +9,13 @@ Somar as duas num contador so apagaria a distincao justamente quando ela importa
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
 from ..store.repository import Repository
 from .governor import CollectionBlocked
+from .republicacao import SINAL as SINAL_REPUBLICADA
+from .republicacao import Republicacao
 from .sources.guest import Card, JobSource, SearchOutcome
 
 logger = logging.getLogger(__name__)
@@ -113,9 +115,14 @@ class CollectionResult:
 class Collector:
     """Roda as buscas do run e grava os cards sob o usuario dono."""
 
-    def __init__(self, connection, source: JobSource, governor=None) -> None:
+    def __init__(
+        self, connection, source: JobSource, governor=None, republicacao=None
+    ) -> None:
         self._repository = Repository(connection)
         self._source = source
+        self._republicacao = (
+            republicacao if republicacao is not None else Republicacao()
+        )
         # O governador chega opcional para nao obrigar todo teste de coleta a
         # montar um. Em producao ele nunca falta: a coleta era o unico caminho
         # do sistema que emitia requisicao a origem sem passar por contencao, e
@@ -228,10 +235,50 @@ class Collector:
         meio -- por bloqueio, por cancelamento ou porque o processo caiu --
         jogava fora tudo o que ja tinha custado requisicao.
         """
-        for card in resultado.cards[len(resultado.gravados):]:
+        for indice in range(len(resultado.gravados), len(resultado.cards)):
+            # O card marcado volta para a lista: a passada provisoria pontua a
+            # partir dela, e nao do banco.
+            card = self._marca_republicacao(user_id, resultado.cards[indice])
+            resultado.cards[indice] = card
             if self._persist(user_id, card):
                 resultado.novos.append(card.job_id)
             resultado.gravados.append(card.job_id)
+
+    def _marca_republicacao(self, user_id: str, card: Card) -> Card:
+        """Acrescenta o sinal de republicacao ao card, quando ele se aplica.
+
+        Vale tambem para a vaga que reaparece: ela e comparada com o que existia
+        quando surgiu, e assim as vagas gravadas antes desta regra ganham a marca
+        na proxima vez que alguma busca as trouxer.
+        """
+        if SINAL_REPUBLICADA in card.flags:
+            return card
+        scope = self._repository.for_user(user_id)
+        existente = scope.select(
+            "jobs", where="job_id = ?", params=(card.job_id,),
+            columns="primeira_vez_em, flags",
+        )
+        flags_gravadas = _from_json(existente[0]["flags"]) if existente else []
+        if SINAL_REPUBLICADA in flags_gravadas:
+            return replace(card, flags=(*card.flags, SINAL_REPUBLICADA))
+        vista_em = existente[0]["primeira_vez_em"] if existente else _stamp()
+        anterior = self._republicacao.anterior(
+            scope, card.job_id, card.empresa, card.titulo, vista_em
+        )
+        if anterior is None:
+            return card
+        logger.debug(
+            "card %s republica anuncio visto em %s", card.job_id, anterior[:10]
+        )
+        if existente:
+            # O caminho de atualizacao de `_persist` nao reescreve sinais, entao
+            # a marca da vaga ja gravada vai para o banco aqui.
+            scope.update(
+                "jobs",
+                {"flags": _json(sorted({*flags_gravadas, SINAL_REPUBLICADA}))},
+                where="job_id = ?", params=(card.job_id,),
+            )
+        return replace(card, flags=(*card.flags, SINAL_REPUBLICADA))
 
     def _absorve(
         self, saida: SearchOutcome, resultado: CollectionResult, vistos: set[str]

@@ -60,6 +60,10 @@ class CollectionConfig:
     fontes_remotas: tuple[str, ...] = ()
     #: Intervalo minimo entre duas chamadas a mesma fonte remota, em horas.
     intervalo_fontes_remotas_h: int = 6
+    #: Quantos dias para tras uma vaga igual conta como republicacao.
+    republicacao_janela_dias: int = 90
+    #: Empresas cujo anuncio repetido nao e republicacao, e sim o negocio dela.
+    republicacao_ignoradas: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -393,6 +397,24 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
         collection["intervalo_fontes_remotas_h"] = _check(
             "collection.remotas", "intervalo_horas",
             remotas.get("intervalo_horas", 6), (int, 1, 48),
+        )
+    republicacao = _section(raw, "collection").get("republicacao")
+    if republicacao is not None:
+        if not isinstance(republicacao, dict):
+            raise ConfigError("collection.republicacao: esperada tabela")
+        ignoradas = republicacao.get("empresas_ignoradas", [])
+        if not isinstance(ignoradas, list) or not all(
+            isinstance(e, str) for e in ignoradas
+        ):
+            raise ConfigError(
+                "collection.republicacao.empresas_ignoradas: esperada lista de nomes"
+            )
+        collection["republicacao_ignoradas"] = tuple(
+            e.strip() for e in ignoradas if e.strip()
+        )
+        collection["republicacao_janela_dias"] = _check(
+            "collection.republicacao", "janela_dias",
+            republicacao.get("janela_dias", 90), (int, 2, 365),
         )
     # Opcional pelo mesmo motivo do teto: arquivo escrito antes do campo
     # continua valido, e ausencia significa descrever todos os sobreviventes.

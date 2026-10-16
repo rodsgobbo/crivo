@@ -26,7 +26,11 @@ from datetime import datetime, timezone
 
 from ..store.repository import Repository
 from .governor import CollectionBlocked, RateGovernor
+from .republicacao import SINAL as SINAL_REPUBLICADA
 from .sources.guest import CollectionError, JobSource, data_de_publicacao
+
+#: Sinais que o crivo deduz do proprio historico, e que nenhuma pagina traz.
+SINAIS_DO_HISTORICO = frozenset({SINAL_REPUBLICADA})
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +124,19 @@ class Enricher:
         """Sinais que vieram com a descricao, na vaga do usuario."""
         if not sinais:
             return
-        self._repository.for_user(user_id).update(
+        scope = self._repository.for_user(user_id)
+        # A descricao substitui os sinais do card, que ela le de novo e mais
+        # atuais. A republicacao nao: ela vem do historico, e nao da pagina, e
+        # sem esta linha a primeira descricao lida apagava a marca.
+        atuais = scope.select(
+            "jobs", where="job_id = ?", params=(job_id,), columns="flags"
+        )
+        historico = {
+            s for s in json.loads(atuais[0]["flags"] or "[]") if s in SINAIS_DO_HISTORICO
+        } if atuais else set()
+        scope.update(
             "jobs",
-            {"flags": json.dumps(sorted(set(sinais)), ensure_ascii=False)},
+            {"flags": json.dumps(sorted({*sinais, *historico}), ensure_ascii=False)},
             where="job_id = ?",
             params=(job_id,),
         )
