@@ -14,7 +14,7 @@ Drive que o app nunca obtém — o login pede só `openid email profile` — e a
 interface não a oferece.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-28 requisitos, 222 critérios de aceitação, 21 elementos de design.
+28 requisitos, 223 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
@@ -266,6 +266,18 @@ de escopo por decisão**, não por esquecimento: não há endpoint de busca ness
 sistemas, então seria preciso saber o identificador de cada empresa de antemão,
 e montar essa lista é um produto diferente do que este é. Reabrir exige
 requisito novo.
+
+### Vagas que somem são apagadas depois de 30 dias
+
+Uma vez por dia, entre dois runs, o crivo apaga a vaga que nenhuma busca trouxe
+nos últimos 30 dias, com a nota e a descrição dela. Conta a última vez que a vaga
+apareceu numa busca, e não a data do anúncio: vaga antiga que o LinkedIn ainda
+mostra continua. Vaga em que você se candidatou nunca é apagada.
+
+O preço: relatório antigo perde as vagas apagadas, e o selo "republicada" só
+compara com o que ficou. O prazo é `vagas_sumidas_dias` em `[retention]`
+(`config/default.toml`); 0 desliga. Na primeira vez, em 19/10/2026, a simulação
+numa cópia do banco apagou 2.117 de 5.495 vagas, e o banco foi de 31 para 20 MB.
 
 ### Só o LinkedIn entre os portais da biblioteca de coleta
 

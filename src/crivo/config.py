@@ -80,6 +80,8 @@ class SessionConfig:
 @dataclass(frozen=True)
 class RetentionConfig:
     periodo_sem_sessao_dias: int
+    #: Dias sem nenhuma busca trazer a vaga ate ela ser apagada. 0 desliga.
+    vagas_sumidas_dias: int = 30
 
 
 @dataclass(frozen=True)
@@ -452,7 +454,15 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
         collection=CollectionConfig(**collection),
         run=RunConfig(**_validate_flat(raw, "run")),
         session=SessionConfig(**_validate_flat(raw, "session")),
-        retention=RetentionConfig(**_validate_flat(raw, "retention")),
+        retention=RetentionConfig(
+            **_validate_flat(raw, "retention"),
+            # Opcional: arquivo escrito antes do campo continua valido.
+            vagas_sumidas_dias=_check(
+                "retention", "vagas_sumidas_dias",
+                _section(raw, "retention").get("vagas_sumidas_dias", 30),
+                (int, 0, 3650),
+            ),
+        ),
         resume=ResumeConfig(
             **{**resume, "formatos_aceitos": tuple(resume["formatos_aceitos"])}
         ),

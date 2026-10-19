@@ -385,6 +385,14 @@ COVERAGE: dict[str, list[str]] = {
     ],
     "21.5": ["test_queue::test_finishing_records_the_counters"],
     "21.6": ["test_repository::test_a_failed_write_names_the_operation_and_the_cause"],
+    "21.7": [
+        "test_expurgo::test_a_job_no_search_brought_for_30_days_is_purged_with_its_trail",
+        "test_expurgo::test_an_old_posting_still_showing_up_in_searches_stays",
+        "test_expurgo::test_a_job_the_user_applied_to_is_never_purged",
+        "test_expurgo::test_a_job_waiting_for_its_description_is_not_purged",
+        "test_expurgo::test_a_shared_description_stays_while_another_user_has_the_job",
+        "test_expurgo::test_it_runs_once_a_day",
+    ],
 
     # -------------------------------------------------- REQ-22 agendamento
     "22.1": ["test_scheduler_and_privacy::test_the_recurring_window_is_the_incremental_one"],

@@ -331,8 +331,32 @@ def _executar(args) -> int:
         # e o que serve a script e a diagnostico.
         import time
 
+        from .store.expurgo import ExpurgoDeVagas
+
+        # Uma linha na partida dizendo o que este processo vai fazer. Em
+        # 17/10/2026 um executor antigo, de antes da atualizacao, seguiu vivo e
+        # fez um run inteiro sem as fontes remotas -- e nada na tela permitia
+        # notar que o codigo em execucao nao era o instalado.
+        print(
+            "[runs] fontes remotas: "
+            + (", ".join(config.collection.fontes_remotas) or "desligadas")
+            + "; expurgo de vagas sumidas ha "
+            + (f"{config.retention.vagas_sumidas_dias} dias"
+               if config.retention.vagas_sumidas_dias else "desligado"),
+            file=sys.stderr,
+        )
+
+        expurgo = ExpurgoDeVagas(conexao, config.retention.vagas_sumidas_dias)
         try:
             while True:
+                # No maximo uma vez por dia, entre dois runs: este e o unico
+                # processo que grava vaga, entao aqui nenhuma coleta escreve
+                # enquanto o expurgo apaga.
+                try:
+                    expurgo.talvez_executar()
+                except Exception:
+                    # Falha do expurgo nao pode parar as buscas.
+                    logging.getLogger(__name__).exception("expurgo falhou")
                 if runner.run_once() is not None:
                     # Um run acabou de passar por aqui: a trava precisa dizer
                     # que ha alguem vivo, senao um estagio longo a deixa vencer

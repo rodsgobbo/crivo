@@ -508,6 +508,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 21.6 IF uma gravação na base de dados falha, THEN the Store SHALL reject o run com uma mensagem que nomeia a operação e a causa da falha.
 
+21.7 WHEN uma vaga não é coletada há mais dias que o período configurado, THE Store SHALL delete essa vaga, as notas dela e a descrição que nenhum outro usuário tem, no máximo uma vez por dia e entre dois runs, exceto a vaga em estado aplicado ou com pedido de descrição pendente.
+
 ### REQ-22: Execução recorrente
 
 **User Story:** As a candidato, I want que a triagem rode sozinha todo dia com volume pequeno, so that eu veja vagas novas cedo sem provocar bloqueio.

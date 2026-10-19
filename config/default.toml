@@ -142,6 +142,9 @@ intervalo_horas = 6
 # As agencias ficam de fora porque anunciar o mesmo cargo toda semana e o
 # trabalho delas, e nao sinal de vaga parada: Jobbol (19 repeticoes) e BairesDev
 # (10) lideravam a contagem. Acrescente aqui a agencia que voce reconhecer.
+#
+# A janela olha so o que esta no banco: com o expurgo de `[retention]`, a vaga
+# original que sumiu ha mais de `vagas_sumidas_dias` ja nao serve de comparacao.
 [collection.republicacao]
 janela_dias = 90
 empresas_ignoradas = ["Jobbol", "BairesDev"]
@@ -156,6 +159,14 @@ duracao_maxima_s = 604800
 [retention]
 # Tempo sem sessao apos o qual curriculos e extracoes do usuario sao expurgados.
 periodo_sem_sessao_dias = 365
+# Vaga que nenhuma busca traz ha este numero de dias e apagada, com a nota e a
+# descricao. Conta a ULTIMA vez que uma busca a trouxe, e nao a data do anuncio:
+# vaga velha que o LinkedIn ainda mostra continua. Vaga em que voce se
+# candidatou nunca sai. Roda uma vez por dia, entre dois runs. 0 desliga.
+#
+# Efeito colateral aceito: relatorio antigo perde as vagas apagadas, e o selo
+# "republicada" so compara com o que sobrou.
+vagas_sumidas_dias = 30
 
 [resume]
 tamanho_maximo_bytes = 5242880
