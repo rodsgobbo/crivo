@@ -458,6 +458,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.19 THE Report Renderer SHALL display quantas vagas cada fonte trouxe e quantas das buscas previstas rodaram, e IF a origem recusou a coleta, THEN the Report Renderer SHALL name a busca em que a recusa ocorreu e os termos que ficaram sem ser tentados.
 
+18.20 THE Report Renderer SHALL offer um filtro que mantém apenas as vagas em destaque, pela mesma regra que as marca na lista: vaga nunca mostrada em relatório anterior, sem decisão do usuário e com nota igual ou acima do limiar de destaque.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.

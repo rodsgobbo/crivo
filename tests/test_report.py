@@ -511,6 +511,23 @@ def test_only_new_jobs_hides_what_earlier_runs_already_showed():
     assert [v["job_id"] for v in restantes] == ["nova"]
 
 
+
+def test_only_highlights_keeps_new_untouched_jobs_above_the_threshold():
+    """O mesmo conjunto que a barra verde marca, pela mesma regra."""
+    from crivo.report.renderer import _aplicar_filtros, e_destaque
+
+    vagas = [
+        _vaga(job_id="destaque", score=80),
+        _vaga(job_id="nota-baixa", score=60),
+        _vaga(job_id="ja-vista", score=90),
+        _vaga(job_id="decidida", score=90, estado="aplicado"),
+    ]
+    for v in vagas:
+        v["vista_antes"] = v["job_id"] == "ja-vista"
+    restantes = _aplicar_filtros(vagas, {"so_destaques": True}, 70)
+    assert [v["job_id"] for v in restantes] == ["destaque"]
+    assert restantes == [v for v in vagas if e_destaque(v, 70)]
+
 # ------------------------------------------------------------------ previa
 def pontuar(repo, job_id, passada, score, run_id="run-1"):
     repo.for_user("ana").insert(

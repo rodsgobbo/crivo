@@ -280,6 +280,10 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_the_preview_counts_descriptions_as_they_arrive_and_not_as_batches_close",
         "test_web_app::test_a_run_reading_descriptions_is_listed_as_a_preview",
     ],
+    "18.20": [
+        "test_report::test_only_highlights_keeps_new_untouched_jobs_above_the_threshold",
+        "test_web_app::test_the_report_address_can_ask_for_highlights_only",
+    ],
     "18.19": [
         "test_resumo_da_coleta::test_a_barred_collection_says_where_it_stopped_and_what_was_left",
         "test_resumo_da_coleta::test_the_page_names_the_sources_for_a_reader",

@@ -528,7 +528,7 @@ def _semear_vaga(banco, user_id, job_id="li-1"):
 
 
 # ------------------------------------------------- filtro de vagas novas na URL
-def _pontuar(banco, user_id, run_id, job_id, titulo="SRE Manager"):
+def _pontuar(banco, user_id, run_id, job_id, titulo="SRE Manager", score=80):
     """Vaga pontuada num run, como o relatorio a encontraria."""
     from crivo.store.repository import Repository
 
@@ -547,7 +547,7 @@ def _pontuar(banco, user_id, run_id, job_id, titulo="SRE Manager"):
     escopo.insert(
         "scores",
         {
-            "job_id": job_id, "run_id": run_id, "passada": "final", "score": 80,
+            "job_id": job_id, "run_id": run_id, "passada": "final", "score": score,
             "componentes": json.dumps({"componentes": {}}), "lacunas": "[]",
             "diferenciais": "[]", "descricao_disponivel": 1,
             "sinais_sessao_disponiveis": 1, "criado_em": "2026-08-21",
@@ -584,6 +584,23 @@ def test_the_report_address_can_ask_for_new_jobs_only(cliente):
     assert "Head de Plataforma" in so_novas
     assert "Analista SRE" not in so_novas
 
+
+
+def test_the_report_address_can_ask_for_highlights_only(cliente):
+    """`?destaques=1` mostra exatamente as vagas que o titulo conta em destaque."""
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    atual = _enfileirar(banco, user_id)
+    _pontuar(banco, user_id, atual, "boa", titulo="Head de Plataforma", score=85)
+    _pontuar(banco, user_id, atual, "fraca", titulo="Analista de Suporte", score=40)
+
+    inteiro = c.get(f"/reports/{atual}").text
+    assert "1 em destaque" in inteiro
+    assert 'name="destaques"' in inteiro
+
+    so_destaques = c.get(f"/reports/{atual}?destaques=1").text
+    assert "Head de Plataforma" in so_destaques
+    assert "Analista de Suporte" not in so_destaques
 
 def test_insights_from_the_browser_are_recorded(cliente):
     c, _i, banco = cliente

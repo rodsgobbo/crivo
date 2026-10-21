@@ -185,6 +185,11 @@
            {{ 'checked' if ctx.filtros.get('so_novas') }}>
     só vagas novas
   </label>
+  <label title="nova, sem decisão sua e com nota de {{ ctx.limiar_destaque }}% ou mais — as de barra verde">
+    <input type="checkbox" name="destaques" value="1"
+           {{ 'checked' if ctx.filtros.get('so_destaques') }}>
+    só destaques
+  </label>
   <label title="descrição que cita dólar, euro ou libra">
     <input type="checkbox" name="moeda" value="1"
            {{ 'checked' if ctx.filtros.get('so_moeda_forte') }}>

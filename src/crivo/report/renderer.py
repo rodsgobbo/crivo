@@ -114,12 +114,21 @@ class ReportContext:
         vaga que o usuario ja tinha visto em dez relatorios -- e destaque que
         aponta tudo nao aponta nada.
         """
-        return [
-            v for v in self.vagas
-            if v.get("estado") == "novo"
-            and not v.get("vista_antes")
-            and int(v.get("score") or 0) >= self.limiar_destaque
-        ]
+        return [v for v in self.vagas if e_destaque(v, self.limiar_destaque)]
+
+
+def e_destaque(vaga: dict, limiar: int) -> bool:
+    """A regra do destaque, num lugar so.
+
+    A marca verde e o filtro "so destaques" usam esta funcao. Duas copias da
+    regra acabariam discordando, e o filtro mostraria um conjunto diferente do
+    que o titulo conta como "3 em destaque".
+    """
+    return (
+        vaga.get("estado") == "novo"
+        and not vaga.get("vista_antes")
+        and int(vaga.get("score") or 0) >= limiar
+    )
 
 
 _ACENTOS = str.maketrans("áàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ", "aaaaeeiooouucAAAAEEIOOOUUC")
@@ -299,7 +308,9 @@ def detectar_moeda(descricao: str | None) -> str | None:
     return achados[0][1]
 
 
-def _aplicar_filtros(vagas: list[dict], filtros: dict) -> list[dict]:
+def _aplicar_filtros(
+    vagas: list[dict], filtros: dict, limiar_destaque: int = 70
+) -> list[dict]:
     """Recorta a lista pelo que o leitor pediu, sem reordenar nada.
 
     A ordem vem da consulta e tem razao propria -- descricao lida primeiro,
@@ -346,6 +357,8 @@ def _aplicar_filtros(vagas: list[dict], filtros: dict) -> list[dict]:
         # outro run. Quem roda todo dia quer ver so o que chegou desde ontem, e
         # sem isto precisava varrer a lista inteira procurando o marcador.
         resultado = [v for v in resultado if not v.get("vista_antes")]
+    if filtros.get("so_destaques"):
+        resultado = [v for v in resultado if e_destaque(v, limiar_destaque)]
     estado = filtros.get("estado")
     if estado:
         resultado = [v for v in resultado if v.get("estado") == estado]
@@ -513,7 +526,7 @@ class ReportRenderer:
         for vaga in todas:
             vaga["acao"], vaga["acao_porque"] = recomendar(vaga, limiar)
         filtros = filtros or {}
-        vagas = _aplicar_filtros(todas, filtros)
+        vagas = _aplicar_filtros(todas, filtros, limiar)
         descartes = [
             {"titulo": d["titulo"], "empresa": d["empresa"], "motivo": d["motivo"]}
             for d in scope.select("discards", where="run_id = ?", params=(run_id,))
