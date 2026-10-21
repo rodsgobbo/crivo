@@ -49,6 +49,20 @@ class FakeRouter:
         )
 
 
+def _multimodelo():
+    from crivo.providers.registry import Provider
+
+    return Provider(
+        id="multimodelo", rotulo="Multimodelo", endereco="https://exemplo.test/v1",
+        formato_credencial="chave_estatica", execucao="rede_externa",
+        modelos=("modelo-grande", "modelo-pequeno"),
+        limite_declarado="cota de teste", destino_dos_dados="lugar nenhum",
+    )
+
+
+MULTIMODELO = _multimodelo()
+
+
 @pytest.fixture
 def env(tmp_path):
     connection = open_database(tmp_path / "crivo.db")
@@ -144,28 +158,31 @@ def test_trusted_payloads_skip_the_wrapping(env):
 def test_the_chain_follows_the_user_order(env):
     vault, _r, _c = env
     vault.store("ana", "groq", "a", validate=aceita)
-    vault.store("ana", "mistral", "b", validate=aceita)
-    vault.set_order("ana", ["mistral", "groq"])
+    vault.store("ana", "openrouter", "b", validate=aceita)
+    vault.set_order("ana", ["openrouter", "groq"])
     destinos = client(env, FakeRouter()).destinations()
     # Um provedor contribui um destino por modelo declarado, entao a ordem que
     # este teste guarda e a dos provedores, e nao a contagem de destinos.
-    assert list(dict.fromkeys(d.provider_id for d in destinos)) == ["mistral", "groq"]
-    assert destinos[0].provider_id == "mistral"
+    assert list(dict.fromkeys(d.provider_id for d in destinos)) == ["openrouter", "groq"]
+    assert destinos[0].provider_id == "openrouter"
     assert destinos[-1].provider_id == "groq"
 
 
 def test_every_declared_model_of_a_provider_enters_the_chain(env):
     """Todos os modelos do provedor, na ordem do registro.
 
-    Antes so o primeiro entrava, e o `mistral-small-latest` declarado em
+    Antes so o primeiro entrava, e o segundo modelo declarado em
     `providers.toml` era decoracao. Isso importa no caso que derruba a sintese:
     recusa por limite de uso atinge o modelo grande primeiro, e o pequeno da
     mesma chave responde.
     """
     vault, registry, _c = env
-    vault.store("ana", "mistral", "b", validate=aceita)
+    # Provedor proprio do teste: nenhum dos que pedem chave em `providers.toml`
+    # declara mais de um modelo desde que a Mistral saiu da lista.
+    registry._providers[MULTIMODELO.id] = MULTIMODELO
+    vault.store("ana", MULTIMODELO.id, "b", validate=aceita)
     destinos = client(env, FakeRouter()).destinations()
-    assert [d.modelo for d in destinos] == list(registry.get("mistral").modelos)
+    assert [d.modelo for d in destinos] == list(MULTIMODELO.modelos)
     assert len(destinos) > 1, "o registro de teste precisa de um provedor multi-modelo"
     # A credencial e a mesma chave do provedor, em todos os modelos dele.
     assert {d.credencial for d in destinos} == {"b"}
@@ -174,9 +191,9 @@ def test_every_declared_model_of_a_provider_enters_the_chain(env):
 def test_each_destination_carries_its_own_credential(env):
     vault, _r, _c = env
     vault.store("ana", "groq", "chave-groq", validate=aceita)
-    vault.store("ana", "mistral", "chave-mistral", validate=aceita)
+    vault.store("ana", "openrouter", "chave-openrouter", validate=aceita)
     porid = {d.provider_id: d.credencial for d in client(env, FakeRouter()).destinations()}
-    assert porid == {"groq": "chave-groq", "mistral": "chave-mistral"}
+    assert porid == {"groq": "chave-groq", "openrouter": "chave-openrouter"}
 
 
 def test_a_local_provider_needs_no_credential_in_the_chain(env):
@@ -411,10 +428,10 @@ def test_the_technical_detail_survives_for_the_log(env):
 def test_a_provider_removed_from_the_registry_leaves_the_chain(env):
     vault, registry, _c = env
     vault.store("ana", "groq", "a", validate=aceita)
-    vault.store("ana", "mistral", "b", validate=aceita)
+    vault.store("ana", "openrouter", "b", validate=aceita)
     registry._providers.pop("groq")
     destinos = client(env, FakeRouter()).destinations()
-    assert list(dict.fromkeys(d.provider_id for d in destinos)) == ["mistral"]
+    assert list(dict.fromkeys(d.provider_id for d in destinos)) == ["openrouter"]
 
 
 def test_the_completion_carries_the_provenance(env):
@@ -429,7 +446,7 @@ def test_the_completion_carries_the_provenance(env):
 def test_one_users_chain_never_contains_anothers_credential(env):
     vault, _r, _c = env
     vault.store("ana", "groq", "chave-da-ana", validate=aceita)
-    vault.store("bruno", "mistral", "chave-do-bruno", validate=aceita)
+    vault.store("bruno", "openrouter", "chave-do-bruno", validate=aceita)
     credenciais = {d.credencial for d in client(env, FakeRouter(), "bruno").destinations()}
     assert credenciais == {"chave-do-bruno"}
 

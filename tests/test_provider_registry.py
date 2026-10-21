@@ -109,12 +109,12 @@ def test_the_reason_for_unavailability_is_recorded():
     registry = ProviderRegistry(load_providers(BASE))
 
     def probe(provider):
-        if provider.id == "mistral":
+        if provider.id == "openrouter":
             raise TimeoutError("sem resposta")
         return True
 
     indisponiveis = registry.check_availability(probe)
-    assert "TimeoutError" in indisponiveis["mistral"]
+    assert "TimeoutError" in indisponiveis["openrouter"]
     assert registry.unavailable == indisponiveis
 
 

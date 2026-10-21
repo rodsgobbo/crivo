@@ -35,15 +35,10 @@ modelos = ["llama-3.3-70b-versatile"]
 limite_declarado = "cota gratuita por minuto e por dia"
 destino_dos_dados = "servidores da Groq"
 
-[[provedor]]
-id = "mistral"
-rotulo = "Mistral"
-endereco = "https://api.mistral.ai/v1"
-formato_credencial = "chave_estatica"
-execucao = "rede_externa"
-modelos = ["mistral-large-latest", "mistral-small-latest"]
-limite_declarado = "cota gratuita da plataforma"
-destino_dos_dados = "servidores da Mistral"
+# A Mistral saiu em 21/10/2026: a chave de API passou a exigir plano pago, e a
+# lista desta tela so oferece o que se usa sem cartao. Para voltar, o bloco e
+# id "mistral", endereco https://api.mistral.ai/v1, modelos
+# mistral-large-latest e mistral-small-latest.
 
 [[provedor]]
 id = "openrouter"

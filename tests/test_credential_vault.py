@@ -13,7 +13,7 @@ from crivo.providers.vault import (
 from crivo.store.migrations import open_database
 from crivo.store.repository import Repository
 
-ORDEM_PADRAO = ("groq", "google-ai-studio", "mistral")
+ORDEM_PADRAO = ("groq", "google-ai-studio")
 
 
 def aceita(provider, secret):
@@ -125,9 +125,9 @@ def test_one_users_credential_never_opens_for_another(vault):
 def test_removing_a_credential_takes_it_out_of_the_chain(vault):
     cofre, _connection = vault
     cofre.store("ana", "groq", "chave-a", validate=aceita)
-    cofre.store("ana", "mistral", "chave-b", validate=aceita)
+    cofre.store("ana", "openrouter", "chave-b", validate=aceita)
     assert cofre.remove("ana", "groq") is True
-    assert cofre.chain("ana") == ["mistral"]
+    assert cofre.chain("ana") == ["openrouter"]
 
 
 def test_removing_something_absent_changes_nothing(vault):
@@ -164,34 +164,34 @@ def test_a_provider_outside_the_default_order_goes_last(vault):
 def test_later_credentials_append_to_the_chain(vault):
     cofre, _connection = vault
     cofre.store("ana", "groq", "a", validate=aceita, default_order=ORDEM_PADRAO)
-    cofre.store("ana", "mistral", "b", validate=aceita, default_order=ORDEM_PADRAO)
-    assert cofre.chain("ana") == ["groq", "mistral"]
+    cofre.store("ana", "openrouter", "b", validate=aceita, default_order=ORDEM_PADRAO)
+    assert cofre.chain("ana") == ["groq", "openrouter"]
 
 
 def test_the_user_can_reorder_the_chain(vault):
     cofre, _connection = vault
     cofre.store("ana", "groq", "a", validate=aceita)
-    cofre.store("ana", "mistral", "b", validate=aceita)
-    cofre.set_order("ana", ["mistral", "groq"])
-    assert cofre.chain("ana") == ["mistral", "groq"]
+    cofre.store("ana", "openrouter", "b", validate=aceita)
+    cofre.set_order("ana", ["openrouter", "groq"])
+    assert cofre.chain("ana") == ["openrouter", "groq"]
 
 
 def test_ordering_an_unknown_provider_is_refused(vault):
     cofre, _connection = vault
     cofre.store("ana", "groq", "a", validate=aceita)
     with pytest.raises(CredentialValidationError) as err:
-        cofre.set_order("ana", ["groq", "mistral"])
-    assert "mistral" in str(err.value)
+        cofre.set_order("ana", ["groq", "openrouter"])
+    assert "openrouter" in str(err.value)
 
 
 def test_each_user_keeps_their_own_order(vault):
     cofre, _connection = vault
     cofre.store("ana", "groq", "a", validate=aceita)
-    cofre.store("ana", "mistral", "b", validate=aceita)
-    cofre.store("bruno", "mistral", "c", validate=aceita)
-    cofre.set_order("ana", ["mistral", "groq"])
-    assert cofre.chain("ana") == ["mistral", "groq"]
-    assert cofre.chain("bruno") == ["mistral"]
+    cofre.store("ana", "openrouter", "b", validate=aceita)
+    cofre.store("bruno", "openrouter", "c", validate=aceita)
+    cofre.set_order("ana", ["openrouter", "groq"])
+    assert cofre.chain("ana") == ["openrouter", "groq"]
+    assert cofre.chain("bruno") == ["openrouter"]
 
 
 # ------------------------------------------------------------------ aviso

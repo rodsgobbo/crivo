@@ -249,9 +249,13 @@ Um jeito gratuito:
 4. Em **Credencial de modelo**, escolha **Google AI Studio**, cole a chave e
    clique em **Cadastrar**.
 
-Outras opções gratuitas aparecem na mesma lista (Groq, Mistral, OpenRouter). Cada
-opção diz **para onde vão os seus dados** — o seu currículo é enviado para essa
-empresa ler.
+Outras opções aparecem na mesma lista (Groq, OpenRouter). Cada opção diz **para
+onde vão os seus dados** — o seu currículo é enviado para essa empresa ler.
+
+**Vale cadastrar uma segunda, de preferência a Groq** (<https://console.groq.com>,
+menu **API Keys**, gratuita). Ela entra como reserva: quando o Google está
+sobrecarregado ou a cota do dia acabou — o que derrubava a análise estratégica em
+metade das buscas —, o crivo passa para a Groq sozinho.
 
 > Chave de IA é como senha: não mostre para ninguém.
 
