@@ -165,6 +165,12 @@ COVERAGE: dict[str, list[str]] = {
         "test_vaga_encerrada::test_a_job_someone_applied_to_keeps_its_state",
         "test_vaga_encerrada::test_the_report_drops_closed_jobs_and_says_how_many",
     ],
+    "10.9": [
+        "test_vaga_encerrada::test_a_top_job_closed_after_its_description_was_read_expires",
+        "test_vaga_encerrada::test_a_description_read_in_this_run_is_not_fetched_again",
+        "test_vaga_encerrada::test_only_the_top_is_checked",
+        "test_vaga_encerrada::test_a_block_stops_the_check_without_breaking_the_run",
+    ],
 
     # -------------------------------------------------- REQ-11 contencao
     "11.1": ["test_governor::test_the_first_call_does_not_wait"],

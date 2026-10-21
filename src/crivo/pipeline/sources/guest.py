@@ -446,9 +446,9 @@ def _salario(linha: dict[str, Any]) -> str | None:
 #: que o LinkedIn poe no topo da pagina publica; as frases cobrem a mesma
 #: marca nos dois idiomas em que a pagina chega, caso a classe mude de nome.
 #:
-#: Nao conferido contra uma pagina fechada de verdade: em 21/10/2026 as cinco
-#: vagas antigas consultadas para achar um exemplo ainda estavam abertas, e
-#: insistir arriscava outro bloqueio. Os testes usam o formato conhecido.
+#: Conferido contra uma pagina fechada de verdade em 21/10/2026 (li-4474369358):
+#: `<figure class="closed-job ...">` com "Nao aceita mais candidaturas" na
+#: pagina publica, que chega em portugues. O teste usa essa marcacao.
 _ENCERRADA = re.compile(
     r'class="[^"]*\bclosed-job\b'
     r"|no longer accepting applications"

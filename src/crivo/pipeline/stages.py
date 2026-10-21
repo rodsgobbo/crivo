@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from ..profile.merger import ProfileMerger
 from ..scheduler import Scheduler
@@ -32,6 +32,7 @@ from ..scoring import gaps
 from ..scoring.ontology import Ontology, load_ontology
 from ..scoring.scorer import FINAL, PROVISORIA, Scorer
 from ..store.insights import InsightStore
+from ..store.repository import Repository
 from ..worker.enrichment_queue import EnrichmentQueue
 from ..worker.queue import RunQueue
 from ..worker.runner import Cancelled, RunContext, Suspend
@@ -982,6 +983,78 @@ class SinteseStage:
             context.contadores["falha_sintese"] = str(resultado.falha)
 
 
+class ReconferenciaStage:
+    """Confere de novo se as vagas do topo ainda aceitam candidaturas.
+
+    O enriquecedor ve a marca de vaga fechada quando le a descricao -- mas a
+    descricao e lida uma vez so e reaproveitada. Vaga lida aberta e fechada
+    depois seguia no relatorio: em 21/10/2026, "SRE Tech Lead Manager" ficou
+    entre as melhores com o LinkedIn dizendo "No longer accepting
+    applications".
+
+    Confere so o topo, e so a vaga cuja descricao tem mais de um dia: a lida
+    neste run ja passou pela verificacao. Tipicamente sao poucas requisicoes,
+    sob o mesmo governador da coleta. Bloqueio ou erro numa vaga nao derruba o
+    run: a vaga so fica sem reconferir.
+    """
+
+    name = "reconferencia"
+
+    #: Quantas vagas do topo conferir, e a idade minima da descricao para isso.
+    LIMITE = 20
+    IDADE_MINIMA = timedelta(days=1)
+
+    def __init__(self, connection, source, governor, agora=None) -> None:
+        self._connection = connection
+        self._source = source
+        self._governor = governor
+        self._agora = agora or (lambda: datetime.now(timezone.utc))
+
+    def run(self, context: RunContext) -> None:
+        from .enricher import expirar_encerrada
+        from .governor import CollectionBlocked
+        from .sources.guest import CollectionError
+
+        limite = (self._agora() - self.IDADE_MINIMA).isoformat(timespec="seconds")
+        topo = self._connection.execute(
+            """
+            SELECT j.job_id, j.url, d.coletada_em
+            FROM scores s
+            JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
+            LEFT JOIN job_descriptions d ON d.job_id = s.job_id
+            WHERE s.user_id = ? AND s.run_id = ? AND s.passada = 'final'
+              AND j.estado IN ('novo', 'visto') AND j.job_id LIKE 'li-%'
+            ORDER BY s.score DESC, j.job_id
+            LIMIT ?
+            """,
+            (context.user_id, context.run_id, self.LIMITE),
+        ).fetchall()
+        conferidas = encerradas = 0
+        for job_id, url, coletada_em in topo:
+            if coletada_em and coletada_em >= limite:
+                continue
+            try:
+                dados = self._governor.run(
+                    lambda j=job_id, u=url: self._source.describe(j, u)
+                )
+            except CollectionBlocked:
+                logger.warning("reconferencia interrompida por bloqueio de coleta")
+                break
+            except CollectionError as exc:
+                logger.info("vaga %s sem reconferir: %s", job_id, exc)
+                continue
+            conferidas += 1
+            if dados.get("encerrada") and expirar_encerrada(
+                Repository(self._connection), job_id
+            ):
+                encerradas += 1
+        if conferidas:
+            logger.info(
+                "reconferencia: %s vaga(s) do topo conferida(s), %s encerrada(s)",
+                conferidas, encerradas,
+            )
+
+
 def build_stages(
     connection, config, source, model_client_factory=None, governor=None
 ) -> list:
@@ -993,17 +1066,18 @@ def build_stages(
     """
     filters = load_filters()
     ontology = load_ontology()
+    # Um governador so para a coleta e a reconferencia: as duas falam com a
+    # mesma origem, e o espacamento vale para o conjunto.
+    governor = governor if governor is not None else RateGovernor(connection, config)
     return [
         PerfilStage(connection, config),
         PlanejamentoStage(connection, filters, config),
-        ColetaStage(
-            connection, source, config,
-            governor if governor is not None else RateGovernor(connection, config),
-        ),
+        ColetaStage(connection, source, config, governor),
         PreFiltroStage(connection, config, filters),
         PontuacaoProvisoriaStage(connection, config, ontology),
         EnriquecimentoStage(connection, config),
         PontuacaoFinalStage(connection, config, ontology),
+        ReconferenciaStage(connection, source, governor),
         JulgamentoStage(connection, config, model_client_factory),
         SinteseStage(connection, config, model_client_factory),
     ]

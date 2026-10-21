@@ -146,6 +146,7 @@ def test_the_declared_order_matches_what_a_run_needs(env):
         "pontuacao_provisoria",
         "enriquecimento",
         "pontuacao_final",
+        "reconferencia",
         "julgamento",
         "sintese",
     )
@@ -389,8 +390,8 @@ def test_the_second_half_survives_the_loss_of_in_memory_context(env):
     # Executor novo, contexto novo: nada da primeira metade sobrevive em memoria.
     contexto = Runner(connection, config, montar(connection, config)).run_once()
 
-    assert contexto.executados[-3:] == [
-        "pontuacao_final", "julgamento", "sintese"
+    assert contexto.executados[-4:] == [
+        "pontuacao_final", "reconferencia", "julgamento", "sintese"
     ]
     assert fila.get(run_id)["estado"] == CONCLUIDO
 

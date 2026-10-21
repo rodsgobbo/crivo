@@ -128,13 +128,7 @@ class Enricher:
         que alguem ja se candidatou: o registro e dele, e a candidatura existe
         mesmo com a vaga fechada.
         """
-        alteradas = self._repository.execute(
-            "UPDATE jobs SET estado = 'expirado' "
-            "WHERE job_id = ? AND estado IN ('novo', 'visto')",
-            (job_id,),
-        ).rowcount
-        if alteradas:
-            logger.info("vaga %s nao aceita mais candidaturas; expirada", job_id)
+        expirar_encerrada(self._repository, job_id)
 
     def _store_signals(self, user_id: str, job_id: str, sinais: list[str]) -> None:
         """Sinais que vieram com a descricao, na vaga do usuario."""
@@ -214,6 +208,22 @@ class Enricher:
 
     def has_description(self, job_id: str) -> bool:
         return self.stored_description(job_id) is not None
+
+
+def expirar_encerrada(repository: Repository, job_id: str) -> bool:
+    """Expira a vaga que nao aceita mais candidaturas, menos para quem aplicou.
+
+    Devolve se alguma linha mudou. Compartilhada entre o enriquecedor, que ve a
+    marca ao ler a descricao, e a reconferencia do topo, que a ve depois.
+    """
+    alteradas = repository.execute(
+        "UPDATE jobs SET estado = 'expirado' "
+        "WHERE job_id = ? AND estado IN ('novo', 'visto')",
+        (job_id,),
+    ).rowcount
+    if alteradas:
+        logger.info("vaga %s nao aceita mais candidaturas; expirada", job_id)
+    return bool(alteradas)
 
 
 def _stamp() -> str:

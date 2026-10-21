@@ -278,6 +278,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 10.8 WHEN a página de uma vaga indica que ela não aceita mais candidaturas, THEN the Enricher SHALL update o estado dessa vaga para expirado para todo usuário que não se candidatou a ela, e the Report Renderer SHALL omit da lista as vagas expiradas, informando quantas foram omitidas.
 
+10.9 WHEN um run termina a pontuação final, THEN the Enricher SHALL reconferir, sob o governador de coleta, se as vagas do topo cuja descrição foi lida há mais de um dia ainda aceitam candidaturas, e SHALL expirar as que não aceitam, sem interromper o run em caso de bloqueio.
+
 ### REQ-11: Contenção de bloqueio na coleta
 
 **User Story:** As a operador do serviço, I want que o sistema respeite os limites da origem, so that o serviço não seja bloqueado pela origem e não pare para todos os usuários.
