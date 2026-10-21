@@ -160,6 +160,50 @@ def prepare(modo: str, caminho_config: str, environ=None):
     return config, cofre
 
 
+#: Tamanho de cada arquivo de log, e quantos anteriores ficam guardados.
+LOG_BYTES = 2_000_000
+LOG_ANTERIORES = 3
+
+
+def registrar_em_arquivo(modo: str, caminho_do_banco) -> logging.Handler:
+    """Grava o log deste processo em `crivo-<modo>.log`, ao lado do banco.
+
+    Antes o log so existia no terminal, e fechar a janela apagava a historia:
+    em 21/10/2026 a investigacao de por que a coleta vinha parando em quatro
+    minutos teve de ser feita pelos rastros no banco, porque a mensagem de
+    bloqueio ja nao existia em lugar nenhum.
+
+    Um arquivo por processo, e nao um para os tres: no Windows a rotacao renomeia
+    o arquivo, e isso falha enquanto outro processo o mantem aberto. Tamanho
+    limitado para nao virar o maior arquivo da pasta.
+
+    O filtro de redacao ja instalado na raiz e pendurado aqui tambem. Filtro de
+    registrador nao alcanca o que vem dos registradores filhos -- so o de
+    handler alcanca --, e um handler novo sem ele gravaria em disco justamente o
+    que a redacao existe para esconder.
+    """
+    from logging.handlers import RotatingFileHandler
+    from pathlib import Path
+
+    from .logging_filters import RedactionFilter
+
+    pasta = Path(caminho_do_banco).parent
+    pasta.mkdir(parents=True, exist_ok=True)
+    handler = RotatingFileHandler(
+        pasta / f"crivo-{modo}.log", maxBytes=LOG_BYTES,
+        backupCount=LOG_ANTERIORES, encoding="utf-8", delay=True,
+    )
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
+    raiz = logging.getLogger()
+    for filtro in raiz.filters:
+        if isinstance(filtro, RedactionFilter):
+            handler.addFilter(filtro)
+    raiz.addHandler(handler)
+    return handler
+
+
 #: Codigo de saida convencional para encerramento por sinal de interrupcao.
 #: 128 mais o numero do sinal, e SIGINT e 2.
 SAIDA_POR_INTERRUPCAO = 130
@@ -196,7 +240,12 @@ def _executar(args) -> int:
 
     from .store.migrations import ThreadLocalDatabase
 
-    banco = ThreadLocalDatabase(cofre.require("CRIVO_DATABASE_URL"))
+    caminho_do_banco = cofre.require("CRIVO_DATABASE_URL")
+    banco = ThreadLocalDatabase(caminho_do_banco)
+    # `tudo` e a face web com dois acompanhantes, que abrem os proprios arquivos.
+    registrar_em_arquivo(
+        "web" if args.modo == "tudo" else args.modo, caminho_do_banco
+    )
 
     acompanhantes: list = []
     if args.modo == "tudo":  # pragma: no cover - sobe processos

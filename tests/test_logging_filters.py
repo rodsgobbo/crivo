@@ -94,3 +94,29 @@ def test_installing_twice_leaves_a_single_filter():
     install(None, logger)
     install(None, logger)
     assert sum(isinstance(f, RedactionFilter) for f in logger.filters) == 1
+
+
+# ------------------------------------------------------ log em arquivo
+def test_the_log_file_lives_next_to_the_database_and_is_redacted(tmp_path):
+    """O arquivo sobrevive ao terminal, e nao pode guardar o que a tela esconde."""
+    from crivo.__main__ import registrar_em_arquivo
+
+    vault = SecretsVault({"CRIVO_MASTER_KEY": "chave-mestra-secreta"})
+    vault.require("CRIVO_MASTER_KEY")
+    raiz = logging.getLogger()
+    filtro = install(vault)
+    handler = registrar_em_arquivo("runs", tmp_path / "dados" / "crivo.db")
+    try:
+        logging.getLogger("crivo.teste.arquivo").warning(
+            "busca barrada; chave-mestra-secreta vazou"
+        )
+        handler.flush()
+    finally:
+        raiz.removeHandler(handler)
+        handler.close()
+        raiz.removeFilter(filtro)
+
+    texto = (tmp_path / "dados" / "crivo-runs.log").read_text(encoding="utf-8")
+    assert "busca barrada" in texto
+    assert "chave-mestra-secreta" not in texto
+    assert REDACTED in texto

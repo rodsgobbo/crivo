@@ -22,7 +22,7 @@ from pathlib import Path
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 #: Versao que este codigo sabe operar. Sobe a cada passo acrescentado abaixo.
-TARGET_VERSION = 9
+TARGET_VERSION = 10
 
 #: Passos de migracao por versao de destino. Cada entrada tem o passo direto e o
 #: inverso; o inverso existe para que a reversao seja declarada e nao inventada
@@ -181,7 +181,20 @@ def _v9_token_do_extrator(connection: sqlite3.Connection) -> None:
     )
 
 
+def _v10_resumo_da_coleta(connection: sqlite3.Connection) -> None:
+    """O que a coleta de cada run fez, em JSON, para o relatorio explicar.
+
+    Em 21/10/2026 um run trouxe 97 vagas do LinkedIn contra mais de 400 nos
+    anteriores, e o relatorio nao dizia por que: a coleta tinha sido barrada no
+    quarto minuto, e os termos que ficaram de fora so apareciam no terminal.
+    Aqui ficam quantas buscas rodaram, em qual houve recusa, quais nao foram
+    tentadas e quanto cada fonte trouxe.
+    """
+    connection.execute("ALTER TABLE runs ADD COLUMN coleta TEXT")
+
+
 MIGRATIONS: dict[int, tuple[Callable[[sqlite3.Connection], None], str]] = {
+    10: (_v10_resumo_da_coleta, "ALTER TABLE runs DROP COLUMN coleta"),
     9: (_v9_token_do_extrator, "DROP TABLE extractor_tokens"),
     8: (
         _v8_julgamento_do_modelo,

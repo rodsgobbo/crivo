@@ -14,7 +14,7 @@ Drive que o app nunca obtém — o login pede só `openid email profile` — e a
 interface não a oferece.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-28 requisitos, 223 critérios de aceitação, 21 elementos de design.
+28 requisitos, 225 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
@@ -266,6 +266,15 @@ de escopo por decisão**, não por esquecimento: não há endpoint de busca ness
 sistemas, então seria preciso saber o identificador de cada empresa de antemão,
 e montar essa lista é um produto diferente do que este é. Reabrir exige
 requisito novo.
+
+### Onde ficam os logs
+
+Cada processo grava o próprio log ao lado do banco: `data/crivo-web.log`,
+`data/crivo-runs.log` e `data/crivo-enricher.log`. Cada arquivo vai até 2 MB e
+guarda os 3 anteriores (`.1`, `.2`, `.3`). Segredos saem redigidos, como na tela.
+Quando algo der errado, é o `crivo-runs.log` que diz em qual busca o LinkedIn
+recusou e o que ficou de fora — e o relatório mostra o mesmo resumo logo abaixo
+das contagens.
 
 ### Vagas que somem são apagadas depois de 30 dias
 

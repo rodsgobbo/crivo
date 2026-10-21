@@ -265,6 +265,12 @@ def test_remote_jobs_reach_the_run_with_their_description_already_stored(
         }
         assert descritas == remotas
         assert not [j for j in linkedin.descritas if j.startswith("jy-")]
+        # O resumo da coleta chega ao registro do run, com a fonte remota nele.
+        coleta = json.loads(
+            connection.execute("SELECT coleta FROM runs").fetchone()[0]
+        )
+        assert coleta["por_fonte"]["Jobicy"] == 2
+        assert coleta["tentadas"] == coleta["previstas"] > 0
     finally:
         connection.close()
 

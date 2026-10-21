@@ -102,6 +102,9 @@ class CollectionResult:
     #: da deduplicacao de proposito: a frente que achou a vaga depois de outra
     #: tambem a achou, e descontar isso faria a ultima frente parecer inutil.
     por_frente: dict[str, int] = field(default_factory=dict)
+    #: Requisicoes de busca planejadas e as que de fato sairam.
+    previstas: int = 0
+    tentadas: int = 0
 
     @property
     def brutos(self) -> int:
@@ -167,11 +170,13 @@ class Collector:
         # alcancada: ausente e zero dizem coisas diferentes -- uma frente que
         # nunca rodou nao e uma frente que nao achou nada.
         resultado.por_frente = {frente.rotulo: 0 for frente in frentes}
+        resultado.previstas = len(pedidos)
 
         for indice, (termo, frente) in enumerate(pedidos):
             saida = self._buscar(
                 termo, frente.local, janela_horas, quantidade, frente.remoto
             )
+            resultado.tentadas = indice + 1
             resultado.por_frente[frente.rotulo] += len(saida.cards)
             self._absorve(saida, resultado, vistos)
             self._grava_novos(user_id, resultado)

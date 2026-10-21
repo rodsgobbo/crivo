@@ -394,7 +394,7 @@ class RunQueue:
 _COUNTER_COLUMNS = frozenset({
     "n_brutos", "n_filtrados", "n_novos", "cota_consumida", "cota_esgotada",
     "bloqueios", "buscas", "provedor_sintese", "modelo_sintese",
-    "tokens_entrada", "tokens_saida", "falha_sintese",
+    "tokens_entrada", "tokens_saida", "falha_sintese", "coleta",
 })
 
 
@@ -406,6 +406,7 @@ def _normalize_counters(counters: Mapping[str, Any]) -> dict[str, Any]:
             f"esperado um de {sorted(_COUNTER_COLUMNS)}"
         )
     payload = dict(counters)
-    if isinstance(payload.get("buscas"), (list, tuple, dict)):
-        payload["buscas"] = _as_json(payload["buscas"])
+    for coluna in ("buscas", "coleta"):
+        if isinstance(payload.get(coluna), (list, tuple, dict)):
+            payload[coluna] = _as_json(payload[coluna])
     return payload

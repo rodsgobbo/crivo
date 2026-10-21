@@ -77,6 +77,9 @@ class ReportContext:
     previa: bool = False
     descricoes_pedidas: int = 0
     descricoes_lidas: int = 0
+    #: O que a coleta fez: de onde veio cada vaga e onde a origem recusou.
+    #: `None` em run anterior ao registro, que nao tem como dizer.
+    coleta: dict | None = None
 
     @property
     def fora_da_janela(self) -> list[dict]:
@@ -196,6 +199,34 @@ def recomendar(vaga: dict, limiar: int) -> tuple[str, str]:
         f"aderência de {score}%, abaixo do destaque; vale se houver caminho "
         "de indicação"
     )
+
+
+def resumo_para_a_pagina(bruto: str | None) -> dict | None:
+    """O resumo gravado pela coleta, com as fontes nomeadas para quem le.
+
+    As frentes do LinkedIn sao gravadas pelo rotulo da configuracao ("aqui"),
+    que nao diz nada a quem le o relatorio. Uma frente so vira "LinkedIn"; mais
+    de uma, "LinkedIn (aqui)", "LinkedIn (canada)".
+    """
+    if not bruto:
+        return None
+    try:
+        resumo = json.loads(bruto)
+    except ValueError:
+        return None
+    from ..pipeline.sources.remotas import FONTES
+
+    remotas = {fonte.rotulo for fonte in FONTES.values()}
+    por_fonte = resumo.get("por_fonte") or {}
+    frentes = [nome for nome in por_fonte if nome not in remotas]
+    fontes = []
+    for nome, quantidade in por_fonte.items():
+        if nome in remotas:
+            rotulo = nome
+        else:
+            rotulo = "LinkedIn" if len(frentes) == 1 else f"LinkedIn ({nome})"
+        fontes.append({"nome": rotulo, "vagas": int(quantidade or 0)})
+    return {**resumo, "fontes": fontes}
 
 
 #: Moedas reconhecidas na descricao, da marca mais especifica para a mais
@@ -512,6 +543,7 @@ class ReportRenderer:
                 "novos": run["n_novos"],
             },
             sem_descricao_por_cota=int(run["cota_esgotada"] or 0),
+            coleta=resumo_para_a_pagina(run["coleta"]),
             filtros=filtros,
             total_sem_filtro=len(todas),
             rendimento_das_buscas=_rendimento(todas),

@@ -41,6 +41,28 @@
   </div>
 </div>
 
+{# De onde vieram as vagas, e onde a origem recusou. Sem isto, um run barrado
+   no quarto minuto parecia um mercado fraco: 97 vagas contra 400 do anterior,
+   e nenhuma palavra sobre por que. #}
+{% if ctx.coleta %}
+<p class="sub origem-das-vagas">
+  De onde vieram:
+  {% for fonte in ctx.coleta.fontes %}{{ fonte.nome }} {{ fonte.vagas }}{{ " · " if not loop.last }}{% endfor %}.
+  {{ ctx.coleta.tentadas }} de {{ ctx.coleta.previstas }} buscas no LinkedIn rodaram.
+</p>
+{% if ctx.coleta.barrada_em %}
+<p class="aviso coleta-barrada">
+  <strong>O LinkedIn recusou pedidos na busca “{{ ctx.coleta.barrada_em }}”</strong>
+  (excesso de requisições), e a coleta parou ali para não prolongar o bloqueio.
+  {% if ctx.coleta.nao_tentadas %}
+  Ficaram de fora {{ ctx.coleta.nao_tentadas | length }} termo(s):
+  {{ ctx.coleta.nao_tentadas | join(", ") }}.
+  {% endif %}
+  Este relatório tem menos vagas do LinkedIn do que teria; a próxima busca tenta de novo.
+</p>
+{% endif %}
+{% endif %}
+
 {# -------------------------------------------------------------- previa #}
 {# A passada final so existe depois de todas as descricoes, e num run de
    quatro frentes isso e uma hora e meia depois da coleta. A previa mostra a

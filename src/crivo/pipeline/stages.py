@@ -320,6 +320,7 @@ class ColetaStage:
         # 429 e devolve lista vazia, entao sem este contador o relatorio dizia
         # que o mercado estava vazio quando o que houve foi um portao fechado.
         context.contadores["bloqueios"] = len(resultado.bloqueadas)
+        context.contadores["coleta"] = resumo_da_coleta(resultado)
 
 
 class PreFiltroStage:
@@ -368,6 +369,24 @@ class PreFiltroStage:
 
 class RunSemBuscas(RuntimeError):
     """Retomada sem termo de busca em lugar nenhum."""
+
+
+def resumo_da_coleta(resultado) -> dict:
+    """O que a coleta fez, no formato que o run grava e o relatorio le.
+
+    `por_fonte` junta as frentes do LinkedIn e as fontes remotas, porque para
+    quem le o relatorio as duas respondem a mesma pergunta: de onde veio cada
+    vaga.
+    """
+    bloqueadas = list(getattr(resultado, "bloqueadas", None) or [])
+    return {
+        "previstas": getattr(resultado, "previstas", 0),
+        "tentadas": getattr(resultado, "tentadas", 0),
+        "barrada_em": bloqueadas[0] if bloqueadas else None,
+        "nao_tentadas": list(getattr(resultado, "nao_tentadas", None) or []),
+        "falhas": dict(getattr(resultado, "falhas", None) or {}),
+        "por_fonte": dict(getattr(resultado, "por_frente", None) or {}),
+    }
 
 
 def _fontes_remotas(config) -> list:

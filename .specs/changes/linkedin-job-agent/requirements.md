@@ -454,6 +454,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.18 WHILE um run aguarda o enriquecimento, THE Report Renderer SHALL display as vagas pontuadas pela passada provisória, identificadas como prévia, junto com a quantidade de descrições já lidas e pedidas, e SHALL substituir a prévia pelo relatório da passada final assim que ela existir.
 
+18.19 THE Report Renderer SHALL display quantas vagas cada fonte trouxe e quantas das buscas previstas rodaram, e IF a origem recusou a coleta, THEN the Report Renderer SHALL name a busca em que a recusa ocorreu e os termos que ficaram sem ser tentados.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.
@@ -545,6 +547,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 23.3 THE Report Renderer SHALL prevent a inclusão de segredos, de testemunhos de acesso e de cookies de sessão em qualquer página apresentada.
 
 23.4 THE Store SHALL store todo testemunho de acesso de terceiros e toda credencial de provedor em forma cifrada.
+
+23.5 THE Job Agent SHALL write o registro de log de cada processo num arquivo de tamanho limitado ao lado do banco, aplicando a mesma redação de segredos do registro em tela.
 
 
 ### REQ-24: Configuração do serviço

@@ -273,6 +273,12 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_the_preview_counts_descriptions_as_they_arrive_and_not_as_batches_close",
         "test_web_app::test_a_run_reading_descriptions_is_listed_as_a_preview",
     ],
+    "18.19": [
+        "test_resumo_da_coleta::test_a_barred_collection_says_where_it_stopped_and_what_was_left",
+        "test_resumo_da_coleta::test_the_page_names_the_sources_for_a_reader",
+        "test_resumo_da_coleta::test_the_report_explains_a_barred_collection",
+        "test_fontes_remotas::test_remote_jobs_reach_the_run_with_their_description_already_stored",
+    ],
 
     # ------------------------------------------ REQ-18.17 regiao declarada
     "18.17": [
@@ -423,6 +429,9 @@ COVERAGE: dict[str, list[str]] = {
     ],
     "23.3": ["test_report::test_the_report_never_shows_secret_material"],
     "23.4": ["test_credential_vault::test_the_stored_key_is_never_in_clear"],
+    "23.5": [
+        "test_logging_filters::test_the_log_file_lives_next_to_the_database_and_is_redacted",
+    ],
 
     # --------------------------------------------------- REQ-24 configuracao
     "24.1": ["test_config::test_reads_every_configured_section_from_the_default_file"],
