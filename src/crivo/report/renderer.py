@@ -80,6 +80,8 @@ class ReportContext:
     #: O que a coleta fez: de onde veio cada vaga e onde a origem recusou.
     #: `None` em run anterior ao registro, que nao tem como dizer.
     coleta: dict | None = None
+    #: Vagas do run que deixaram de aceitar candidaturas e sairam da lista.
+    encerradas: int = 0
 
     @property
     def fora_da_janela(self) -> list[dict]:
@@ -516,6 +518,10 @@ class ReportRenderer:
 
         passada = self._passada_disponivel(run_id)
         todas = ordenar(self._vagas(user_id, run_id, passada))
+        # Vaga que nao aceita mais candidaturas sai da lista: nao ha o que fazer
+        # com ela. A contagem fica, para a pagina dizer que saiu e quantas.
+        encerradas = sum(1 for v in todas if v.get("estado") == "expirado")
+        todas = [v for v in todas if v.get("estado") != "expirado"]
         previa = passada == "provisoria"
         pedidas, lidas = self._andamento_das_descricoes(run_id) if previa else (0, 0)
         # A janela gravada com o run, e nao a configuracao de hoje: e ela que
@@ -557,6 +563,7 @@ class ReportRenderer:
             },
             sem_descricao_por_cota=int(run["cota_esgotada"] or 0),
             coleta=resumo_para_a_pagina(run["coleta"]),
+            encerradas=encerradas,
             filtros=filtros,
             total_sem_filtro=len(todas),
             rendimento_das_buscas=_rendimento(todas),

@@ -442,10 +442,36 @@ def _salario(linha: dict[str, Any]) -> str | None:
 
 
 
+#: Marcas de vaga que nao aceita mais candidaturas. O bloco `closed-job` e o
+#: que o LinkedIn poe no topo da pagina publica; as frases cobrem a mesma
+#: marca nos dois idiomas em que a pagina chega, caso a classe mude de nome.
+#:
+#: Nao conferido contra uma pagina fechada de verdade: em 21/10/2026 as cinco
+#: vagas antigas consultadas para achar um exemplo ainda estavam abertas, e
+#: insistir arriscava outro bloqueio. Os testes usam o formato conhecido.
+_ENCERRADA = re.compile(
+    r'class="[^"]*\bclosed-job\b'
+    r"|no longer accepting applications"
+    r"|n[ãa]o (?:est[áa] )?aceita(?:ndo)? mais candidaturas",
+    re.IGNORECASE,
+)
+
+
+def vaga_encerrada(html: str) -> bool:
+    """A pagina diz que a vaga nao aceita mais candidaturas?"""
+    return bool(_ENCERRADA.search(html or ""))
+
+
 def parse_job_posting(html: str, job_id: str = "") -> dict:
     """Extrai descricao, contatos e sinais do fragmento publico do anuncio."""
     bloco = _BLOCO_DESCRICAO.search(html or "")
     texto = _sem_marcacao(bloco.group(1)) if bloco else ""
+    encerrada = vaga_encerrada(html)
+    if not texto and encerrada:
+        # Vaga fechada pode vir sem corpo. Isso e uma resposta, e nao a pagina
+        # que mudou de forma: o que importa dela e justamente estar fechada.
+        return {"texto": "", "encerrada": True, "emails": [], "candidatos": None,
+                "publicada_ha": None, "sinais": [], "criterios": {}}
     if not texto:
         raise CollectionError(
             f"descricao da vaga {job_id} veio sem corpo; a pagina mudou de forma "
@@ -463,6 +489,7 @@ def parse_job_posting(html: str, job_id: str = "") -> dict:
         "publicada_ha": _primeiro(_PUBLICADA, html),
         "sinais": _sinais(html),
         "criterios": criterios,
+        "encerrada": encerrada,
     }
 
 

@@ -147,6 +147,14 @@
   {%- endif %}
 </h2>
 
+{% if ctx.encerradas %}
+<p class="sub">
+  {{ ctx.encerradas }} vaga{{ "s" if ctx.encerradas != 1 }} deste run
+  {{ "não aceitam" if ctx.encerradas != 1 else "não aceita" }} mais candidaturas
+  e {{ "saíram" if ctx.encerradas != 1 else "saiu" }} da lista.
+</p>
+{% endif %}
+
 <form method="get" class="filtro">
   <label class="cargo">
     Cargo

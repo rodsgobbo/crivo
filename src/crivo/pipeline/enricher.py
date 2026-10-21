@@ -120,6 +120,22 @@ class Enricher:
             (data, job_id),
         )
 
+    def _marcar_encerrada(self, job_id: str) -> None:
+        """A vaga nao aceita mais candidaturas: expira para todo mundo.
+
+        E fato da vaga, e nao escolha de um usuario, entao vale para todos que a
+        tem -- como a descricao, que tambem e uma so. Fica de fora a vaga em
+        que alguem ja se candidatou: o registro e dele, e a candidatura existe
+        mesmo com a vaga fechada.
+        """
+        alteradas = self._repository.execute(
+            "UPDATE jobs SET estado = 'expirado' "
+            "WHERE job_id = ? AND estado IN ('novo', 'visto')",
+            (job_id,),
+        ).rowcount
+        if alteradas:
+            logger.info("vaga %s nao aceita mais candidaturas; expirada", job_id)
+
     def _store_signals(self, user_id: str, job_id: str, sinais: list[str]) -> None:
         """Sinais que vieram com a descricao, na vaga do usuario."""
         if not sinais:
@@ -177,6 +193,8 @@ class Enricher:
                 logger.info("vaga %s ficou sem descricao: %s", card.job_id, exc)
                 continue
 
+            if dados.get("encerrada"):
+                self._marcar_encerrada(card.job_id)
             texto = (dados.get("texto") or "").strip()
             if not texto:
                 resultado.sem_descricao.append(card.job_id)

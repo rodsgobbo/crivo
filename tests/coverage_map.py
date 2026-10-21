@@ -159,6 +159,12 @@ COVERAGE: dict[str, list[str]] = {
     "10.5": ["test_enricher::test_contact_emails_from_the_description_are_recorded"],
     "10.6": ["test_enricher::test_the_shared_registry_holds_one_row_per_job"],
     "10.7": ["test_enricher::test_a_stored_description_is_reused_without_a_request"],
+    "10.8": [
+        "test_vaga_encerrada::test_these_pages_say_the_job_is_closed",
+        "test_vaga_encerrada::test_a_closed_job_expires_for_everyone_who_has_it",
+        "test_vaga_encerrada::test_a_job_someone_applied_to_keeps_its_state",
+        "test_vaga_encerrada::test_the_report_drops_closed_jobs_and_says_how_many",
+    ],
 
     # -------------------------------------------------- REQ-11 contencao
     "11.1": ["test_governor::test_the_first_call_does_not_wait"],
