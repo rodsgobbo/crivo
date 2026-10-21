@@ -79,3 +79,82 @@ def test_the_report_of_an_old_run_has_no_collection_line(env):
     add_vaga(repo)
     html = ReportRenderer(connection, load_config()).render_run("ana", "run-1")
     assert "De onde vieram" not in html
+
+
+# ------------------------------------------------------- revezamento
+from crivo.pipeline.stages import coleta_anterior, priorizar_pendentes  # noqa: E402
+
+
+def test_terms_left_out_by_a_barred_collection_go_first_next_time():
+    anterior = {"barrada_em": "C", "nao_tentadas": ["D", "E"]}
+    assert priorizar_pendentes(["A", "B", "C", "D", "E"], anterior) == [
+        "C", "D", "E", "A", "B",
+    ]
+
+
+def test_nothing_moves_when_the_last_collection_was_not_barred():
+    buscas = ["A", "B", "C"]
+    assert priorizar_pendentes(buscas, {"barrada_em": None}) == buscas
+    assert priorizar_pendentes(buscas, None) == buscas
+
+
+def test_a_pending_term_no_longer_planned_is_not_invented():
+    """Reordenar, nunca acrescentar: o planejamento decide o que se busca."""
+    anterior = {"barrada_em": "Velho", "nao_tentadas": ["B"]}
+    assert priorizar_pendentes(["A", "B"], anterior) == ["B", "A"]
+
+
+def test_a_barred_run_hands_its_pending_terms_to_the_next_one(tmp_path):
+    from crivo.store.migrations import open_database
+    from crivo.store.repository import Repository
+    from crivo.worker.queue import RunQueue
+    from crivo.worker.runner import Runner
+    from test_stages import (
+        USUARIO, FonteFalsa, atender_enriquecimento, consolidar, montar,
+    )
+
+    class BarraNaSegunda(FonteFalsa):
+        """Recusa a segunda busca do primeiro run, como o LinkedIn em 21/10."""
+
+        def __init__(self):
+            super().__init__()
+            self.barrar = True
+
+        def search(self, termo, local, janela_horas, quantidade, remoto=False):
+            if self.barrar and len(self.buscas) == 1:
+                self.buscas.append(termo)
+                return SearchOutcome(busca=termo, bloqueada=True, falha="429")
+            return super().search(termo, local, janela_horas, quantidade, remoto)
+
+    connection = open_database(tmp_path / "crivo.db")
+    try:
+        Repository(connection).insert(
+            "users",
+            {"user_id": USUARIO, "subject_google": "sub-ana",
+             "criado_em": "2026-10-21T00:00:00+00:00"},
+        )
+        config = load_config()
+        consolidar(connection, config)
+        fonte = BarraNaSegunda()
+        fila = RunQueue(connection)
+
+        run_1 = fila.enqueue(USUARIO)
+        runner = Runner(connection, config, montar(connection, config, fonte))
+        runner.run_once()
+        atender_enriquecimento(connection, run_1)
+        connection.execute(
+            "UPDATE runs SET estado = 'enfileirado' WHERE run_id = ?", (run_1,)
+        )
+        runner.run_once()
+        primeiro = coleta_anterior(connection, USUARIO, "nenhum")
+        assert primeiro["barrada_em"] == fonte.buscas[1]
+        pendentes = [primeiro["barrada_em"], *primeiro["nao_tentadas"]]
+
+        fonte.barrar = False
+        fonte.buscas.clear()
+        fila.enqueue(USUARIO)
+        Runner(connection, config, montar(connection, config, fonte)).run_once()
+
+        assert fonte.buscas[: len(pendentes)] == pendentes
+    finally:
+        connection.close()

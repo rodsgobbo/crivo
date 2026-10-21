@@ -188,6 +188,9 @@ class ColetaStage:
                 f"run {context.run_id} retomado sem buscas gravadas; "
                 "peca a busca de novo para que o planejamento rode"
             )
+        buscas = priorizar_pendentes(
+            buscas, coleta_anterior(self._connection, context.user_id, context.run_id)
+        )
         perfil = carregar_perfil(self._connection, self._config, context)
         # A escolha gravada com o run vence a configuracao: foi o usuario quem
         # decidiu o alcance, e um run releito meses depois precisa continuar
@@ -369,6 +372,46 @@ class PreFiltroStage:
 
 class RunSemBuscas(RuntimeError):
     """Retomada sem termo de busca em lugar nenhum."""
+
+
+def coleta_anterior(connection, user_id: str, run_id: str) -> dict | None:
+    """O resumo da coleta do run anterior deste usuario, se houver."""
+    linha = connection.execute(
+        "SELECT coleta FROM runs WHERE user_id = ? AND run_id <> ? "
+        "AND coleta IS NOT NULL ORDER BY solicitado_em DESC LIMIT 1",
+        (user_id, run_id),
+    ).fetchone()
+    if linha is None:
+        return None
+    try:
+        return json.loads(linha[0])
+    except ValueError:
+        return None
+
+
+def priorizar_pendentes(buscas: list[str], anterior: dict | None) -> list[str]:
+    """Poe na frente os termos que a coleta anterior nao conseguiu fazer.
+
+    Quando o LinkedIn barra a coleta, ela para ali para nao prolongar o
+    bloqueio, e os termos restantes ficam sem resposta. Em 21/10/2026 isso
+    acontecia no quarto minuto, e os termos do fim da lista nunca rodavam --
+    sempre os mesmos, porque o planejamento os ordena igual a cada run.
+
+    Retomar dentro do mesmo run nao resolve: o bloqueio ainda valia dezessete
+    minutos depois. O que resolve e o revezamento. O termo barrado e os que nao
+    foram tentados vao para o comeco da busca seguinte, na ordem que ja tinham;
+    os demais seguem atras. Nenhum termo entra ou sai, so a ordem muda.
+    """
+    if not anterior or not anterior.get("barrada_em"):
+        return list(buscas)
+    pendentes = {anterior["barrada_em"], *(anterior.get("nao_tentadas") or [])}
+    primeiro = [b for b in buscas if b in pendentes]
+    if primeiro:
+        logger.info(
+            "coleta anterior barrada: %s termo(s) pendente(s) vao na frente",
+            len(primeiro),
+        )
+    return primeiro + [b for b in buscas if b not in pendentes]
 
 
 def resumo_da_coleta(resultado) -> dict:

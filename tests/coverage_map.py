@@ -247,6 +247,13 @@ COVERAGE: dict[str, list[str]] = {
         "test_fontes_remotas::test_a_failing_source_becomes_an_empty_contribution_and_not_a_crash",
     ],
 
+    # --------------------------------------- REQ-8.13 revezamento de termos
+    "8.13": [
+        "test_resumo_da_coleta::test_terms_left_out_by_a_barred_collection_go_first_next_time",
+        "test_resumo_da_coleta::test_a_pending_term_no_longer_planned_is_not_invented",
+        "test_resumo_da_coleta::test_a_barred_run_hands_its_pending_terms_to_the_next_one",
+    ],
+
     # ------------------------------------------- REQ-8.12 vaga republicada
     "8.12": [
         "test_republicacao::test_the_same_title_at_the_same_company_days_later_is_a_repost",
