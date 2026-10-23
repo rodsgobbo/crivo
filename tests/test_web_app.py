@@ -1927,3 +1927,83 @@ def test_an_empty_language_field_explains_what_it_costs():
 
 def test_a_filled_language_field_has_no_warning():
     assert "Seu currículo não cita idiomas" not in _conferencia(["Inglês avançado"])
+
+
+# ------------------------------------------------- marcar vaga pelo relatorio
+def _vaga_marcavel(banco, user_id, run_id, job_id="li-77"):
+    from crivo.store.repository import Repository
+
+    repo = Repository(banco())
+    repo.for_user(user_id).insert("jobs", {
+        "job_id": job_id, "titulo": "SRE Manager",
+        "url": f"https://linkedin.com/jobs/view/{job_id}", "estado": "novo",
+        "flags": "[]", "primeira_vez_em": "2026-10-23", "ultima_vez_em": "2026-10-23",
+    })
+    repo.for_user(user_id).insert("scores", {
+        "job_id": job_id, "run_id": run_id, "passada": "final", "score": 80,
+        "componentes": json.dumps({}), "criado_em": "2026-10-23",
+    })
+
+
+def _estado(banco, job_id="li-77"):
+    return banco().execute("SELECT estado FROM jobs WHERE job_id = ?", (job_id,)).fetchone()[0]
+
+
+def test_a_job_can_be_marked_applied_from_the_report_and_back(cliente):
+    """Antes nenhuma tela marcava: as 3832 vagas do banco real eram todas novas."""
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    run_id = _enfileirar(banco, user_id)
+    _vaga_marcavel(banco, user_id, run_id)
+
+    pagina = c.get(f"/reports/{run_id}").text
+    assert f'action="/reports/{run_id}/vagas/li-77/estado"' in pagina
+    assert 'value="aplicado"' in pagina
+
+    resposta = c.post(
+        f"/reports/{run_id}/vagas/li-77/estado", data={"estado": "aplicado"},
+        headers={"referer": f"http://127.0.0.1:8000/reports/{run_id}?novas=1"},
+        follow_redirects=False,
+    )
+    assert resposta.status_code == 303
+    assert resposta.headers["location"] == f"/reports/{run_id}?novas=1#vaga-li-77"
+    assert _estado(banco) == "aplicado"
+    assert "Desfazer" in c.get(f"/reports/{run_id}").text
+
+    c.post(f"/reports/{run_id}/vagas/li-77/estado", data={"estado": "visto"})
+    assert _estado(banco) == "visto"
+
+
+def test_marking_never_redirects_outside_the_report(cliente):
+    """O Referer vem do cliente; so o caminho do proprio relatorio e usado."""
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    run_id = _enfileirar(banco, user_id)
+    _vaga_marcavel(banco, user_id, run_id)
+    resposta = c.post(
+        f"/reports/{run_id}/vagas/li-77/estado", data={"estado": "descartado"},
+        headers={"referer": "https://outro-site.example/phishing"},
+        follow_redirects=False,
+    )
+    assert resposta.headers["location"] == f"/reports/{run_id}#vaga-li-77"
+
+
+def test_a_state_the_user_cannot_choose_is_refused_by_the_form(cliente):
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    run_id = _enfileirar(banco, user_id)
+    _vaga_marcavel(banco, user_id, run_id)
+    resposta = c.post(f"/reports/{run_id}/vagas/li-77/estado", data={"estado": "expirado"})
+    assert resposta.status_code == 400
+    assert _estado(banco) == "novo"
+
+
+def test_another_users_job_cannot_be_marked(cliente):
+    c, _i, banco = cliente
+    dona = entrar(cliente)
+    run_id = _enfileirar(banco, dona)
+    _vaga_marcavel(banco, dona, run_id)
+    entrar(cliente, subject="sub-bruno")
+    resposta = c.post(f"/reports/{run_id}/vagas/li-77/estado", data={"estado": "aplicado"})
+    assert resposta.status_code == 400
+    assert _estado(banco) == "novo"

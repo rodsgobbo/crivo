@@ -285,6 +285,10 @@ O que você muda vale a partir da **próxima** busca.
 Cada vaga tem uma nota de 0 a 100% e uma recomendação: **aplicar agora**,
 **pedir indicação antes** ou **descartar**, com o motivo ao lado.
 
+Em cada vaga há os botões **Apliquei** e **Descartar**. Marque as vagas em que
+você se candidatou: o crivo para de recomendá-las, nunca as apaga, e elas deixam
+de aparecer como destaque. **Desfazer** volta a vaga para "vista".
+
 Nas vagas marcadas **pedir indicação antes** há o botão **Rascunhar pedido de
 indicação**: a sua chave de IA escreve uma mensagem curta, só com o que está no
 seu perfil, para você mandar a algum contato da empresa. O crivo não envia nada —

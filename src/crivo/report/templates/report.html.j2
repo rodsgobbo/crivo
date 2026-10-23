@@ -229,7 +229,7 @@
 
 {% if ctx.vagas %}
 {% for vaga in ctx.vagas %}
-<article class="vaga{% if vaga in ctx.destaques %} destaque{% endif %}">
+<article class="vaga{% if vaga in ctx.destaques %} destaque{% endif %}" id="vaga-{{ vaga.job_id }}">
   <div class="cabeca">
     <h3><a href="{{ vaga.url }}">{{ vaga.titulo }}</a>{% if vaga.empresa %} — {{ vaga.empresa }}{% endif %}</h3>
     <span class="score">
@@ -300,12 +300,29 @@
   </p>
   {# Onde a recomendacao e pedir indicacao, o passo seguinte e escrever a
      mensagem. POST, sob demanda: gasta o modelo do usuario so se ele pedir. #}
+  <div class="acoes-da-vaga">
   {% if vaga.acao == "pedir indicação antes" %}
   <form method="post" action="/reports/{{ ctx.run_id }}/indicacao/{{ vaga.job_id }}"
         class="rascunhar">
     <button class="acao discreta" type="submit">Rascunhar pedido de indicação</button>
   </form>
   {% endif %}
+  {# A decisao de quem le. Sem estes botoes nenhuma vaga saia de "novo": a
+     marcacao existia so como rota JSON que nenhuma tela chamava, e em
+     23/10/2026 as 3832 vagas do banco estavam todas como novas -- inclusive as
+     candidaturas, que o expurgo nao protegia por isso. #}
+  {% if vaga.estado in ('novo', 'visto') %}
+    <form method="post" action="/reports/{{ ctx.run_id }}/vagas/{{ vaga.job_id }}/estado" class="marcar">
+      <button class="acao discreta" type="submit" name="estado" value="aplicado">Apliquei</button>
+      <button class="acao discreta" type="submit" name="estado" value="descartado">Descartar</button>
+    </form>
+  {% elif vaga.estado in ('aplicado', 'descartado') %}
+    <form method="post" action="/reports/{{ ctx.run_id }}/vagas/{{ vaga.job_id }}/estado" class="marcar">
+      <button class="acao discreta" type="submit" name="estado" value="visto"
+              title="volta a vaga para vista, sem decisão">Desfazer</button>
+    </form>
+  {% endif %}
+  </div>
 
   {# O que o modelo viu que o cálculo não vê. Só aparece onde houve releitura,
      e diz que a nota mudou de origem -- senão o usuário compara dois números

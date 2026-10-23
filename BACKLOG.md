@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1108 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1112 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -651,6 +651,17 @@ usuário corrigir. Botão só nas vagas de "pedir indicação antes", por POST (
 GET seria disparado por pré-carregamento e gastaria o modelo), página com o
 texto para copiar; o crivo não envia. Gerado de verdade para a vaga da Ideen no
 relatório de 23/10: 105 palavras, só fatos do perfil, nenhum número sem origem.
+
+### 7.7 — ~~Nenhuma tela marcava vaga~~ · ✔ **feito em 23/out**
+
+Achado ao olhar o 7.6: marcar vaga como vista, aplicada ou descartada (21.3)
+existia só como `PATCH /jobs/{id}` com JSON, que nenhuma página HTML sem
+JavaScript consegue chamar. As 3832 vagas do banco real estavam todas como
+"novo" — inclusive candidaturas, que por isso o expurgo de 30 dias não
+protegia, e destaques decididos continuavam destaques. O relatório ganhou
+"Apliquei", "Descartar" e "Desfazer" em cada vaga, por formulário, voltando para
+a mesma vaga com os mesmos filtros. O Referer só é usado se apontar para o
+próprio relatório.
 
 ### 7.6 — Acompanhamento da candidatura · pergunta em aberto
 

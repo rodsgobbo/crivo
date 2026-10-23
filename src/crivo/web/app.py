@@ -1139,6 +1139,32 @@ def build_reports_router(context: WebContext) -> APIRouter:
             return JSONResponse({"erro": str(exc)}, status_code=404)
         return HTMLResponse(pagina)
 
+    @router.post("/{run_id}/vagas/{job_id}/estado")
+    async def marcar_pelo_relatorio(request: Request, run_id: str, job_id: str):
+        """Marca a vaga a partir do relatorio, e volta para ela.
+
+        Formulario, e nao o PATCH com JSON que ja existia: a pagina e HTML sem
+        JavaScript, e nenhuma tela conseguia chamar aquela rota -- em
+        23/10/2026 as 3832 vagas do banco estavam todas como "novo".
+
+        Volta ao relatorio de onde veio, com os filtros que estavam na
+        pagina, e para a altura da vaga marcada.
+        """
+        user_id = context.guard().require(request)
+        formulario = await request.form()
+        try:
+            context.lifecycle().mark(user_id, job_id, str(formulario.get("estado") or ""))
+        except LifecycleError as exc:
+            return JSONResponse({"erro": str(exc)}, status_code=400)
+        volta = f"/reports/{run_id}"
+        origem = request.headers.get("referer") or ""
+        caminho = origem.split("//", 1)[-1].split("/", 1)[-1] if "//" in origem else ""
+        # So volta para o proprio relatorio: o Referer vem do cliente, e
+        # redirecionar para qualquer endereco que ele traga seria abrir a porta.
+        if caminho.startswith(f"reports/{run_id}"):
+            volta = "/" + caminho.split("#", 1)[0]
+        return RedirectResponse(f"{volta}#vaga-{job_id}", status_code=303)
+
     @router.post("/{run_id}/indicacao/{job_id}", response_class=HTMLResponse)
     def pedido_de_indicacao(request: Request, run_id: str, job_id: str):
         """Escreve, sob demanda, um rascunho de pedido de indicacao.

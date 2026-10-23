@@ -571,8 +571,14 @@ textarea.rascunho {
   font: inherit;
   line-height: 1.6;
 }
-form.rascunhar { margin: 0 0 var(--esp-2); }
-form.rascunhar .acao { margin-top: 0; }
+.acoes-da-vaga {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+  margin: 0 0 var(--esp-3);
+}
+form.rascunhar, form.marcar { margin: 0; display: flex; gap: var(--esp-2); }
+form.rascunhar .acao, form.marcar .acao { margin-top: 0; min-height: 2.1rem; }
 
 /* Campo vazio que pesa na nota: mesma cor de "atencao" do resto do app. */
 .nota.aviso-campo {

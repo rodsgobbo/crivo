@@ -440,7 +440,12 @@ COVERAGE: dict[str, list[str]] = {
     "21.2": [
         "test_collector::test_a_job_seen_again_is_not_new_and_keeps_its_first_sighting"
     ],
-    "21.3": ["test_lifecycle_and_scores::test_the_user_choice_changes_the_state"],
+    "21.3": [
+        "test_lifecycle_and_scores::test_the_user_choice_changes_the_state",
+        "test_web_app::test_a_job_can_be_marked_applied_from_the_report_and_back",
+        "test_web_app::test_a_state_the_user_cannot_choose_is_refused_by_the_form",
+        "test_web_app::test_another_users_job_cannot_be_marked",
+    ],
     "21.4": [
         "test_lifecycle_and_scores::test_a_job_absent_from_many_runs_is_never_expired_for_that",
     ],
