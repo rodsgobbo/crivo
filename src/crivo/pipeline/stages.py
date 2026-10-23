@@ -70,6 +70,21 @@ class PerfilStage:
         context.dados["problemas_higiene"] = versao.problemas_higiene
 
 
+def buscas_excluidas(scope) -> tuple[str, ...]:
+    """Cargos gerados que o usuario mandou nao procurar, mais antigos primeiro.
+
+    Funcao de modulo, e nao metodo: a pagina inicial le a mesma lista para
+    mostrar o que o proximo run vai procurar, e as duas leituras nao podem
+    divergir.
+    """
+    return tuple(
+        linha["texto"]
+        for linha in scope.select(
+            "buscas_excluidas", columns="texto", order_by="criado_em"
+        )
+    )
+
+
 class PlanejamentoStage:
     """Escolhe as buscas do run a partir do perfil e do que o usuario pediu."""
 
@@ -87,6 +102,9 @@ class PlanejamentoStage:
             "buscas_do_usuario", columns="texto", order_by="criado_em"
         )
         return tuple(linha["texto"] for linha in linhas)
+
+    def _excluidas(self, context: RunContext) -> tuple[str, ...]:
+        return buscas_excluidas(context.scope)
 
     def _rendimento(self, context: RunContext) -> dict[str, tuple[int, int]]:
         """Quanto cada termo rendeu, somando os runs anteriores deste usuario.
@@ -133,6 +151,7 @@ class PlanejamentoStage:
                 len(frentes_de_busca(config, perfil.get("localizacao") or "")),
             ),
             rendimento=self._rendimento(context),
+            excluidas=self._excluidas(context),
         )
         context.dados["buscas"] = buscas
         # O contador guarda o texto das buscas, e nao a quantidade: quando o

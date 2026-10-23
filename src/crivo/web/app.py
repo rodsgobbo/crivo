@@ -280,6 +280,41 @@ def build_profile_router(context: WebContext) -> APIRouter:
         )
         return RedirectResponse("/?aviso=" + quote("busca removida"), status_code=303)
 
+    @router.post("/buscas/excluir")
+    async def excluir_busca_gerada(request: Request):
+        """Tira da lista um cargo gerado pelo perfil que nao faz sentido.
+
+        O lugar que ele ocupava no corte de vinte e cinco vai para o proximo
+        termo da fila: o planejamento exclui antes de cortar.
+        """
+        user_id = context.guard().require(request)
+        formulario = await request.form()
+        texto = " ".join(str(formulario.get("texto") or "").split())
+        if texto:
+            context.repository().execute(
+                "INSERT OR IGNORE INTO buscas_excluidas (user_id, texto, criado_em) "
+                "VALUES (?, ?, ?)",
+                (user_id, texto,
+                 datetime.now(timezone.utc).isoformat(timespec="seconds")),
+            )
+        return RedirectResponse(
+            "/?aviso=" + quote(f"{texto!r} não será mais procurado"), status_code=303
+        )
+
+    @router.post("/buscas/devolver")
+    async def devolver_busca_gerada(request: Request):
+        """Desfaz a exclusao: o cargo volta a concorrer a um lugar no plano."""
+        user_id = context.guard().require(request)
+        formulario = await request.form()
+        texto = str(formulario.get("texto") or "")
+        context.repository().execute(
+            "DELETE FROM buscas_excluidas WHERE user_id = ? AND texto = ?",
+            (user_id, texto),
+        )
+        return RedirectResponse(
+            "/?aviso=" + quote(f"{texto!r} voltou à lista"), status_code=303
+        )
+
     @router.get("/export")
     def exportar(request: Request):
         user_id = context.guard().require(request)
@@ -725,7 +760,7 @@ def _rendimento_historico(repositorio, user_id: str) -> dict[str, tuple[int, int
 def _buscas_previstas(context: WebContext, repositorio, user_id: str) -> dict:
     """As buscas que o proximo run executaria, e as que o usuario acrescentou."""
     from ..pipeline.planner import PlannerError, load_filters, plan, teto_por_frente
-    from ..pipeline.stages import frentes_de_busca
+    from ..pipeline.stages import buscas_excluidas, frentes_de_busca
 
     minhas = [
         linha["texto"]
@@ -733,9 +768,10 @@ def _buscas_previstas(context: WebContext, repositorio, user_id: str) -> dict:
             "buscas_do_usuario", columns="texto", order_by="criado_em"
         )
     ]
+    excluidas = list(buscas_excluidas(repositorio.for_user(user_id)))
     versao = context.profile_merger().current(user_id)
     if versao is None:
-        return {"minhas": minhas, "todas": [], "nivel": None}
+        return {"minhas": minhas, "todas": [], "nivel": None, "excluidas": excluidas}
     try:
         queries = plan(
             {**versao.campos, "nivel_inferido": versao.nivel_inferido},
@@ -753,15 +789,18 @@ def _buscas_previstas(context: WebContext, repositorio, user_id: str) -> dict:
                 len(frentes_de_busca(context.config, versao.campos.get("localizacao") or "")),
             ),
             rendimento=_rendimento_historico(repositorio, user_id),
+            excluidas=tuple(excluidas),
         )
     except PlannerError:
         # Arquivo de filtros ausente ou ilegivel nao pode derrubar a pagina:
         # ela e justamente onde o usuario descobriria esse problema.
-        return {"minhas": minhas, "todas": [], "nivel": versao.nivel_inferido}
+        return {"minhas": minhas, "todas": [], "nivel": versao.nivel_inferido,
+                "excluidas": excluidas}
     return {
         "minhas": minhas,
         "todas": [q.texto for q in queries],
         "nivel": versao.nivel_inferido,
+        "excluidas": excluidas,
     }
 
 

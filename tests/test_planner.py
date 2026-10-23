@@ -463,3 +463,33 @@ def test_a_demoted_term_comes_back_when_the_plan_fits_whole(filters):
         )
     ]
     assert sorted(com_historico) == sorted(todas)
+
+
+# ------------------------------------------------ cargos removidos pelo usuario
+def _textos(queries):
+    return [q.texto for q in queries]
+
+
+def test_a_removed_generated_role_leaves_and_the_next_one_takes_its_place(filters):
+    """A exclusao vem antes do corte: o run nao encolhe, o proximo entra."""
+    antes = _textos(plan(PERFIL, "manager", filters, limite=10))
+    fora = antes[0]
+    depois = _textos(plan(PERFIL, "manager", filters, limite=10, excluidas=(fora,)))
+    assert fora not in depois
+    assert len(depois) == len(antes) == 10
+    assert set(depois) - set(antes), "um termo que estava fora do corte entrou"
+
+
+def test_removing_ignores_case_and_spacing(filters):
+    alvo = _textos(plan(PERFIL, "manager", filters))[0]
+    escrito = "  " + alvo.upper().replace(" ", "   ") + " "
+    assert alvo not in _textos(plan(PERFIL, "manager", filters, excluidas=(escrito,)))
+
+
+def test_a_role_the_user_wrote_is_never_removed_by_this(filters):
+    """Remover o que o usuario escreveu e o × de "Suas buscas", nao isto."""
+    queries = plan(
+        PERFIL, "manager", filters,
+        extras=("Gerente de Tecnologia",), excluidas=("Gerente de Tecnologia",),
+    )
+    assert "Gerente de Tecnologia" in _textos(queries)

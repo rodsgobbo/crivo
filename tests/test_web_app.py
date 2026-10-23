@@ -1813,3 +1813,76 @@ def test_every_stage_of_the_run_has_a_label_on_the_progress_bar(tmp_path):
     finally:
         conexao.close()
     assert ORDEM_DOS_ESTAGIOS == nomes
+
+
+# ------------------------------------------- remover cargo gerado com um clique
+def test_a_removed_generated_role_leaves_the_page_and_the_run_alike(cliente):
+    """O × tira o cargo do que a pagina mostra E do que o run executa."""
+    from crivo.pipeline.stages import PlanejamentoStage
+    from crivo.profile.merger import ProfileMerger
+    from crivo.store.repository import Repository
+    from crivo.web.app import WebContext, _buscas_previstas
+    from crivo.worker.runner import RunContext
+
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    conexao = banco()
+    config = load_config()
+    ProfileMerger(conexao, config).consolidate(
+        user_id,
+        resume_fields={
+            "nome": "Ana", "headline": "Gerente de SRE e Infraestrutura",
+            "localizacao": "Osasco, SP",
+            "experiencias": [{"titulo": "Gerente de SRE", "empresa": "X",
+                              "inicio": "2015-01", "fim": None, "descricao": "AWS"}],
+            "competencias": ["Kubernetes", "AWS"], "formacao": ["CC"],
+            "idiomas": ["Portugues"],
+        },
+    )
+    repositorio = Repository(conexao)
+    previstas = lambda: _buscas_previstas(WebContext(config, banco), repositorio, user_id)
+    alvo = previstas()["todas"][0]
+
+    resposta = c.post("/profile/buscas/excluir", data={"texto": alvo},
+                      follow_redirects=False)
+    assert resposta.status_code == 303
+
+    pagina = previstas()
+    assert alvo not in pagina["todas"]
+    assert pagina["excluidas"] == [alvo]
+
+    versao = ProfileMerger(conexao, config).current(user_id)
+    contexto = RunContext(run_id="novo", user_id=user_id, janela="ampla",
+                          config=config, scope=repositorio.for_user(user_id))
+    contexto.dados["perfil"] = {**versao.campos, "nivel_inferido": versao.nivel_inferido}
+    PlanejamentoStage(conexao, config=config).run(contexto)
+    assert [q.texto for q in contexto.dados["buscas"]] == pagina["todas"]
+
+    c.post("/profile/buscas/devolver", data={"texto": alvo}, follow_redirects=False)
+    assert alvo in previstas()["todas"]
+    assert previstas()["excluidas"] == []
+
+
+def test_one_users_removal_does_not_touch_anothers_list(cliente):
+    from crivo.store.repository import Repository
+    from crivo.pipeline.stages import buscas_excluidas
+
+    c, _i, banco = cliente
+    ana = entrar(cliente)
+    c.post("/profile/buscas/excluir", data={"texto": "Database Director"})
+    bruno = entrar(cliente, subject="sub-bruno")
+    repositorio = Repository(banco())
+    assert buscas_excluidas(repositorio.for_user(ana)) == ("Database Director",)
+    assert buscas_excluidas(repositorio.for_user(bruno)) == ()
+
+
+def test_generated_roles_have_a_remove_button_and_removed_ones_can_come_back():
+    html = _pagina_inicial(buscas_previstas={
+        "todas": ["SRE Manager", "Gerente de Tecnologia"],
+        "minhas": ["Gerente de Tecnologia"], "nivel": "manager",
+        "excluidas": ["Database Director"],
+    })
+    assert 'action="/profile/buscas/excluir"' in html
+    assert 'value="SRE Manager"' in html
+    assert 'action="/profile/buscas/devolver"' in html
+    assert "↺ Database Director" in html

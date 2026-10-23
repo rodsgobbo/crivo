@@ -22,7 +22,7 @@ from pathlib import Path
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 #: Versao que este codigo sabe operar. Sobe a cada passo acrescentado abaixo.
-TARGET_VERSION = 10
+TARGET_VERSION = 11
 
 #: Passos de migracao por versao de destino. Cada entrada tem o passo direto e o
 #: inverso; o inverso existe para que a reversao seja declarada e nao inventada
@@ -193,7 +193,28 @@ def _v10_resumo_da_coleta(connection: sqlite3.Connection) -> None:
     connection.execute("ALTER TABLE runs ADD COLUMN coleta TEXT")
 
 
+def _v11_buscas_excluidas(connection: sqlite3.Connection) -> None:
+    """Cargos gerados pelo perfil que o usuario mandou nao procurar.
+
+    O planejamento combina eixo e nivel, e parte do resultado nao faz sentido
+    para quem le: "Database Director" para quem nunca foi DBA. Ate aqui so dava
+    para remover o que o proprio usuario tinha escrito; o gerado ocupava uma das
+    vinte e cinco buscas para sempre.
+    """
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS buscas_excluidas (
+            user_id   TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+            texto     TEXT NOT NULL,
+            criado_em TEXT NOT NULL,
+            PRIMARY KEY (user_id, texto)
+        )
+        """
+    )
+
+
 MIGRATIONS: dict[int, tuple[Callable[[sqlite3.Connection], None], str]] = {
+    11: (_v11_buscas_excluidas, "DROP TABLE buscas_excluidas"),
     10: (_v10_resumo_da_coleta, "ALTER TABLE runs DROP COLUMN coleta"),
     9: (_v9_token_do_extrator, "DROP TABLE extractor_tokens"),
     8: (

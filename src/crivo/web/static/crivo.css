@@ -865,6 +865,16 @@ body.relatorio h2::before { height: 4px; width: 18px; }
   cursor: pointer;
 }
 .tag-x:hover { color: var(--erro); }
+/* Cargo que o usuario tirou da lista: riscado e apagado, para ler como "fora",
+   mas clicavel inteiro -- devolver e o unico gesto que ele oferece. */
+.tag.removida {
+  border: 0;
+  font-family: inherit;
+  color: var(--suave);
+  text-decoration: line-through;
+  cursor: pointer;
+}
+.tag.removida:hover { text-decoration: none; color: var(--texto); }
 
 details { margin-top: var(--esp-2); }
 summary { cursor: pointer; color: var(--suave); font-size: var(--txt-sm); }

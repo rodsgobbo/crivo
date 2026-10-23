@@ -27,7 +27,7 @@ USER_SCOPED_TABLES = frozenset({
     "sessions", "linkedin_connections", "provider_credentials", "resumes",
     "resume_extractions", "profile_versions", "runs", "jobs", "scores",
     "discards", "daily_quota", "enrichment_requests", "buscas_do_usuario",
-    "extractor_tokens",
+    "extractor_tokens", "buscas_excluidas",
 })
 
 #: Tabelas sem dono. `job_descriptions` e compartilhada por decisao de projeto.

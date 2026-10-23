@@ -285,14 +285,36 @@
         imediatamente acima.
       </p>
 
-      <p class="nota">Geradas a partir do perfil:</p>
+      <p class="nota">
+        Geradas a partir do perfil. Clique no × do que não faz sentido para
+        você: o cargo sai das buscas e o próximo da fila entra no lugar.
+      </p>
       <div class="tags">
         {% for termo in ctx.buscas_previstas.todas %}
           {% if termo not in ctx.buscas_previstas.minhas %}
-            <span class="tag">{{ termo }}</span>
+            <form method="post" action="/profile/buscas/excluir" class="tag-form">
+              <input type="hidden" name="texto" value="{{ termo }}">
+              <span class="tag">{{ termo }}
+                <button class="tag-x" type="submit"
+                        title="não procurar {{ termo }}">×</button>
+              </span>
+            </form>
           {% endif %}
         {% endfor %}
       </div>
+
+      {% if ctx.buscas_previstas.excluidas %}
+        <p class="nota">Removidos por você — clique para devolver:</p>
+        <div class="tags">
+          {% for termo in ctx.buscas_previstas.excluidas %}
+            <form method="post" action="/profile/buscas/devolver" class="tag-form">
+              <input type="hidden" name="texto" value="{{ termo }}">
+              <button class="tag removida" type="submit"
+                      title="voltar a procurar {{ termo }}">↺ {{ termo }}</button>
+            </form>
+          {% endfor %}
+        </div>
+      {% endif %}
     </details>
   {% endif %}
 

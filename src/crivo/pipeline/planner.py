@@ -235,6 +235,7 @@ def plan(
     extras: tuple[str, ...] = (),
     limite: int | None = None,
     rendimento: dict[str, tuple[int, int]] | None = None,
+    excluidas: tuple[str, ...] = (),
 ) -> list[Query]:
     """Devolve a lista de buscas do run, ordenada de forma estavel.
 
@@ -255,6 +256,11 @@ def plan(
     requisicoes em rajada, que e exatamente o que o governador de taxa foi
     escrito para nao deixar acontecer. Buscar mais nao e achar mais quando a
     origem para de responder no meio.
+
+    `excluidas` sao termos gerados que o usuario mandou nao procurar. Saem antes
+    do corte, e nao depois: o lugar que liberam e ocupado pelo proximo termo da
+    fila, em vez de o run simplesmente encolher. O que o proprio usuario
+    escreveu nao e afetado -- para isso existe remover a busca dele.
     """
     eixos = detect_axes(profile_fields, filters)
     buscas: dict[str, Query] = {}
@@ -278,6 +284,13 @@ def plan(
 
     for extra in extras:
         _add(buscas, extra, _idioma(extra), "usuario")
+
+    if excluidas:
+        fora = {" ".join(t.casefold().split()) for t in excluidas}
+        buscas = {
+            chave: q for chave, q in buscas.items()
+            if q.origem == "usuario" or " ".join(q.texto.casefold().split()) not in fora
+        }
 
     # Chave textual e nao ordem de insercao: a saida precisa ser identica entre
     # execucoes, e a ordem de insercao depende de detalhes do dicionario.

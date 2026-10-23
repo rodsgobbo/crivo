@@ -118,6 +118,12 @@ COVERAGE: dict[str, list[str]] = {
         "test_stages::test_the_collection_survives_a_run_reclaimed_with_an_empty_context",
         "test_stages::test_the_second_half_survives_the_loss_of_in_memory_context",
     ],
+    "7.8": [
+        "test_planner::test_a_removed_generated_role_leaves_and_the_next_one_takes_its_place",
+        "test_planner::test_a_role_the_user_wrote_is_never_removed_by_this",
+        "test_web_app::test_a_removed_generated_role_leaves_the_page_and_the_run_alike",
+        "test_web_app::test_one_users_removal_does_not_touch_anothers_list",
+    ],
 
     # ------------------------------------------------------- REQ-8 coleta
     "8.1": ["test_collector::test_a_row_becomes_a_normalized_card"],
