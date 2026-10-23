@@ -329,10 +329,18 @@ def _aplicar_filtros(
         # Casa por pedaco e sem acento: quem procura "gerente" quer achar
         # "Gerência" e "Gerente Sênior", e digitar o acento certo nao pode ser
         # requisito para encontrar o proprio cargo.
+        #
+        # Procura no titulo e na empresa juntos, e cada palavra pode estar em
+        # qualquer um dos dois: "alelo gerente" acha "Gerente de Tecnologia" da
+        # Alelo Brasil. Antes so o titulo era lido, e quem lembrava da empresa
+        # e nao do cargo exato nao tinha como achar a vaga.
         termos = cargo.split()
         resultado = [
             v for v in resultado
-            if all(termo in _normalizar(v["titulo"]) for termo in termos)
+            if all(
+                termo in _normalizar(f"{v['titulo']} {v.get('empresa') or ''}")
+                for termo in termos
+            )
         ]
     minimo = filtros.get("score_minimo")
     if minimo:

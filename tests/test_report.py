@@ -817,6 +817,33 @@ def test_the_title_filter_matches_words_in_any_order():
     assert not _aplicar_filtros(vagas, {"cargo": "sre analista"})
 
 
+def test_the_filter_also_finds_a_job_by_its_company():
+    """Quem lembra da empresa e nao do cargo exato precisa achar a vaga.
+
+    Em 23/10/2026: uma vaga de gerente na Alelo que nao aparecia procurando
+    pelo titulo.
+    """
+    from crivo.report.renderer import _aplicar_filtros
+
+    vagas = [
+        _vaga(job_id="alelo", titulo="Gerente de Tecnologia", empresa="Alelo Brasil"),
+        _vaga(job_id="outra", titulo="Gerente de Tecnologia", empresa="Fintech"),
+        _vaga(job_id="alelo-dba", titulo="Especialista DBA", empresa="Alelo Brasil"),
+    ]
+    por_empresa = _aplicar_filtros(vagas, {"cargo": "alelo"})
+    assert [v["job_id"] for v in por_empresa] == ["alelo", "alelo-dba"]
+    # Cada palavra pode estar no titulo ou na empresa.
+    juntos = _aplicar_filtros(vagas, {"cargo": "alelo gerente"})
+    assert [v["job_id"] for v in juntos] == ["alelo"]
+
+
+def test_a_job_without_a_company_still_matches_by_title():
+    from crivo.report.renderer import _aplicar_filtros
+
+    vagas = [_vaga(job_id="a", titulo="SRE Manager", empresa=None)]
+    assert _aplicar_filtros(vagas, {"cargo": "sre"})
+
+
 def test_an_empty_title_filter_does_not_filter():
     from crivo.report.renderer import _aplicar_filtros
 
