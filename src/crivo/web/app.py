@@ -596,6 +596,8 @@ ROTULO_DO_ESTAGIO = {
     "pontuacao_provisoria": "pontuando por título",
     "enriquecimento": "lendo as descrições das vagas",
     "pontuacao_final": "refazendo a pontuação com as descrições",
+    "reconferencia": "conferindo se as melhores ainda aceitam candidaturas",
+    "julgamento": "relendo as melhores vagas",
     "sintese": "escrevendo a leitura da busca",
 }
 

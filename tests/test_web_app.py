@@ -1754,3 +1754,62 @@ def test_both_yield_queries_agree_on_the_same_database(cliente):
     assert estagio._rendimento(contexto) == _rendimento_historico(
         repositorio, user_id
     )
+
+
+# ------------------------------------------- cargos procurados sempre a mao
+def _pagina_inicial(**estado):
+    from crivo.web.app import _ambiente
+
+    base = {
+        "user_id": "ana", "proximo": None, "runs": [], "buscas_restantes": 2,
+        "buscas_previstas": {
+            "todas": ["Gerente de Tecnologia", "SRE Manager"],
+            "minhas": ["Gerente de Tecnologia"], "nivel": "gerente",
+        },
+    }
+    base.update(estado)
+    return _ambiente().get_template("home.html.j2").render(ctx=base)
+
+
+@pytest.mark.parametrize("situacao", [
+    {},
+    # As duas situacoes em que a secao sumia junto com o cartao de buscar.
+    {"buscas_restantes": 0},
+    {"run_ativo": {"run_id": "r1", "estado": "em_andamento", "estagio": "coleta",
+                   "rotulo": "buscando vagas", "feitos": 2, "total": 11,
+                   "decorrido_s": 60, "desde": "2026-10-23T13:00:00+00:00",
+                   "cancelando": False}},
+])
+def test_the_searched_roles_can_always_be_adjusted(situacao):
+    """Em 23/10/2026 o usuario nao achou onde acrescentar "Gerente de Tecnologia".
+
+    A secao vivia dentro do cartao de buscar, que some enquanto uma busca roda e
+    quando a cota do dia acaba. Ajustar os cargos nao gasta busca nenhuma.
+    """
+    html = _pagina_inicial(**situacao)
+    assert "Cargos procurados (2)" in html
+    assert 'action="/profile/buscas"' in html
+    assert "Gerente de Tecnologia" in html
+
+
+def test_while_a_run_is_going_the_page_says_additions_wait_for_the_next():
+    html = _pagina_inicial(run_ativo={
+        "run_id": "r1", "estado": "em_andamento", "estagio": "coleta",
+        "rotulo": "buscando vagas", "feitos": 2, "total": 11, "decorrido_s": 60,
+        "desde": "2026-10-23T13:00:00+00:00", "cancelando": False,
+    })
+    assert "entra na próxima" in " ".join(html.split())
+
+
+def test_every_stage_of_the_run_has_a_label_on_the_progress_bar(tmp_path):
+    """Etapa sem rotulo aparecia na barra pelo nome tecnico."""
+    from crivo.pipeline.stages import build_stages
+    from crivo.store.migrations import open_database
+    from crivo.web.app import ORDEM_DOS_ESTAGIOS
+
+    conexao = open_database(tmp_path / "x.db")
+    try:
+        nomes = tuple(e.name for e in build_stages(conexao, load_config(), object()))
+    finally:
+        conexao.close()
+    assert ORDEM_DOS_ESTAGIOS == nomes

@@ -228,52 +228,6 @@
           dias, boa parte pode ficar sem descrição lida.
         </p>
 
-        {# O que sera procurado, antes de gastar a cota. Sem isto, a unica forma
-           de saber por que um cargo nao apareceu era ler o planejador. #}
-        {% if ctx.buscas_previstas and ctx.buscas_previstas.todas %}
-          <details>
-            <summary>
-              {{ ctx.buscas_previstas.todas | length }} termos serão procurados —
-              ajustar
-            </summary>
-
-            {% if ctx.buscas_previstas.minhas %}
-              <p class="nota">Suas buscas:</p>
-              <div class="tags">
-                {% for termo in ctx.buscas_previstas.minhas %}
-                  <form method="post" action="/profile/buscas/remover" class="tag-form">
-                    <input type="hidden" name="texto" value="{{ termo }}">
-                    <span class="tag">{{ termo }}
-                      <button class="tag-x" type="submit"
-                              title="remover {{ termo }}">×</button>
-                    </span>
-                  </form>
-                {% endfor %}
-              </div>
-            {% endif %}
-
-            <form method="post" action="/profile/buscas" class="envio">
-              <input type="text" name="texto"
-                     placeholder="Head of SRE, Diretor de Infraestrutura…">
-              <button class="acao discreta" type="submit">Acrescentar busca</button>
-            </form>
-            <p class="nota">
-              Ao menos duas palavras: um termo solto devolve o mercado inteiro.
-              As buscas geradas vêm do seu perfil — nível
-              <strong>{{ ctx.buscas_previstas.nivel }}</strong> e o degrau
-              imediatamente acima.
-            </p>
-
-            <p class="nota">Geradas a partir do perfil:</p>
-            <div class="tags">
-              {% for termo in ctx.buscas_previstas.todas %}
-                {% if termo not in ctx.buscas_previstas.minhas %}
-                  <span class="tag">{{ termo }}</span>
-                {% endif %}
-              {% endfor %}
-            </div>
-          </details>
-        {% endif %}
       {% else %}
         {# A acao continua visivel, com o motivo no rotulo. Removê-la fazia a
            ausencia ser indistinguivel de defeito. #}
@@ -284,6 +238,62 @@
         </p>
       {% endif %}
     </div>
+  {% endif %}
+
+
+  {# Cargos procurados, num cartao proprio. Vivia dentro de "Buscar vagas", e
+     sumia junto com ele: enquanto uma busca rodava, e quando a cota do dia
+     acabava. Em 23/10/2026 isso deixou o usuario sem achar onde acrescentar
+     "Gerente de Tecnologia" -- e ajustar os cargos nao gasta busca nenhuma. #}
+  {% if ctx.user_id and not ctx.proximo and ctx.buscas_previstas
+        and ctx.buscas_previstas.todas %}
+    <details class="cartao cargos">
+      <summary>
+        Cargos procurados ({{ ctx.buscas_previstas.todas | length }}) — ver e
+        acrescentar
+      </summary>
+      {% if ctx.run_ativo %}
+        <p class="nota">
+          Uma busca está rodando com a lista que valia quando ela começou. O que
+          você acrescentar aqui entra na próxima.
+        </p>
+      {% endif %}
+      {% if ctx.buscas_previstas.minhas %}
+        <p class="nota">Suas buscas:</p>
+        <div class="tags">
+          {% for termo in ctx.buscas_previstas.minhas %}
+            <form method="post" action="/profile/buscas/remover" class="tag-form">
+              <input type="hidden" name="texto" value="{{ termo }}">
+              <span class="tag">{{ termo }}
+                <button class="tag-x" type="submit"
+                        title="remover {{ termo }}">×</button>
+              </span>
+            </form>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" action="/profile/buscas" class="envio">
+        <input type="text" name="texto"
+               placeholder="Head of SRE, Diretor de Infraestrutura…">
+        <button class="acao discreta" type="submit">Acrescentar busca</button>
+      </form>
+      <p class="nota">
+        Ao menos duas palavras: um termo solto devolve o mercado inteiro.
+        As buscas geradas vêm do seu perfil — nível
+        <strong>{{ ctx.buscas_previstas.nivel }}</strong> e o degrau
+        imediatamente acima.
+      </p>
+
+      <p class="nota">Geradas a partir do perfil:</p>
+      <div class="tags">
+        {% for termo in ctx.buscas_previstas.todas %}
+          {% if termo not in ctx.buscas_previstas.minhas %}
+            <span class="tag">{{ termo }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </details>
   {% endif %}
 
   {% if ctx.user_id %}
