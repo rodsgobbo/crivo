@@ -931,3 +931,28 @@ def test_the_first_sighting_is_still_never_rewritten(collector):
     assert collector.execute(
         "SELECT primeira_vez_em FROM jobs WHERE job_id = 'li-1'"
     ).fetchone()["primeira_vez_em"] == primeira
+
+
+# ------------------------------------------- recusa vira bloqueio no governador
+def test_a_refused_search_records_a_block_that_the_next_run_respects(collector):
+    """Em 23/10/2026: tres runs em tres horas, o terceiro barrado na decima busca.
+
+    A recusa chega como resultado, e nao como excecao, e nunca passava pela
+    contagem do governador -- a hora de recuperacao nao valia para a coleta.
+    """
+    from crivo.config import load_config
+    from crivo.pipeline.governor import RateGovernor
+
+    governador = RateGovernor(collector, load_config(), sleep=lambda s: None)
+    fonte = FakeSource({"B": SearchOutcome(busca="B", bloqueada=True, falha="429")})
+    Collector(collector, fonte, governador).collect("ana", ["A", "B", "C"], AQUI, 24)
+
+    assert governador.active_block() is not None
+    # O run seguinte nem chega a pedir: o governador recusa antes.
+    fonte.chamadas.clear()
+    resultado = Collector(collector, fonte, governador).collect("ana", ["A"], AQUI, 24)
+    assert fonte.chamadas == []
+    assert resultado.bloqueadas == ["A"]
+    assert collector.execute("SELECT COUNT(*) FROM collection_blocks").fetchone()[0] == 1, (
+        "a recusa que veio do proprio governador nao grava um segundo bloqueio"
+    )

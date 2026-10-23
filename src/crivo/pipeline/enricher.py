@@ -43,6 +43,9 @@ class EnrichmentOutcome:
     reusadas: list[str] = field(default_factory=list)
     sem_descricao: list[str] = field(default_factory=list)
     sem_cota: list[str] = field(default_factory=list)
+    #: Nao tentadas por causa de bloqueio. Diferente de `sem_descricao`: a
+    #: descricao nao faltou, o pedido so nao saiu, e deve sair depois.
+    adiadas: list[str] = field(default_factory=list)
     bloqueado: bool = False
 
     @property
@@ -158,7 +161,7 @@ class Enricher:
 
         for card in cards:
             if resultado.bloqueado:
-                resultado.sem_descricao.append(card.job_id)
+                resultado.adiadas.append(card.job_id)
                 continue
 
             guardada = self.stored_description(card.job_id)
@@ -179,7 +182,7 @@ class Enricher:
                 )
             except CollectionBlocked:
                 resultado.bloqueado = True
-                resultado.sem_descricao.append(card.job_id)
+                resultado.adiadas.append(card.job_id)
                 logger.warning("enriquecimento interrompido por bloqueio de coleta")
                 continue
             except CollectionError as exc:

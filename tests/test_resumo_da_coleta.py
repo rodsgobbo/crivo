@@ -150,6 +150,10 @@ def test_a_barred_run_hands_its_pending_terms_to_the_next_one(tmp_path):
         assert primeiro["barrada_em"] == fonte.buscas[1]
         pendentes = [primeiro["barrada_em"], *primeiro["nao_tentadas"]]
 
+        # A recusa registrou um bloqueio no governador; o run seguinte so sai
+        # depois da hora de recuperacao. Aqui ela passa de uma vez.
+        assert connection.execute("SELECT COUNT(*) FROM collection_blocks").fetchone()[0] == 1
+        connection.execute("UPDATE collection_blocks SET liberado_em = ocorrido_em")
         fonte.barrar = False
         fonte.buscas.clear()
         fila.enqueue(USUARIO)

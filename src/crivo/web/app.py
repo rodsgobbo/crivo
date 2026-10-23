@@ -141,7 +141,14 @@ class WebContext:
         return JobLifecycle(self.connect())
 
     def scheduler(self) -> Scheduler:
-        return Scheduler(self.connect(), self.config)
+        # Com o governador, para que o portao de recuperacao funcione: sem ele
+        # `recovery_gate` sempre deixava passar, e o botao de buscar aceitava
+        # um run contra o LinkedIn ainda no meio da hora de bloqueio. Montar o
+        # governador nao emite requisicao nenhuma.
+        from ..pipeline.governor import RateGovernor
+
+        conexao = self.connect()
+        return Scheduler(conexao, self.config, RateGovernor(conexao, self.config))
 
 
 # ---------------------------------------------------------------- rotas

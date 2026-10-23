@@ -300,6 +300,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 11.6 THE Job Agent SHALL prevent o uso de qualquer credencial de usuário para coletar dados de vaga.
 
+11.7 WHEN uma busca de coleta é recusada pela origem, THEN the Rate Governor SHALL register um bloqueio de coleta, the Scheduler SHALL refuse novos runs até o fim do intervalo de recuperação informando quando tentar de novo, e the Enricher SHALL keep pendentes os pedidos de descrição que o bloqueio impediu, em vez de encerrá-los como falha.
+
 ### REQ-12: Distribuição da cota de coleta entre usuários
 
 **User Story:** As a candidato, I want receber uma parcela previsível da capacidade de coleta, so that outro usuário não consuma sozinho o orçamento do dia.

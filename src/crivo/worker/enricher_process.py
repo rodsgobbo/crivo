@@ -115,7 +115,14 @@ class EnricherProcess:
             relatorio.atendidos.extend(sorted(atendidos))
             relatorio.sem_descricao.extend(resultado.sem_descricao)
             relatorio.bloqueado = relatorio.bloqueado or resultado.bloqueado
+            # O que o bloqueio impediu fica pendente, e sai depois da hora de
+            # recuperacao. Antes era fechado como falha: um bloqueio no meio de
+            # um lote jogava fora ate vinte e cinco descricoes que nem tinham
+            # sido pedidas, e o run seguia sem elas.
+            adiadas = set(resultado.adiadas)
             for pedido in do_usuario:
+                if pedido.job_id in adiadas:
+                    continue
                 self._fila.settle(
                     pedido.request_id, atendido=pedido.job_id in atendidos
                 )

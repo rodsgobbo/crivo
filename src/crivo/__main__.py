@@ -438,9 +438,12 @@ def _executar(args) -> int:
             return 1
         return 0
 
+    from .pipeline.governor import RateGovernor
     from .scheduler import Scheduler
 
-    resultado = Scheduler(banco(), config).run_cycle()
+    conexao = banco()
+    # O governador e o que faz o ciclo respeitar a hora de recuperacao.
+    resultado = Scheduler(conexao, config, RateGovernor(conexao, config)).run_cycle()
     print(
         f"ciclo: {len(resultado.enfileirados)} enfileirados, "
         f"{len(resultado.recusados)} recusados, "

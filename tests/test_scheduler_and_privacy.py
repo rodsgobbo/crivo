@@ -150,7 +150,8 @@ def test_a_block_postpones_the_cycle_for_everyone(env):
     resultado = scheduler(env, governor).run_cycle()
     assert resultado.adiado_por_bloqueio is True
     assert resultado.enfileirados == []
-    assert "bloqueio de coleta" in resultado.motivo
+    assert "LinkedIn recusou pedidos" in resultado.motivo
+    assert "tente a partir das" in resultado.motivo
 
 
 def test_the_cycle_resumes_after_the_recovery_interval(env):
@@ -229,7 +230,21 @@ def test_an_immediate_run_is_refused_during_a_block(env):
     governor = bloquear(connection, config, clock)
     with pytest.raises(SchedulerRefusal) as err:
         scheduler(env, governor).request_immediate("ana")
-    assert "bloqueio de coleta" in str(err.value)
+    # A frase vai para a pagina: diz o que houve e quando tentar de novo.
+    assert "LinkedIn recusou pedidos" in str(err.value)
+    assert "tente a partir das" in str(err.value)
+
+
+def test_the_web_scheduler_closes_the_gate_during_a_block(tmp_path):
+    """Sem governador o portao ficava sempre aberto, e era assim que a tela o montava."""
+    from crivo.pipeline.governor import RateGovernor
+    from crivo.store.migrations import ThreadLocalDatabase
+    from crivo.web.app import WebContext
+
+    banco = ThreadLocalDatabase(tmp_path / "crivo.db")
+    config = load_config()
+    RateGovernor(banco(), config).record_block(1)
+    assert WebContext(config, banco).scheduler().recovery_gate() is not None
 
 
 def test_an_immediate_run_is_refused_while_another_is_active(env):

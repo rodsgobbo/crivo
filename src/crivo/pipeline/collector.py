@@ -185,6 +185,13 @@ class Collector:
                 # contra um portao fechado -- e cada tentativa a mais alonga o
                 # bloqueio. O que sobrou fica registrado como nao tentado, e nao
                 # como mercado vazio.
+                #
+                # E o bloqueio vai para o governador, que e quem aplica a hora
+                # de recuperacao. A recusa da busca chega como resultado, e nao
+                # como excecao, e por isso nunca passava pela contagem dele: o
+                # run seguinte comecava em cima do portao fechado. Em 23/10/2026
+                # tres runs em tres horas, e o terceiro barrado na decima busca.
+                self._registra_bloqueio()
                 resultado.nao_tentadas.extend(_termos_restantes(pedidos, indice))
                 logger.warning(
                     "coleta barrada em %r na frente %r; %s termo(s) restante(s) "
@@ -218,6 +225,17 @@ class Collector:
         self._grava_novos(user_id, resultado)
 
     # ------------------------------------------------------------ interno
+    def _registra_bloqueio(self) -> None:
+        """Grava o bloqueio no governador, se ainda nao houver um ativo.
+
+        Ja havendo um, a recusa veio dele mesmo -- a busca nem saiu --, e gravar
+        outro so empurraria a liberacao para a frente sem motivo novo.
+        """
+        if self._governor is None:
+            return
+        if self._governor.active_block() is None:
+            self._governor.record_block(1)
+
     def _buscar(
         self, termo: str, local: str, janela_horas: int, quantidade: int,
         remoto: bool = False,

@@ -150,11 +150,17 @@ def test_reuse_does_not_spend_quota(env):
 
 
 # ------------------------------------------------------------------ bloqueio
-def test_a_block_stops_the_enrichment_and_marks_the_rest(env):
+def test_a_block_stops_the_enrichment_and_postpones_the_rest(env):
+    """O que o bloqueio impediu e adiado, e nao dado como sem descricao.
+
+    A descricao nao faltou: o pedido so nao saiu. Fechado como falha, ele se
+    perdia; adiado, sai depois da hora de recuperacao.
+    """
     fonte = FakeSource(erro=AttemptTimeout("sem resposta"))
     resultado = enricher(env, fonte).enrich("ana", [card("li-1"), card("li-2")])
     assert resultado.bloqueado is True
-    assert set(resultado.sem_descricao) == {"li-1", "li-2"}
+    assert set(resultado.adiadas) == {"li-1", "li-2"}
+    assert resultado.sem_descricao == []
 
 
 def test_after_a_block_no_further_request_is_emitted(env):
@@ -415,3 +421,23 @@ def test_an_unreadable_age_leaves_the_date_alone(env):
     assert connection.execute(
         "SELECT publicada_em FROM jobs WHERE job_id = 'li-1' AND user_id = 'ana'"
     ).fetchone()["publicada_em"] is None
+
+
+# ------------------------------------------- bloqueio adia, e nao descarta
+def test_requests_a_block_prevented_stay_pending_for_after_the_recovery(env):
+    """Antes eram fechados como falha: ate 25 descricoes perdidas por bloqueio."""
+    from crivo.worker.enrichment_queue import EnrichmentQueue
+    from crivo.worker.queue import RunQueue
+
+    connection, _config, _g = env
+    run_id = RunQueue(connection).enqueue("ana")
+    fila = EnrichmentQueue(connection)
+    fila.enqueue("ana", run_id, [card("li-1")])
+    processo = _processo(env, FakeSource(erro=AttemptTimeout("sem resposta")))
+    processo._governor._sleep = lambda s: None
+
+    relatorio = processo.run_cycle()
+
+    assert relatorio.bloqueado is True
+    estados = {e for (e,) in connection.execute("SELECT estado FROM enrichment_requests")}
+    assert estados == {"pendente"}

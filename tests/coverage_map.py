@@ -191,6 +191,12 @@ COVERAGE: dict[str, list[str]] = {
         "test_governor::test_a_refused_call_never_reaches_the_operation",
     ],
     "11.6": ["test_enricher::test_credential_of_a_user_never_reaches_the_collection"],
+    "11.7": [
+        "test_collector::test_a_refused_search_records_a_block_that_the_next_run_respects",
+        "test_scheduler_and_privacy::test_an_immediate_run_is_refused_during_a_block",
+        "test_scheduler_and_privacy::test_the_web_scheduler_closes_the_gate_during_a_block",
+        "test_enricher::test_requests_a_block_prevented_stay_pending_for_after_the_recovery",
+    ],
 
     # ------------------------------------------------------- REQ-12 cota
     "12.1": ["test_quota::test_the_budget_is_split_among_active_users"],

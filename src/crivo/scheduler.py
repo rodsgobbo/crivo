@@ -69,10 +69,19 @@ class Scheduler:
         bloqueio = self._governor.active_block()
         if bloqueio is None:
             return None
+        # A frase vai para a pagina, para quem clicou em buscar. O que ela
+        # precisa saber e quando tentar de novo, no relogio dela -- e nao um
+        # carimbo UTC e uma contagem de segundos.
+        from datetime import timedelta
+
+        ocorrido = datetime.fromisoformat(bloqueio["ocorrido_em"])
+        liberado = ocorrido + timedelta(
+            seconds=self._config.collection.intervalo_recuperacao_s
+        )
         return (
-            f"bloqueio de coleta em {bloqueio['ocorrido_em']} apos "
-            f"{bloqueio['tentativas']} tentativas; aguardando o intervalo de "
-            f"recuperacao de {self._config.collection.intervalo_recuperacao_s}s"
+            f"o LinkedIn recusou pedidos às {ocorrido.astimezone():%H:%M}, e o "
+            f"crivo está esperando antes de pedir de novo, para não prolongar o "
+            f"bloqueio; tente a partir das {liberado.astimezone():%H:%M}"
         )
 
     # ------------------------------------------------------------- ciclo
