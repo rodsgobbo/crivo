@@ -40,7 +40,11 @@
   {% if ctx.erro %}
     <div class="cartao falhou">
       <div class="linha">
-        <span class="rotulo">A autorização não foi concluída</span>
+        {# Generico de proposito: este cartao recebe o erro de toda acao da
+           pagina -- curriculo, chave, busca, cargo. O titulo antigo falava de
+           autorizacao, e em 23/10/2026 apareceu em cima de "uma busca precisa
+           de ao menos duas palavras". #}
+        <span class="rotulo">Não foi possível concluir</span>
         <span class="marca erro">erro</span>
       </div>
       <p class="nota">{{ ctx.erro }}</p>
@@ -49,8 +53,11 @@
   {% if ctx.aviso %}
     <div class="cartao andando">
       <div class="linha">
-        <span class="rotulo">Conectado, com ressalva</span>
-        <span class="marca pendente">atenção</span>
+        {# Idem: quase todo aviso e confirmacao ("busca acrescentada",
+           "curriculo conferido"), e nao a ressalva da conexao com o LinkedIn
+           para a qual o titulo antigo foi escrito. #}
+        <span class="rotulo">Aviso</span>
+        <span class="marca pendente">feito</span>
       </div>
       <p class="nota">{{ ctx.aviso }}</p>
     </div>

@@ -251,10 +251,17 @@ def build_profile_router(context: WebContext) -> APIRouter:
         formulario = await request.form()
         texto = " ".join(str(formulario.get("texto") or "").split())
         if len(texto.split()) < 2:
+            # O exemplo usa a palavra digitada: "FinOps" sozinho nao serve, e a
+            # mensagem que so dizia a regra deixava a pessoa sem saber o que
+            # escrever no lugar.
+            exemplo = (
+                f" Junte um cargo: “Gerente de {texto}” ou “{texto} Manager”."
+                if texto else ""
+            )
             return RedirectResponse(
                 "/?erro=" + quote(
                     "uma busca precisa de ao menos duas palavras; um termo "
-                    "solto devolve o mercado inteiro"
+                    "solto devolve o mercado inteiro." + exemplo
                 ),
                 status_code=303,
             )

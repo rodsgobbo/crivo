@@ -186,7 +186,7 @@ def test_a_cancelled_authorization_returns_the_cause(cliente):
     assert resposta.status_code == 200
     assert resposta.url.path == "/"
     assert "access_denied" in resposta.text
-    assert "A autorização não foi concluída" in resposta.text
+    assert "Não foi possível concluir" in resposta.text
 
 
 def test_a_hostile_message_from_the_provider_is_escaped(cliente):
@@ -364,7 +364,7 @@ def test_the_connection_reports_fields_unavailable_by_scope(cliente):
     pagina = c.get(f"/linkedin/callback?state={state}&code=codigo")
     assert pagina.url.path == "/"
     assert "experiencias" in pagina.text
-    assert "Conectado, com ressalva" in pagina.text
+    assert "LinkedIn conectado sem" in pagina.text
     # E o estado continua consultavel por quem quer o dado estruturado.
     assert "experiencias" in c.get("/linkedin").json()["campos_indisponiveis"]
 
@@ -1326,7 +1326,7 @@ def test_connecting_without_a_provider_explains_instead_of_crashing(
     assert resposta.url.path == "/"
     assert "nao configurada" in resposta.text
     assert "LINKEDIN_CLIENT_ID" in resposta.text
-    assert "A autorização não foi concluída" in resposta.text
+    assert "Não foi possível concluir" in resposta.text
 
 
 def test_the_entry_page_still_works_without_a_linkedin_provider(
@@ -1886,3 +1886,13 @@ def test_generated_roles_have_a_remove_button_and_removed_ones_can_come_back():
     assert 'value="SRE Manager"' in html
     assert 'action="/profile/buscas/devolver"' in html
     assert "↺ Database Director" in html
+
+
+def test_a_one_word_search_is_refused_with_an_example_built_from_it(cliente):
+    """Em 23/10/2026: "FinOps" voltava com a regra, sem dizer o que escrever."""
+    c, _i, banco = cliente
+    entrar(cliente)
+    pagina = c.post("/profile/buscas", data={"texto": "FinOps"}).text
+    assert "Não foi possível concluir" in pagina
+    assert "autorização" not in pagina
+    assert "Gerente de FinOps" in pagina and "FinOps Manager" in pagina
