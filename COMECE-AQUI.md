@@ -283,8 +283,16 @@ O que você muda vale a partir da **próxima** busca.
 ### Ler o relatório
 
 Cada vaga tem uma nota de 0 a 100% e uma recomendação: **aplicar agora**,
-**pedir indicação antes** ou **descartar**, com o motivo ao lado. O que mais
-aparece:
+**pedir indicação antes** ou **descartar**, com o motivo ao lado.
+
+Nas vagas marcadas **pedir indicação antes** há o botão **Rascunhar pedido de
+indicação**: a sua chave de IA escreve uma mensagem curta, só com o que está no
+seu perfil, para você mandar a algum contato da empresa. O crivo não envia nada —
+você copia, troca `[Nome]` pelo nome da pessoa, ajusta e envia. Se a mensagem
+trouxer algum número que não está no seu perfil, a página avisa para você
+conferir.
+
+O que mais aparece:
 
 | Na vaga | Quer dizer |
 |---|---|
