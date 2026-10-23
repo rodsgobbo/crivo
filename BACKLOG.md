@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1082 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1095 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -481,10 +481,28 @@ As correções de 25/ago apareceram no run `a6d5a060`, e o run `1418e378` rodou
 com todas elas (ver "Onde estamos"). A extensão e o token do extrator, de 09/set,
 ainda não têm run observado registrado aqui.
 
-### 5.2 — Telas redesenhadas nunca abertas num navegador · **médio** · P
+### 5.2 — ~~Telas redesenhadas nunca abertas num navegador~~ · ✔ **olhadas em 23/out**
 
 A folha de estilo única, a home reordenada, a navegação compartilhada e o filtro
 do relatório passam nos testes de conteúdo. Ninguém olhou.
+
+**Olhadas em 23/out**, com os dados reais, numa cópia do banco servida por uma
+segunda face web (porta 8001, sem runs e sem requisição à origem), fotografada
+pelo Chrome sem janela em largura de computador e de celular. A largura de
+celular foi medida dentro de um iframe de 390 px: a janela do Chrome sem tela
+não desce abaixo de ~500 px e fazia toda página parecer transbordar. O que a
+vista achou, e os testes de conteúdo não:
+
+- **A leitura estratégica saía como Markdown cru** num `<pre>` — `**`, `###`,
+  tabelas de `|` e `<br>` à mostra, na seção mais cara do relatório. Agora passa
+  por `report/markdown_seguro.py`, que escapa tudo antes de reconhecer o
+  subconjunto (o texto é do modelo, e pode ser injeção). `|` dentro de célula
+  não abre mais coluna fantasma.
+- "achada por extensao" virou "achada pela extensão do navegador".
+- Itens de "Instalação concluída" colados uns nos outros; o identificador
+  interno do usuário à mostra; o botão de arquivo no estilo do sistema.
+
+No celular, o relatório e a página inicial cabem em 390 px.
 
 ### 5.3 — ~~Sem canário para o HTML real da origem~~ · ✔ **feito em 23/out, para a página de vaga**
 

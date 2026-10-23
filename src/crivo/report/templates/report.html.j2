@@ -133,7 +133,9 @@
 {# ------------------------------------------------------------- sintese #}
 {% if ctx.sintese %}
 <h2>Leitura estratégica</h2>
-<pre class="descricao">{{ ctx.sintese }}</pre>
+{# O modelo escreve em Markdown. `markdown_seguro` escapa tudo antes de
+   reconhecer titulos, negrito, listas e tabelas: o texto e de terceiro. #}
+<div class="sintese">{{ ctx.sintese | markdown_seguro }}</div>
 {% endif %}
 
 {# --------------------------------------------------------------- vagas #}
@@ -280,7 +282,8 @@
        resposta lendo o código do planejador -- e um termo que só traz ruído
        ficava impossível de identificar a partir do relatório. #}
     {% if vaga.busca %}
-      <span class="chip busca">achada por {{ vaga.busca }}</span>
+      {# "extensao" e o nome interno da origem; quem le precisa do nome dela. #}
+      <span class="chip busca">achada {{ "pela extensão do navegador" if vaga.busca == "extensao" else "por " ~ vaga.busca }}</span>
     {% endif %}
     {# A moeda citada na descricao. Ausente na maioria das vagas -- descricao
        nao lida nao tem como dizer, e a maioria das lidas nao fala de dinheiro --

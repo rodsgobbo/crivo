@@ -490,6 +490,9 @@ def build_environment() -> Environment:
     )
     ambiente.filters["local"] = tempo.local
     ambiente.filters["local_completo"] = tempo.local_completo
+    from .markdown_seguro import markdown_seguro
+
+    ambiente.filters["markdown_seguro"] = markdown_seguro
     return ambiente
 
 

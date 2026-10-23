@@ -398,7 +398,9 @@
 
       <div class="linha">
         <span class="rotulo">Google — sua sessão</span>
-        <span class="marca ok">conectado · {{ ctx.user_id }}</span>
+        {# O identificador interno nao diz nada a quem le; fica na dica, para
+           quem precisar dele ao pedir ajuda. #}
+        <span class="marca ok" title="usuário {{ ctx.user_id }}">conectado</span>
       </div>
       {% if ctx.sessao_local %}
         <p class="nota">

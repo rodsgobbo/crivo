@@ -288,6 +288,12 @@ a:hover { text-decoration-thickness: 2px; }
   justify-content: space-between;
 }
 
+/* Itens de um cartao recolhivel (Instalacao): cada um abre um bloco proprio.
+   Sem a margem, "Google", "LinkedIn" e "Curriculo" colavam no texto do item
+   anterior -- visto ao abrir a pagina num navegador em 23/10/2026. */
+details.cartao > .linha { margin-top: var(--esp-4); }
+details.cartao > summary + .linha { margin-top: var(--esp-3); }
+
 .rotulo { font-weight: 600; }
 .valor { color: var(--suave); font-size: var(--txt-sm); text-align: right; }
 .valor.vazio { color: var(--suave); font-style: italic; }
@@ -361,6 +367,27 @@ a:hover { text-decoration-thickness: 2px; }
   box-shadow: none;
 }
 .acao.discreta:hover { background: var(--caixa-2); border-color: var(--marca); color: var(--marca); }
+
+/* O botao do seletor de arquivo vinha no estilo do sistema operacional, o
+   unico controle da pagina fora da identidade. Mesmo visual de .acao.discreta. */
+input[type="file"] { font: inherit; color: var(--suave); }
+input[type="file"]::file-selector-button {
+  margin-right: var(--esp-3);
+  padding: var(--esp-2) var(--esp-4);
+  min-height: 2.5rem;
+  background: var(--caixa);
+  color: var(--texto);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover {
+  background: var(--caixa-2);
+  border-color: var(--marca);
+  color: var(--marca);
+}
 .acao.avisa { background: var(--pendente); color: #fff; }
 .acao.avisa:hover { background: var(--pendente); }
 
@@ -878,6 +905,40 @@ body.relatorio h2::before { height: 4px; width: 18px; }
 
 details { margin-top: var(--esp-2); }
 summary { cursor: pointer; color: var(--suave); font-size: var(--txt-sm); }
+
+/* Leitura estrategica, ja convertida do Markdown do modelo. Sem altura maxima,
+   ao contrario da descricao da vaga: e o texto que se le inteiro. */
+.sintese {
+  padding: var(--esp-4) var(--esp-6);
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  line-height: 1.6;
+}
+.sintese h3, .sintese h4, .sintese h5 { margin: var(--esp-6) 0 var(--esp-2); }
+.sintese h3:first-child, .sintese h4:first-child { margin-top: 0; }
+.sintese p, .sintese ul, .sintese ol { margin: 0 0 var(--esp-3); }
+.sintese hr { border: 0; border-top: 1px solid var(--borda); margin: var(--esp-4) 0; }
+.sintese table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--esp-2) 0 var(--esp-4);
+  font-size: var(--txt-sm);
+}
+.sintese th, .sintese td {
+  border-bottom: 1px solid var(--borda);
+  padding: var(--esp-2);
+  text-align: left;
+  vertical-align: top;
+}
+.sintese th { background: var(--caixa-2); }
+.sintese blockquote {
+  margin: var(--esp-2) 0 var(--esp-4);
+  padding: var(--esp-2) var(--esp-4);
+  border-left: 3px solid var(--marca);
+  background: var(--marca-fundo);
+  border-radius: var(--raio-sm);
+}
 
 pre.descricao {
   margin: var(--esp-3) 0 0;
