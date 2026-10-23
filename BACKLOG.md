@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1112 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1116 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -382,7 +382,7 @@ por isso (critério 7.9), e no lugar entram termos de gestão ainda não
 experimentados. §2.3 deixou de ser necessário para este fim: exigiria montar a
 busca fora da biblioteca de coleta e experimentar contra a origem.
 
-### 2.3 — Filtros de URL do LinkedIn não usados · **médio** · M
+### 2.3 — ~~Filtros de URL do LinkedIn não usados~~ · **fechado em 23/out: perdeu o motivo**
 
 O `jobradar.html` especifica `f_E` (senioridade), `f_WT` (modelo de trabalho) e
 `f_JT` (tipo de vaga). Filtrar na origem é mais barato que filtrar depois: cada
@@ -535,9 +535,9 @@ requisição.
 
 | Item | Tamanho |
 |---|---|
-| Remover busca gerada (hoje só dá para acrescentar) | P |
+| ~~Remover busca gerada~~ — **feito em 23/out** (× no cartão Cargos procurados, critério 7.8) | ✔ |
 | Esconder notas explicativas longas depois do primeiro uso | P |
-| Orçamento diário de 400 contra 656 sobreviventes de um run amplo | M |
+| ~~Orçamento diário de 400 contra 656 sobreviventes~~ — **obsoleto em 23/out**: com a fração de 70%, o máximo usado num dia foi 331, e todas as descrições pedidas desde 21/10 foram lidas | ✔ |
 | Dois processos `crivo runs` simultâneos — **resolvido** em 25/ago pela trava de instância | ✔ |
 
 ---
@@ -663,7 +663,7 @@ protegia, e destaques decididos continuavam destaques. O relatório ganhou
 a mesma vaga com os mesmos filtros. O Referer só é usado se apontar para o
 próprio relatório.
 
-### 7.6 — Acompanhamento da candidatura · pergunta em aberto
+### 7.6 — ~~Acompanhamento da candidatura~~ · **descartado em 23/out por decisão do dono**
 
 `aplicado` hoje não tem data nem próximo passo. Lembrete único e regra de
 encerramento caberiam no desenho, mas aproximam o crivo de um CRM. Ver pergunta
@@ -766,14 +766,17 @@ fica até o expurgo; reconferir as ~200 vagas antigas de um run custaria horas.
 
 Coisas que mudam o que se constrói e que só o dono do produto responde.
 
-1. **Vaga fora da trilha deve sumir ou só descer?** O teto (65) mantém no
-   relatório; o descarte tira. Hoje 76% do relatório é fora da trilha.
+1. ~~**Vaga fora da trilha deve sumir ou só descer?**~~ **Respondida em 23/out: sumir.**
+   Ela era de 32% a 53% do relatório nos runs de 21 a 23/10. Sai da vista, com a
+   contagem e um link para mostrar; continua contando no rendimento por termo (18.22).
 2. ~~**O modelo de linguagem pode entrar no julgamento por vaga**, ou fica só na
    síntese?~~ **Respondida em 26/ago:** entra, relendo as 20 do topo (§1.1). Resolve §1.1 de um jeito que nenhuma fórmula determinística resolve,
    mas custa por vaga e quebra a reprodutibilidade que o planejador protege.
-3. **Qual janela é a padrão?** Hoje 30 dias. Com 24h o volume é gerenciável e a
-   vaga é fresca; com 30 dias entram vagas que já receberam 200 candidaturas.
+3. ~~**Qual janela é a padrão?**~~ **Respondida em 23/out: um dia**, marcado por
+   padrão na tela. A API sem alcance continua em 30 dias: nenhum contrato muda
+   por causa do seletor da tela.
 4. **Vale confirmar §2.2 com uma requisição ao LinkedIn?** É uma só, mas conta
    contra o mesmo limite que impõe 1 hora de bloqueio se estourar.
-5. **Acompanhamento de candidatura entra no crivo?** Data, lembrete único e
-   regra de encerramento são determinísticos, mas mudam o que o produto é (§7.6).
+5. ~~**Acompanhamento de candidatura entra no crivo?**~~ **Respondida em 23/out: não.**
+   O crivo fica na triagem; marcar "Apliquei" basta para ele parar de recomendar
+   e não apagar a vaga (§7.7).

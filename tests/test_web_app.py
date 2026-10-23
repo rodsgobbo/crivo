@@ -2007,3 +2007,23 @@ def test_another_users_job_cannot_be_marked(cliente):
     resposta = c.post(f"/reports/{run_id}/vagas/li-77/estado", data={"estado": "aplicado"})
     assert resposta.status_code == 400
     assert _estado(banco) == "novo"
+
+
+def test_the_search_form_starts_on_one_day():
+    """Decisao do usuario em 23/10/2026: um dia marcado por padrao na tela."""
+    html = _pagina_inicial()
+    assert 'value="1d" checked' in html
+    assert 'value="30d" checked' not in html
+
+
+def test_the_report_address_can_show_other_careers_again(cliente):
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    run_id = _enfileirar(banco, user_id)
+    _vaga_marcavel(banco, user_id, run_id)
+    banco().execute(
+        "UPDATE scores SET componentes = ? WHERE job_id = 'li-77'",
+        (json.dumps({"tetos": {"outra_trilha": 40}}),),
+    )
+    assert 'id="vaga-li-77"' not in c.get(f"/reports/{run_id}").text
+    assert 'id="vaga-li-77"' in c.get(f"/reports/{run_id}?trilha=todas").text

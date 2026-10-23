@@ -1189,3 +1189,38 @@ def test_the_report_shows_where_the_score_came_from(env):
     assert "relida" in html
     assert "cadastro reserva, nao e vaga" in html
     assert "o cálculo por competências dava 70%" in html
+
+
+# --------------------------------------------- outra carreira fora da vista
+def _com_teto_de_trilha(connection, job_id):
+    connection.execute(
+        "UPDATE scores SET componentes = ? WHERE job_id = ?",
+        (json.dumps({"tetos": {"outra_trilha": 40}}), job_id),
+    )
+
+
+def test_a_job_of_another_career_is_hidden_and_counted(env):
+    """Decisao do usuario em 23/10/2026: outra carreira some, nao so desce."""
+    connection, repo = env
+    add_vaga(repo, job_id="li-1", titulo="SRE Manager")
+    add_vaga(repo, job_id="li-2", titulo="Gerente Financeiro", busca="SRE Manager")
+    _com_teto_de_trilha(connection, "li-2")
+    renderer = ReportRenderer(connection, load_config())
+
+    html = " ".join(renderer.render_run("ana", "run-1").split())
+    assert "SRE Manager" in html and "Gerente Financeiro" not in html
+    assert "1 vaga de outra carreira não aparece" in html
+    assert 'href="?trilha=todas"' in html
+
+    todas = renderer.render_run("ana", "run-1", filtros={"mostrar_outra_trilha": True})
+    assert "Gerente Financeiro" in todas
+
+
+def test_hidden_jobs_still_count_in_the_yield_per_term(env):
+    """E por elas que o planejador acha o termo que so traz outra carreira."""
+    connection, repo = env
+    add_vaga(repo, job_id="li-2", titulo="Gerente Financeiro", busca="SRE Manager")
+    _com_teto_de_trilha(connection, "li-2")
+    ctx = ReportRenderer(connection, load_config()).build_context("ana", "run-1")
+    linha = next(l for l in ctx.rendimento_das_buscas if l["termo"] == "SRE Manager")
+    assert linha["fora_da_trilha"] == 1

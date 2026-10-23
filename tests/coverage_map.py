@@ -329,6 +329,11 @@ COVERAGE: dict[str, list[str]] = {
         "test_indicacao::test_a_number_that_is_neither_in_the_profile_nor_the_job_is_pointed_out",
         "test_indicacao::test_there_is_a_fixed_instruction_that_forbids_inventing",
     ],
+    "18.22": [
+        "test_report::test_a_job_of_another_career_is_hidden_and_counted",
+        "test_report::test_hidden_jobs_still_count_in_the_yield_per_term",
+        "test_web_app::test_the_report_address_can_show_other_careers_again",
+    ],
     "18.19": [
         "test_resumo_da_coleta::test_a_barred_collection_says_where_it_stopped_and_what_was_left",
         "test_resumo_da_coleta::test_the_page_names_the_sources_for_a_reader",

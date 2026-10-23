@@ -226,7 +226,7 @@ o que ela pede. A ordem é esta:
 | 3 | **Extraia os campos do currículo** | Clique em **Extrair campos**. Se você ainda não cadastrou uma chave de IA (veja abaixo), o crivo oferece preencher à mão. |
 | 4 | **Confira o que foi extraído** | Clique em **Conferir extração**. **Leia com atenção** e corrija o que estiver errado. Um erro aqui estraga a busca inteira. |
 | 5 | **Monte o seu perfil** | Clique em **Montar meu perfil**. |
-| 6 | **Buscar vagas** | Escolha o período (30, 7, 3 ou 1 dia) e clique em **Buscar vagas agora**. |
+| 6 | **Buscar vagas** | Escolha o período — **1 dia** vem marcado; 3, 7 ou 30 dias trazem mais vagas, e mais antigas — e clique em **Buscar vagas agora**. |
 
 Depois do passo 6, espere. A página mostra em que etapa a busca está, e ela não
 precisa ficar aberta — só o terminal. Uns **15 minutos** depois, uma **prévia** do
@@ -314,6 +314,9 @@ em **Filtrar**; **Limpar** volta à lista inteira.
 Logo abaixo das contagens, o relatório diz **de onde vieram as vagas** e quantas
 buscas rodaram. Se o LinkedIn recusou pedidos no meio, aparece um aviso dizendo
 em qual busca parou — a próxima busca começa pelos termos que ficaram de fora.
+
+Vaga de **outra carreira** (financeiro, vendas, manutenção…) não aparece na lista;
+o relatório diz quantas ficaram de fora, e o link **Mostrar** as traz de volta.
 
 Vaga que **não aceita mais candidaturas** sai da lista sozinha, e o relatório diz
 quantas saíram. O crivo confere isso nas vagas com nota de destaque; numa vaga de

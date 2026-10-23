@@ -82,6 +82,8 @@ class ReportContext:
     coleta: dict | None = None
     #: Vagas do run que deixaram de aceitar candidaturas e sairam da lista.
     encerradas: int = 0
+    #: Vagas do run de outra carreira, que nao aparecem na lista por padrao.
+    outra_carreira: int = 0
 
     @property
     def fora_da_janela(self) -> list[dict]:
@@ -543,6 +545,15 @@ class ReportRenderer:
         for vaga in todas:
             vaga["acao"], vaga["acao_porque"] = recomendar(vaga, limiar)
         filtros = filtros or {}
+        # Vaga de outra carreira sai da lista, por decisao do usuario em
+        # 23/10/2026: ela descia com nota limitada e ainda era de 32% a 53% do
+        # relatorio. Sai so da vista: a nota continua gravada, e o rendimento
+        # por termo -- que e como o planejador descobre termo que so traz outra
+        # carreira -- continua contando com ela. `?trilha=todas` mostra de novo.
+        de_outra_carreira = [v for v in todas if "outra_trilha" in (v.get("tetos") or {})]
+        rendimento = _rendimento(todas)
+        if not filtros.get("mostrar_outra_trilha"):
+            todas = [v for v in todas if "outra_trilha" not in (v.get("tetos") or {})]
         vagas = _aplicar_filtros(todas, filtros, limiar)
         descartes = [
             {"titulo": d["titulo"], "empresa": d["empresa"], "motivo": d["motivo"]}
@@ -577,7 +588,8 @@ class ReportRenderer:
             encerradas=encerradas,
             filtros=filtros,
             total_sem_filtro=len(todas),
-            rendimento_das_buscas=_rendimento(todas),
+            rendimento_das_buscas=rendimento,
+            outra_carreira=len(de_outra_carreira),
             empresas_contratando=self._empresas_contratando(
                 user_id, self._config.report.dias_de_contratacao
             ),

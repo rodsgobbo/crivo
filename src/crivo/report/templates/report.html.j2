@@ -156,8 +156,25 @@
   e {{ "saíram" if ctx.encerradas != 1 else "saiu" }} da lista.
 </p>
 {% endif %}
+{# Outra carreira sai da vista por padrao; o link a traz de volta, porque o
+   filtro de trilha le titulo e pode errar. #}
+{% if ctx.outra_carreira %}
+<p class="sub">
+  {% if ctx.filtros.get('mostrar_outra_trilha') %}
+    Mostrando também {{ ctx.outra_carreira }} vaga{{ "s" if ctx.outra_carreira != 1 }}
+    de outra carreira. <a href="?">Esconder</a>
+  {% else %}
+    {{ ctx.outra_carreira }} vaga{{ "s" if ctx.outra_carreira != 1 }} de outra
+    carreira {{ "não aparecem" if ctx.outra_carreira != 1 else "não aparece" }}.
+    <a href="?trilha=todas">Mostrar</a>
+  {% endif %}
+</p>
+{% endif %}
 
 <form method="get" class="filtro">
+  {% if ctx.filtros.get('mostrar_outra_trilha') %}
+    <input type="hidden" name="trilha" value="todas">
+  {% endif %}
   <label class="cargo">
     Cargo ou empresa
     <input type="search" name="cargo" placeholder="gerente, SRE, alelo…"

@@ -472,6 +472,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.21 WHERE o relatório recomenda pedir indicação, THE Report Renderer SHALL offer um rascunho de mensagem de pedido de indicação, gerado apenas quando o usuário o pede, a partir do perfil confirmado e da vaga, com até 150 palavras, sem enviá-lo, e SHALL display todo número do rascunho que não está no perfil nem na vaga.
 
+18.22 THE Report Renderer SHALL omit da lista, por padrão, as vagas com teto de outra trilha, informando quantas foram omitidas e oferecendo exibi-las, sem deixar de contá-las no rendimento por termo de busca.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.

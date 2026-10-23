@@ -14,7 +14,7 @@ Drive que o app nunca obtém — o login pede só `openid email profile` — e a
 interface não a oferece.
 
 A especificação completa está em [`.specs/changes/linkedin-job-agent/`](.specs/changes/linkedin-job-agent/):
-28 requisitos, 234 critérios de aceitação, 21 elementos de design.
+28 requisitos, 235 critérios de aceitação, 21 elementos de design.
 
 O que falta e em que ordem está em [`BACKLOG.md`](BACKLOG.md).
 
