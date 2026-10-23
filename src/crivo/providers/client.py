@@ -138,6 +138,19 @@ CATEGORIAS: tuple[tuple[str, tuple[str, ...], bool, str], ...] = (
         "a chave cadastrada foi recusada; cadastre outra em Configuração",
     ),
     (
+        # O modelo configurado nao existe mais, ou a chave nao tem acesso a ele.
+        # Em 22/10/2026 a Groq respondeu isso para o llama-3.3-70b-versatile, e
+        # a falha aparecia como "nao sei classificar" -- quando a causa era uma
+        # linha de configuracao, e nao o provedor.
+        "modelo",
+        ("model_not_found", "notfounderror", "does not exist or you do not "
+         "have access"),
+        False,
+        "o modelo configurado para este provedor não está disponível para a sua "
+        "chave; a lista de modelos em config/providers.toml precisa ser "
+        "atualizada",
+    ),
+    (
         "limite",
         ("ratelimiterror", "quota", "rate limit", "resource_exhausted", "429"),
         True,
@@ -520,11 +533,22 @@ ENDERECO_NECESSARIO = ("ollama", "openai")
 
 
 def _modelo_para_biblioteca(destino: Destination) -> tuple[str, str]:
-    """Nome do modelo no dialeto do roteador, e o prefixo escolhido."""
-    if "/" in destino.modelo:
-        # Ja veio qualificado na configuracao, como "openrouter/auto".
-        return destino.modelo, destino.modelo.split("/", 1)[0]
-    prefixo = PREFIXO_DA_BIBLIOTECA.get(destino.provider_id, "openai")
+    """Nome do modelo no dialeto do roteador, e o prefixo escolhido.
+
+    Barra no nome nao quer dizer que o provedor ja esta nele. "openrouter/auto"
+    traz o prefixo do OpenRouter; "openai/gpt-oss-120b" e o nome de um modelo
+    DENTRO da Groq. Tratar os dois igual mandava para a Groq "gpt-oss-120b", que
+    ela nao conhece -- em 22/10/2026 a reserva inteira falhou assim, com "model
+    not found", enquanto a chave tinha acesso ao modelo.
+    """
+    prefixo = PREFIXO_DA_BIBLIOTECA.get(destino.provider_id)
+    if prefixo is None:
+        if "/" in destino.modelo:
+            # Provedor generico com nome ja qualificado na configuracao.
+            return destino.modelo, destino.modelo.split("/", 1)[0]
+        prefixo = "openai"
+    if destino.modelo.startswith(f"{prefixo}/"):
+        return destino.modelo, prefixo
     return f"{prefixo}/{destino.modelo}", prefixo
 
 

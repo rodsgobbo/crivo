@@ -31,7 +31,12 @@ rotulo = "Groq"
 endereco = "https://api.groq.com/openai/v1"
 formato_credencial = "chave_estatica"
 execucao = "rede_externa"
-modelos = ["llama-3.3-70b-versatile"]
+# O llama-3.3-70b-versatile saiu da lista de modelos acessiveis a uma chave
+# gratuita criada em 21/10/2026 ("model_not_found"), embora a pagina publica da
+# Groq ainda o mostrasse. Conferido pela rota /models com a propria chave:
+# estes dois estavam la. Para conferir de novo, a rota e
+# https://api.groq.com/openai/v1/models.
+modelos = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
 limite_declarado = "cota gratuita por minuto e por dia"
 destino_dos_dados = "servidores da Groq"
 

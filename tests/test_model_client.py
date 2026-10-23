@@ -325,6 +325,40 @@ def test_a_quota_refusal_comes_before_overload():
     assert categoria == "limite"
 
 
+def test_a_model_the_key_cannot_reach_says_the_configuration_is_stale():
+    """O erro real da Groq em 22/10/2026, que caia em "nao sei classificar"."""
+    categoria, transitoria, frase = classificar(Exception(
+        'litellm.NotFoundError: GroqException - {"error":{"message":"The model '
+        '`llama-3.3-70b-versatile` does not exist or you do not have access to '
+        'it.","code":"model_not_found"}}'
+    ))
+    assert categoria == "modelo"
+    assert transitoria is False, "tentar de novo nao faz o modelo existir"
+    assert "providers.toml" in frase
+
+
+# --------------------------------------------- nome do modelo na biblioteca
+from crivo.providers.client import Destination, _modelo_para_biblioteca  # noqa: E402
+
+
+@pytest.mark.parametrize("provedor, modelo, esperado", [
+    # Barra no nome e parte do modelo DENTRO da Groq, e nao o provedor: sem o
+    # prefixo, o pedido chegava a Groq como "gpt-oss-120b", que ela nao conhece.
+    ("groq", "openai/gpt-oss-120b", "groq/openai/gpt-oss-120b"),
+    ("groq", "qwen/qwen3.8-27b", "groq/qwen/qwen3.8-27b"),
+    ("groq", "llama-3.3-70b-versatile", "groq/llama-3.3-70b-versatile"),
+    # Ja traz o prefixo do proprio provedor: fica como esta.
+    ("openrouter", "openrouter/auto", "openrouter/auto"),
+    ("google-ai-studio", "gemini-3.6-flash", "gemini/gemini-3.6-flash"),
+    # Provedor desconhecido com nome qualificado: confia na configuracao.
+    ("outro", "together_ai/llama", "together_ai/llama"),
+    ("outro", "modelo-x", "openai/modelo-x"),
+])
+def test_the_library_gets_the_provider_prefix_exactly_once(provedor, modelo, esperado):
+    destino = Destination(provedor, "https://x", modelo, "k")
+    assert _modelo_para_biblioteca(destino)[0] == esperado
+
+
 def test_an_unknown_failure_is_classified_as_such_and_not_guessed():
     categoria, transitoria, frase = classificar(Exception("algo muito estranho"))
     assert categoria == "outro"
