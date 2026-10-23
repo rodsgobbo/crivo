@@ -219,6 +219,8 @@ def expirar_encerrada(repository: Repository, job_id: str) -> bool:
     Devolve se alguma linha mudou. Compartilhada entre o enriquecedor, que ve a
     marca ao ler a descricao, e a reconferencia do topo, que a ve depois.
     """
+    from ..store.lifecycle import esquecer_contatos
+
     alteradas = repository.execute(
         "UPDATE jobs SET estado = 'expirado' "
         "WHERE job_id = ? AND estado IN ('novo', 'visto')",
@@ -226,6 +228,8 @@ def expirar_encerrada(repository: Repository, job_id: str) -> bool:
     ).rowcount
     if alteradas:
         logger.info("vaga %s nao aceita mais candidaturas; expirada", job_id)
+        # Sem candidatura possivel, o e-mail do recrutador perde a finalidade.
+        esquecer_contatos(repository, job_id)
     return bool(alteradas)
 
 

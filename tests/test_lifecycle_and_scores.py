@@ -9,7 +9,6 @@ from crivo.scoring.scorer import FINAL, PROVISORIA, Scorer
 from crivo.store.lifecycle import (
     APLICADO,
     EXPIRADO,
-    LIMITE_DE_AUSENCIAS,
     NOVO,
     JobLifecycle,
     LifecycleError,
@@ -85,33 +84,22 @@ def test_marking_an_unknown_job_is_refused(env):
 
 
 # ------------------------------------------------------------------ expiracao
-def test_a_job_outside_the_run_window_never_accumulates_absence(env):
+def test_a_job_absent_from_many_runs_is_never_expired_for_that(env):
+    """Ausencia nao prova que a vaga fechou: cada termo traz no maximo 25.
+
+    A expiracao por ausencia foi aposentada em 23/10/2026 sem nunca ter rodado.
+    Ligada, ela esconderia vaga aberta -- e reaparecer nao desfaz o estado.
+    """
+    from crivo.pipeline.collector import Collector
+    from crivo.pipeline.sources.guest import SearchOutcome
+    from test_collector import AQUI, FakeSource
+
     connection, repo = env
-    add_job(repo, publicada="2026-07-01")
-    ciclo = JobLifecycle(connection)
+    add_job(repo, publicada="2026-08-21")
     for _ in range(5):
-        varredura = ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    assert varredura.ignoradas == ["li-1"]
-    assert ciclo.absences_of("ana", "li-1") == 0
-    assert ciclo.state_of("ana", "li-1") == NOVO
-
-
-def test_a_job_inside_the_window_accumulates_absence(env):
-    connection, repo = env
-    add_job(repo, publicada="2026-08-21")
-    ciclo = JobLifecycle(connection)
-    ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    assert ciclo.absences_of("ana", "li-1") == 1
-
-
-def test_three_eligible_absences_expire_the_job(env):
-    connection, repo = env
-    add_job(repo, publicada="2026-08-21")
-    ciclo = JobLifecycle(connection)
-    for _ in range(LIMITE_DE_AUSENCIAS):
-        varredura = ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    assert varredura.expiradas == ["li-1"]
-    assert ciclo.state_of("ana", "li-1") == EXPIRADO
+        fonte = FakeSource({"A": SearchOutcome(busca="A", cards=[card("li-2")])})
+        Collector(connection, fonte).collect("ana", ["A"], AQUI, 24)
+    assert JobLifecycle(connection).state_of("ana", "li-1") == NOVO
 
 
 def _com_descricao(repo, job_id="li-1", emails=("rh@fintech.br",)):
@@ -136,37 +124,38 @@ def _emails(connection, job_id="li-1"):
     return json.loads(linha[0] or "[]")
 
 
-def _expirar(connection, job_id="li-1"):
-    ciclo = JobLifecycle(connection)
-    for _ in range(LIMITE_DE_AUSENCIAS):
-        ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    return ciclo
+def _encerrar(connection, job_id="li-1"):
+    """A origem declarou a vaga encerrada (marca "nao aceita mais candidaturas")."""
+    from crivo.pipeline.enricher import expirar_encerrada
+
+    return expirar_encerrada(Repository(connection), job_id)
 
 
-def test_expiring_a_job_forgets_the_recruiter_contacts(env):
-    """O e-mail do recrutador e dado de terceiro; vaga expirada nao tem candidatura."""
+def test_a_closed_job_forgets_the_recruiter_contacts(env):
+    """O e-mail do recrutador e dado de terceiro; vaga encerrada nao tem candidatura."""
     connection, repo = env
-    add_job(repo, publicada="2026-08-21")
+    add_job(repo)
     _com_descricao(repo)
-    _expirar(connection)
+    assert _encerrar(connection) is True
+    assert JobLifecycle(connection).state_of("ana", "li-1") == EXPIRADO
     assert _emails(connection) == []
 
 
-def test_expiring_a_job_keeps_the_description_text(env):
+def test_a_closed_job_keeps_the_description_text(env):
     connection, repo = env
-    add_job(repo, publicada="2026-08-21")
+    add_job(repo)
     _com_descricao(repo)
-    _expirar(connection)
+    _encerrar(connection)
     texto = connection.execute(
         "SELECT texto FROM job_descriptions WHERE job_id = 'li-1'"
     ).fetchone()[0]
     assert texto == "Sobre a vaga"
 
 
-def test_contacts_survive_while_another_user_still_has_the_job(env):
-    """O registro e compartilhado: expirar para um nao expira para todos."""
+def test_contacts_survive_while_someone_who_applied_still_has_the_job(env):
+    """O registro e compartilhado: quem se candidatou mantem a vaga, e o contato."""
     connection, repo = env
-    add_job(repo, publicada="2026-08-21")
+    add_job(repo)
     _com_descricao(repo)
     repo.insert(
         "users",
@@ -176,54 +165,14 @@ def test_contacts_survive_while_another_user_still_has_the_job(env):
         "jobs",
         {
             "job_id": "li-1", "titulo": "SRE Manager",
-            "url": "https://exemplo.br/li-1", "estado": NOVO,
+            "url": "https://exemplo.br/li-1", "estado": APLICADO,
             "publicada_em": "2026-08-21",
             "primeira_vez_em": "2026-08-01", "ultima_vez_em": "2026-08-01",
         },
     )
-    _expirar(connection)
+    _encerrar(connection)
     assert _emails(connection) == ["rh@fintech.br"]
-
-
-def test_a_job_seen_in_the_run_does_not_accumulate(env):
-    connection, repo = env
-    add_job(repo, publicada="2026-08-21")
-    ciclo = JobLifecycle(connection)
-    ciclo.sweep_absences("ana", {"li-1"}, 24, agora=AGORA)
-    assert ciclo.absences_of("ana", "li-1") == 0
-
-
-def test_a_job_without_a_publication_date_is_never_expired(env):
-    connection, repo = env
-    add_job(repo, publicada=None)
-    ciclo = JobLifecycle(connection)
-    for _ in range(5):
-        ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    assert ciclo.state_of("ana", "li-1") == NOVO
-
-
-def test_an_already_chosen_job_is_not_swept(env):
-    connection, repo = env
-    add_job(repo, publicada="2026-08-21", estado=APLICADO)
-    ciclo = JobLifecycle(connection)
-    varredura = ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    assert varredura.contadas == [] and varredura.expiradas == []
-    assert ciclo.state_of("ana", "li-1") == APLICADO
-
-
-def test_a_wide_window_covers_what_the_narrow_one_ignores(env):
-    # 2026-08-01 esta fora da janela de 24h e dentro da de 720h. E o caso que
-    # motiva a regra: a mesma vaga nao pode contar ausencia num run incremental
-    # e contar num run amplo apenas por causa do alcance da busca.
-    connection, repo = env
-    add_job(repo, publicada="2026-08-01")
-    ciclo = JobLifecycle(connection)
-
-    ciclo.sweep_absences("ana", set(), 24, agora=AGORA)
-    assert ciclo.absences_of("ana", "li-1") == 0
-
-    ciclo.sweep_absences("ana", set(), 720, agora=AGORA)
-    assert ciclo.absences_of("ana", "li-1") == 1
+    assert JobLifecycle(connection).state_of("bruno", "li-1") == APLICADO
 
 
 # ------------------------------------------------------------------ scores

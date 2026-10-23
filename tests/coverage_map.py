@@ -410,8 +410,8 @@ COVERAGE: dict[str, list[str]] = {
     ],
     "20.7": ["test_credential_vault::test_the_disclosure_names_the_destination_and_the_limit"],
     "20.8": [
-        "test_lifecycle_and_scores::test_expiring_a_job_forgets_the_recruiter_contacts",
-        "test_lifecycle_and_scores::test_contacts_survive_while_another_user_still_has_the_job",
+        "test_lifecycle_and_scores::test_a_closed_job_forgets_the_recruiter_contacts",
+        "test_lifecycle_and_scores::test_contacts_survive_while_someone_who_applied_still_has_the_job",
     ],
 
     # -------------------------------------------------- REQ-21 ciclo de vida
@@ -421,8 +421,7 @@ COVERAGE: dict[str, list[str]] = {
     ],
     "21.3": ["test_lifecycle_and_scores::test_the_user_choice_changes_the_state"],
     "21.4": [
-        "test_lifecycle_and_scores::test_three_eligible_absences_expire_the_job",
-        "test_lifecycle_and_scores::test_a_job_outside_the_run_window_never_accumulates_absence",
+        "test_lifecycle_and_scores::test_a_job_absent_from_many_runs_is_never_expired_for_that",
     ],
     "21.5": ["test_queue::test_finishing_records_the_counters"],
     "21.6": ["test_repository::test_a_failed_write_names_the_operation_and_the_cause"],

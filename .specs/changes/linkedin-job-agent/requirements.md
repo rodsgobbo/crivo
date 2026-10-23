@@ -502,7 +502,7 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 20.7 THE Job Agent SHALL display, antes da primeira extração de currículo, o nome do provedor para o qual o texto do currículo será enviado.
 
-20.8 WHEN a última vaga que referencia um registro compartilhado de descrição entra em estado expirado, THEN the Job Agent SHALL delete os endereços de e-mail de contato daquele registro.
+20.8 WHEN uma vaga entra em estado expirado e nenhum usuário a mantém em outro estado, THEN the Job Agent SHALL delete os endereços de e-mail de contato do registro compartilhado de descrição, preservando o texto.
 
 ### REQ-21: Persistência e ciclo de vida das vagas
 
@@ -516,7 +516,7 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 21.3 WHEN o usuário marca uma vaga como vista, aplicada ou descartada, THEN the Store SHALL update o estado dessa vaga para o valor informado.
 
-21.4 IF uma vaga registrada está ausente de três runs consecutivos cuja janela de publicação cobre a data de publicação dessa vaga, THEN the Store SHALL update o estado dessa vaga para expirado.
+21.4 THE Store SHALL NOT expire uma vaga por ausência nas buscas, porque cada termo traz um número limitado de resultados e a ausência não prova que a vaga saiu do ar; the Store SHALL reserve o estado expirado à vaga que a origem declara encerrada (10.8), e o desaparecimento prolongado é tratado pelo expurgo (21.7).
 
 21.5 THE Store SHALL create um registro de run contendo o identificador de usuário, o instante de execução, as buscas executadas, a contagem de cards brutos, a contagem após pré-filtro, a contagem de vagas novas, o consumo de cota e os bloqueios de coleta observados.
 
