@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1064 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1074 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -476,11 +476,21 @@ ainda não têm run observado registrado aqui.
 A folha de estilo única, a home reordenada, a navegação compartilhada e o filtro
 do relatório passam nos testes de conteúdo. Ninguém olhou.
 
-### 5.3 — Sem canário para o HTML real da origem · **alto** · M
+### 5.3 — ~~Sem canário para o HTML real da origem~~ · ✔ **feito em 23/out, para a página de vaga**
 
 A especificação chama a deriva do DOM de maior custo de manutenção do sistema, e
 não existe fixture com HTML real nem teste que acuse mudança de marcação. O
 defeito de §2.2 é exatamente disso: uma classe CSS mudou e nada avisou.
+
+**Feito para a página de vaga:** três páginas reais, capturadas sem login, em
+`tests/fixtures/linkedin/` (aberta com contagem exata, aberta com "Mais de 200",
+fechada), lidas por `tests/test_paginas_reais.py`. Já na primeira execução elas
+acharam um defeito que os dublês escondiam: a contagem exata ("36
+candidaturas") vem num `<span>`, só o `<figcaption>` era lido, e **89% das
+descrições do banco estavam sem contagem de candidatos**. **Falta** o mesmo
+para a página de busca, que hoje é lida pela biblioteca de coleta, e um canário
+vivo — uma página real conferida de tempos em tempos —, que exigiria
+requisição.
 
 ---
 

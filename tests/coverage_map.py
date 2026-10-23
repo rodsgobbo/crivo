@@ -161,7 +161,12 @@ COVERAGE: dict[str, list[str]] = {
         "test_enricher::test_the_run_continues_after_a_missing_description",
     ],
     "10.3": ["test_scoring::test_without_a_description_the_score_says_so"],
-    "10.4": ["test_enricher::test_the_applicant_count_arrives_with_the_description"],
+    "10.4": [
+        "test_enricher::test_the_applicant_count_arrives_with_the_description",
+        "test_paginas_reais::test_an_open_job_with_an_exact_applicant_count",
+        "test_paginas_reais::test_an_open_job_with_a_floor_of_applicants",
+        "test_paginas_reais::test_a_closed_job",
+    ],
     "10.5": ["test_enricher::test_contact_emails_from_the_description_are_recorded"],
     "10.6": ["test_enricher::test_the_shared_registry_holds_one_row_per_job"],
     "10.7": ["test_enricher::test_a_stored_description_is_reused_without_a_request"],

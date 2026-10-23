@@ -53,7 +53,20 @@ _BLOCO_DESCRICAO = re.compile(
 #: deste padrao lia o `figure` e capturava o espaco em branco ate o `<span>` do
 #: icone, entao devolvia None em toda vaga real. O dublê dos testes trazia o
 #: numero direto no `figure` -- marcacao que a origem nunca produziu.
-_CANDIDATOS = re.compile(r'num-applicants__caption[^>]*>(.*?)</figcaption>', re.S)
+#:
+#: E a legenda tem duas formas. "Mais de 200" e "Seja um dos 25 primeiros"
+#: vem num `figcaption`; a contagem exata, "36 candidaturas", vem num `span`.
+#: So a primeira era lida, e em 23/10/2026 so 11% das 2246 descricoes do banco
+#: tinham contagem -- achado ao trocar o dublê por paginas reais nos testes.
+_CANDIDATOS = re.compile(
+    r'num-applicants__caption[^>]*>(.*?)</(?:figcaption|span)>', re.S
+)
+
+#: Contagem exata: o numero abre a legenda e e seguido do substantivo. Ancorado
+#: no inicio para nao ler o 25 de "Seja um dos 25 primeiros".
+_CONTAGEM_EXATA = re.compile(
+    r"^\s*(\d[\d.,]*)\s*(?:candidaturas?|candidatos?|applicants?)\b", re.I
+)
 
 #: "Mais de 200 candidaturas" e um piso de concorrencia. "Seja um dos 25
 #: primeiros" nao e contagem alguma: o 25 e o limiar da propria frase, e le-lo
@@ -506,7 +519,8 @@ def _primeiro(padrao: re.Pattern[str], html: str) -> str | None:
 
 
 def _candidatos(html: str) -> int | None:
-    """Piso de candidaturas, quando a origem informa um.
+    """Candidaturas, quando a origem informa: o piso ("Mais de 200") ou a
+    contagem exata ("36 candidaturas").
 
     Devolve None tanto quando a legenda falta quanto quando ela diz apenas que
     a vaga tem poucos candidatos: nesse caso nao ha numero a reportar, e o fato
@@ -515,10 +529,10 @@ def _candidatos(html: str) -> int | None:
     bruto = _primeiro(_CANDIDATOS, html)
     if not bruto:
         return None
-    piso = _PISO_DE_CANDIDATOS.search(bruto)
-    if not piso:
+    achado = _PISO_DE_CANDIDATOS.search(bruto) or _CONTAGEM_EXATA.search(bruto)
+    if not achado:
         return None
-    return int(re.sub(r"[.,]", "", piso.group(1)))
+    return int(re.sub(r"[.,]", "", achado.group(1)))
 
 
 def _sinais(html: str) -> list[str]:
