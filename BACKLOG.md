@@ -617,7 +617,7 @@ reconsolidar é usado — sem isso, cada clique apagaria a preferência.
 
 Ainda não visto num run real.
 
-### 7.4 — Faixa salarial · **médio** · M
+### 7.4 — Faixa salarial · **adiado em 23/out: não há dado para comparar** · M
 
 O card traz `salario` e nada além do coletor o lê. Marcar "abaixo da sua faixa"
 só quando o anúncio publica valor; ausência não penaliza, pelo mesmo motivo de
@@ -626,6 +626,15 @@ só quando o anúncio publica valor; ausência não penaliza, pelo mesmo motivo 
 A tela de preferências já existe desde §7.3, então falta um campo a mais nela e a
 regra que o consome. O campo só entra junto com a regra: campo preenchido que não
 faz nada é mentira na tela.
+
+**Medido em 23/out, antes de construir:** das 2.380 descrições guardadas, 411
+citam salário junto de "salário", "salary", "compensation" ou "pay range" — e
+**402 são em dólar, de vagas dos EUA** (a lei de lá obriga a publicar a faixa;
+quase todas vieram das frentes internacionais desligadas em 16/10). Em reais,
+**9**. As vagas do Jobicy e do We Work Remotely no cache do dia não traziam
+salário nenhum. A regra quase nunca teria o que comparar nas vagas que
+interessam, e o campo seria a "mentira na tela" acima. Reabrir quando uma fonte
+trouxer salário estruturado com frequência.
 
 ### 7.5 — Rascunho de pedido de indicação · **médio** · G
 
