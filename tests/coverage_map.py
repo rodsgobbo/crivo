@@ -174,7 +174,9 @@ COVERAGE: dict[str, list[str]] = {
     "10.9": [
         "test_vaga_encerrada::test_a_top_job_closed_after_its_description_was_read_expires",
         "test_vaga_encerrada::test_a_description_read_in_this_run_is_not_fetched_again",
-        "test_vaga_encerrada::test_only_the_top_is_checked",
+        "test_vaga_encerrada::test_below_the_threshold_only_the_top_is_checked",
+        "test_vaga_encerrada::test_a_highlight_below_the_top_twenty_is_also_checked",
+        "test_vaga_encerrada::test_a_job_from_the_extension_is_checked_wherever_it_ranks",
         "test_vaga_encerrada::test_a_block_stops_the_check_without_breaking_the_run",
     ],
 

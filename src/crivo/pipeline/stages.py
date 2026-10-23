@@ -1011,8 +1011,9 @@ class ReconferenciaStage:
     entre as melhores com o LinkedIn dizendo "No longer accepting
     applications".
 
-    Confere so o topo, e so a vaga cuja descricao tem mais de um dia: a lida
-    neste run ja passou pela verificacao. Tipicamente sao poucas requisicoes,
+    Confere o topo, toda vaga com nota de destaque e as vindas da extensao, e
+    so a vaga cuja descricao tem mais de um dia: a lida neste run ja passou pela
+    verificacao. Tipicamente sao poucas requisicoes,
     sob o mesmo governador da coleta. Bloqueio ou erro numa vaga nao derruba o
     run: a vaga so fica sem reconferir.
     """
@@ -1022,12 +1023,28 @@ class ReconferenciaStage:
     #: Quantas vagas do topo conferir, e a idade minima da descricao para isso.
     LIMITE = 20
     IDADE_MINIMA = timedelta(days=1)
+    #: Alem do topo: toda vaga com nota de destaque, e as vindas da extensao.
+    #:
+    #: Estar no resultado da busca NAO prova que a vaga esta aberta. Supus que
+    #: provasse, e os dados desmentiram em 23/10/2026: li-4480211527 veio da
+    #: busca "Engineering Manager Infrastructure" e a reconferencia a achou
+    #: fechada dez minutos depois. Reconferir tudo nao cabe -- um run de 329
+    #: vagas tinha 192 com descricao antiga, horas de governador. As de nota de
+    #: destaque cabem: 1 a 26 por run medido, e sao as vagas em que alguem age.
+    #: A vaga da extensao entra porque nunca passou por busca nenhuma -- foi a
+    #: "SRE Tech Lead Manager" de 21/10/2026.
+    LIMITE_DA_EXTENSAO = 20
+    #: Teto do conjunto, para um run atipico nao prender o governador.
+    TETO = 50
 
-    def __init__(self, connection, source, governor, agora=None) -> None:
+    def __init__(
+        self, connection, source, governor, agora=None, limiar_destaque: int = 70
+    ) -> None:
         self._connection = connection
         self._source = source
         self._governor = governor
         self._agora = agora or (lambda: datetime.now(timezone.utc))
+        self._limiar = limiar_destaque
 
     def run(self, context: RunContext) -> None:
         from .enricher import expirar_encerrada
@@ -1035,21 +1052,38 @@ class ReconferenciaStage:
         from .sources.guest import CollectionError
 
         limite = (self._agora() - self.IDADE_MINIMA).isoformat(timespec="seconds")
-        topo = self._connection.execute(
-            """
+        consulta = """
             SELECT j.job_id, j.url, d.coletada_em
             FROM scores s
             JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
             LEFT JOIN job_descriptions d ON d.job_id = s.job_id
             WHERE s.user_id = ? AND s.run_id = ? AND s.passada = 'final'
               AND j.estado IN ('novo', 'visto') AND j.job_id LIKE 'li-%'
+              {extra}
             ORDER BY s.score DESC, j.job_id
             LIMIT ?
-            """,
+        """
+        topo = self._connection.execute(
+            consulta.format(extra=""),
             (context.user_id, context.run_id, self.LIMITE),
         ).fetchall()
+        de_destaque = self._connection.execute(
+            consulta.format(extra="AND s.score >= ?"),
+            (context.user_id, context.run_id, self._limiar, self.TETO),
+        ).fetchall()
+        da_extensao = self._connection.execute(
+            consulta.format(extra="AND j.busca = ?"),
+            (context.user_id, context.run_id, InsightStore.ORIGEM,
+             self.LIMITE_DA_EXTENSAO),
+        ).fetchall()
+        vistas: set[str] = set()
+        alvos = []
+        for linha in [*topo, *de_destaque, *da_extensao]:
+            if linha[0] not in vistas and len(alvos) < self.TETO:
+                vistas.add(linha[0])
+                alvos.append(linha)
         conferidas = encerradas = 0
-        for job_id, url, coletada_em in topo:
+        for job_id, url, coletada_em in alvos:
             if coletada_em and coletada_em >= limite:
                 continue
             try:
@@ -1096,7 +1130,10 @@ def build_stages(
         PontuacaoProvisoriaStage(connection, config, ontology),
         EnriquecimentoStage(connection, config),
         PontuacaoFinalStage(connection, config, ontology),
-        ReconferenciaStage(connection, source, governor),
+        ReconferenciaStage(
+            connection, source, governor,
+            limiar_destaque=config.report.limiar_destaque,
+        ),
         JulgamentoStage(connection, config, model_client_factory),
         SinteseStage(connection, config, model_client_factory),
     ]

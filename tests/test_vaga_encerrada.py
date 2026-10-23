@@ -200,10 +200,11 @@ def test_a_description_read_in_this_run_is_not_fetched_again(run_pontuado):
     assert fonte.conferidas == []
 
 
-def test_only_the_top_is_checked(run_pontuado):
+def test_below_the_threshold_only_the_top_is_checked(run_pontuado):
+    """Reconferir as ~200 vagas antigas de um run custaria horas de governador."""
     connection, vaga = run_pontuado
     for i in range(ReconferenciaStage.LIMITE + 5):
-        vaga(f"li-{i:03d}", 100 - i, descrita_ha_horas=48)
+        vaga(f"li-{i:03d}", 60 - i, descrita_ha_horas=48)
     fonte = FonteQueConfere()
     reconferir(connection, fonte)
     assert len(fonte.conferidas) == ReconferenciaStage.LIMITE
@@ -225,3 +226,36 @@ def test_a_block_stops_the_check_without_breaking_the_run(run_pontuado):
     vaga("li-1", 90, descrita_ha_horas=48)
     reconferir(connection, FonteQueConfere(bloqueia=True))
     assert estado(connection, "li-1") == "novo"
+
+
+def test_a_highlight_below_the_top_twenty_is_also_checked(run_pontuado):
+    """A vaga de 23/10/2026 veio da busca e fechou: a busca nao prova vaga aberta."""
+    connection, vaga = run_pontuado
+    for i in range(ReconferenciaStage.LIMITE):
+        vaga(f"li-{i:03d}", 99, descrita_ha_horas=2)  # topo, lidas agora
+    vaga("li-destaque", 75, descrita_ha_horas=48)
+    vaga("li-fraca", 40, descrita_ha_horas=48)
+    fonte = FonteQueConfere(fechadas={"li-destaque"})
+    reconferir(connection, fonte)
+    assert fonte.conferidas == ["li-destaque"]
+    assert estado(connection, "li-destaque") == "expirado"
+
+
+def test_a_job_from_the_extension_is_checked_wherever_it_ranks(run_pontuado):
+    connection, vaga = run_pontuado
+    for i in range(ReconferenciaStage.LIMITE):
+        vaga(f"li-{i:03d}", 99, descrita_ha_horas=2)
+    vaga("li-extensao", 30, descrita_ha_horas=48)
+    connection.execute("UPDATE jobs SET busca = 'extensao' WHERE job_id = 'li-extensao'")
+    fonte = FonteQueConfere()
+    reconferir(connection, fonte)
+    assert fonte.conferidas == ["li-extensao"]
+
+
+def test_the_whole_check_has_a_ceiling(run_pontuado):
+    connection, vaga = run_pontuado
+    for i in range(ReconferenciaStage.TETO + 15):
+        vaga(f"li-{i:03d}", 90, descrita_ha_horas=48)
+    fonte = FonteQueConfere()
+    reconferir(connection, fonte)
+    assert len(fonte.conferidas) == ReconferenciaStage.TETO
