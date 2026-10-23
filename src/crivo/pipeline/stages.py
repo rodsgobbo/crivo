@@ -106,34 +106,31 @@ class PlanejamentoStage:
     def _excluidas(self, context: RunContext) -> tuple[str, ...]:
         return buscas_excluidas(context.scope)
 
-    def _rendimento(self, context: RunContext) -> dict[str, tuple[int, int]]:
+    def _rendimento(self, context: RunContext) -> dict[str, tuple]:
         """Quanto cada termo rendeu, somando os runs anteriores deste usuario.
 
-        Le o teto de trilha gravado em `componentes`, que e o sinal de que a
-        origem casou por palavra solta e trouxe outra carreira. Um termo cujo
-        historico inteiro e disso nao merece uma das vinte e cinco vagas do
-        plano -- ele gasta requisicao contra o limite de taxa e nao devolve nada.
+        Duas medidas por termo, em `medir_rendimento`. O teto de trilha gravado
+        em `componentes` e o sinal de que a origem casou por palavra solta e
+        trouxe outra carreira. A fracao de titulos de gestao diz se um termo que
+        pede gestao a encontra: os "Coordenador de X" traziam analista. Termo
+        que nao rende por uma das duas nao merece uma das vinte e cinco vagas
+        do plano -- gasta requisicao contra o limite de taxa e nao devolve nada.
 
         Sem historico o mapa sai vazio e nada e rebaixado, que e o estado de
         toda instalacao nova.
         """
+        from .planner import medir_rendimento, vocabulario_de_gestao
+
         linhas = self._connection.execute(
             """
-            SELECT j.busca,
-                   COUNT(*) AS total,
-                   SUM(CASE WHEN s.componentes LIKE '%outra_trilha%'
-                            THEN 1 ELSE 0 END) AS fora
+            SELECT j.busca, s.componentes, j.titulo
             FROM scores s
             JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
             WHERE s.user_id = ? AND s.passada = ? AND j.busca IS NOT NULL
-            GROUP BY j.busca
             """,
             (context.user_id, FINAL),
         ).fetchall()
-        return {
-            linha["busca"]: (int(linha["total"]), int(linha["fora"] or 0))
-            for linha in linhas
-        }
+        return medir_rendimento(linhas, vocabulario_de_gestao(self._filters))
 
     def run(self, context: RunContext) -> None:
         perfil = carregar_perfil(self._connection, self._config, context)

@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1074 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1082 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -350,7 +350,7 @@ Rebaixa em vez de apagar: o mercado muda e o termo volta sozinho quando a lista
 couber inteira. Amostra mínima de 5, para não condenar termo bom por azar de um
 run. Busca escrita pelo usuário nunca é rebaixada.
 
-### 2.7 — O conjunto coletado é fraco · **alto** · G
+### 2.7 — ~~O conjunto coletado é fraco~~ · ✔ **resolvido em 23/out**
 
 Descoberto ao ler o resultado de §1.1. Depois da releitura, a **melhor vaga do
 run `938b7c5b` marca 70%**, e é um cargo de especialista, não de gestão. O topo
@@ -362,6 +362,16 @@ não estão encontrando o cargo procurado. Não é ranqueamento — é cobertura
 Candidatos, nesta ordem: §2.3 (filtros `f_E` de senioridade na origem, que
 tiraria os cargos técnicos abaixo do nível), mais âncoras de nível executivo, e
 a revisão de quais eixos rendem cargo de gestão de fato.
+
+**Em 23/out o quadro já era outro.** Nos quatro runs de 22 e 23/10, 14 a 19 das
+20 do topo eram de gestão, e a melhor nota ia de 82 a 88 — o que resolveu foi o
+conjunto de 1.1, 1.2, 1.6 e da releitura. O que sobrava era desperdício, e não
+falta: os oito "Coordenador de X" ocupavam um terço das buscas e traziam de 1% a
+19% de gestão (a busca sem login casa a palavra solta e devolve analista),
+contra 25% a 100% de todo outro termo de gestão. Eles passam a ser rebaixados
+por isso (critério 7.9), e no lugar entram termos de gestão ainda não
+experimentados. §2.3 deixou de ser necessário para este fim: exigiria montar a
+busca fora da biblioteca de coleta e experimentar contra a origem.
 
 ### 2.3 — Filtros de URL do LinkedIn não usados · **médio** · M
 

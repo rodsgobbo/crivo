@@ -14,6 +14,7 @@ muito maior.
 
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -188,22 +189,95 @@ MINIMO_PARA_JULGAR = 5
 #: e nao e mais baixo porque termo com alguma pontaria ainda rende.
 PROPORCAO_IMPRODUTIVA = 0.9
 
+#: Amostra minima para julgar um termo de gestao pelo que ele traz, e a fracao
+#: de titulos de gestao abaixo da qual ele e rebaixado.
+#:
+#: Medido em 23/10/2026 sobre o historico inteiro: os oito "Coordenador de X"
+#: traziam de 1% a 19% de vagas de gestao -- "Coordenador de Cloud", 177 vagas
+#: e 1%. Nao era outra carreira, e sim a carreira certa num nivel abaixo: a
+#: busca sem login casa a palavra solta e devolve analista, e a regra de outra
+#: trilha nao os pegava. Todo outro termo de gestao ficava de 25% a 100%. A
+#: primeira tentativa media pela nota de destaque e rebaixava tambem os termos
+#: de diretor, que sao o degrau acima buscado de proposito e por isso pontuam
+#: menos; a fracao de gestao separa os dois grupos sem tocar nesse degrau.
+MINIMO_PARA_JULGAR_A_GESTAO = 15
+PROPORCAO_MINIMA_DE_GESTAO = 0.2
 
-def improdutivas(rendimento: dict[str, tuple[int, int]]) -> frozenset[str]:
-    """Termos cujo historico so trouxe vaga de outra trilha.
+
+def vocabulario_de_gestao(filters: "Filters") -> re.Pattern[str]:
+    """Palavras que fazem de um titulo (ou de um termo) um cargo de gestao.
+
+    Saem dos rotulos de nivel `manager` e `executive` da configuracao, nos dois
+    idiomas, mais as formas que os titulos usam e os rotulos nao listam
+    ("Gerencia", "Coordenacao"). Comparadas sem acento e sem caixa.
+    """
+    rotulos = [
+        *filters.niveis.get("manager", ()), *filters.niveis.get("executive", ()),
+        *filters.niveis_en.get("manager", ()), *filters.niveis_en.get("executive", ()),
+    ]
+    palavras = {
+        _sem_acento(p) for r in rotulos for p in r.split() if len(p) > 2
+    } - {"engineering"}
+    palavras |= {"gerencia", "coordenacao", "coordenadora", "diretora"}
+    return re.compile(r"\b(" + "|".join(sorted(map(re.escape, palavras))) + r")\b")
+
+
+def _sem_acento(texto: str) -> str:
+    import unicodedata
+
+    return (
+        unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore")
+        .decode().lower()
+    )
+
+
+def medir_rendimento(linhas, gestao: re.Pattern[str]) -> dict[str, tuple]:
+    """Soma, por termo, (vagas, fora da trilha, de gestao) a partir das notas.
+
+    `linhas` traz (busca, componentes, titulo) de cada nota final. O terceiro
+    numero e `None` para termo que nao pede gestao: um "Analista de Cloud" que
+    traz analista esta certo, e nao rendendo mal.
+
+    Fica aqui, e nao em cada leitor, porque o estagio de planejamento e a
+    pagina inicial leem o rendimento separadamente e precisam concordar.
+    """
+    somas: dict[str, list[int]] = {}
+    for busca, componentes, titulo in linhas:
+        soma = somas.setdefault(busca, [0, 0, 0])
+        soma[0] += 1
+        soma[1] += "outra_trilha" in (componentes or "")
+        soma[2] += bool(gestao.search(_sem_acento(titulo)))
+    return {
+        busca: (total, fora, de_gestao if gestao.search(_sem_acento(busca)) else None)
+        for busca, (total, fora, de_gestao) in somas.items()
+    }
+
+
+def improdutivas(rendimento: dict[str, tuple]) -> frozenset[str]:
+    """Termos cujo historico nao rende vaga aproveitavel.
 
     `rendimento` mapeia o texto da busca para (vagas trazidas, vagas fora da
-    trilha), somando todos os runs do usuario.
+    trilha), ou para (vagas, fora da trilha, de gestao) como `medir_rendimento`
+    devolve. Duas razoes rebaixam: quase tudo de outra carreira, ou -- num termo
+    que pede gestao -- quase nada de gestao.
 
     Rebaixar em vez de apagar da configuracao: o mercado muda, e um termo que
     nao rende hoje pode render em tres meses. Rebaixado, ele volta sozinho
     assim que a lista couber inteira; apagado, so voltaria se alguem lembrasse.
     """
-    return frozenset(
-        termo
-        for termo, (total, fora) in rendimento.items()
-        if total >= MINIMO_PARA_JULGAR and fora / total >= PROPORCAO_IMPRODUTIVA
-    )
+    ruins = set()
+    for termo, valores in rendimento.items():
+        total, fora = valores[0], valores[1]
+        de_gestao = valores[2] if len(valores) > 2 else None
+        if total >= MINIMO_PARA_JULGAR and fora / total >= PROPORCAO_IMPRODUTIVA:
+            ruins.add(termo)
+        elif (
+            de_gestao is not None
+            and total >= MINIMO_PARA_JULGAR_A_GESTAO
+            and de_gestao / total < PROPORCAO_MINIMA_DE_GESTAO
+        ):
+            ruins.add(termo)
+    return frozenset(ruins)
 
 
 def teto_por_frente(limite: int | None, frentes: int) -> int | None:
@@ -317,11 +391,22 @@ def _rebaixar(ordenadas: list[Query], ruins: frozenset[str]) -> list[Query]:
     """
     if not ruins:
         return ordenadas
-    bons = [q for q in ordenadas if q.origem == "usuario" or q.texto not in ruins]
-    rebaixados = [
-        q for q in ordenadas if q.origem != "usuario" and q.texto in ruins
-    ]
-    return bons + rebaixados
+    # A forma feminina do rotulo e o mesmo termo para a origem, e o historico
+    # fica gravado numa so delas. Sem isto, rebaixar "Coordenador de Cloud"
+    # abria a vaga para "Coordenadora de Cloud", que traz as mesmas vagas.
+    ruins = {_masculino(t) for t in ruins}
+
+    def ruim(q: Query) -> bool:
+        return q.origem != "usuario" and _masculino(q.texto) in ruins
+
+    return [q for q in ordenadas if not ruim(q)] + [q for q in ordenadas if ruim(q)]
+
+
+def _masculino(texto: str) -> str:
+    """O termo com o rotulo de nivel no masculino, para comparar historico."""
+    return re.sub(
+        r"\b(Coordenador|Diretor)a\b", r"\1", texto, flags=re.IGNORECASE
+    )
 
 
 def _ordem(q: Query) -> tuple:

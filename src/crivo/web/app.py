@@ -744,31 +744,26 @@ PASSOS = (
 )
 
 
-def _rendimento_historico(repositorio, user_id: str) -> dict[str, tuple[int, int]]:
+def _rendimento_historico(repositorio, user_id: str) -> dict[str, tuple]:
     """Quanto cada termo rendeu nos runs anteriores deste usuario.
 
     Duplica a consulta do estagio de planejamento de proposito: a face web nao
     importa o pipeline, e uma consulta de leitura e mais barata de repetir do
-    que essa fronteira e de furar. As duas precisam concordar, e o teste que
-    compara as duas listas e o que garante isso.
+    que essa fronteira e de furar. A soma e a mesma funcao do planejador, e o
+    teste que compara as duas listas e o que garante que elas concordam.
     """
+    from ..pipeline.planner import load_filters, medir_rendimento, vocabulario_de_gestao
+
     linhas = repositorio.execute(
         """
-        SELECT j.busca,
-               COUNT(*) AS total,
-               SUM(CASE WHEN s.componentes LIKE '%outra_trilha%'
-                        THEN 1 ELSE 0 END) AS fora
+        SELECT j.busca, s.componentes, j.titulo
         FROM scores s
         JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
         WHERE s.user_id = ? AND s.passada = 'final' AND j.busca IS NOT NULL
-        GROUP BY j.busca
         """,
         (user_id,),
     ).fetchall()
-    return {
-        linha["busca"]: (int(linha["total"]), int(linha["fora"] or 0))
-        for linha in linhas
-    }
+    return medir_rendimento(linhas, vocabulario_de_gestao(load_filters()))
 
 
 def _buscas_previstas(context: WebContext, repositorio, user_id: str) -> dict:

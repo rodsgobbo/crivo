@@ -493,3 +493,65 @@ def test_a_role_the_user_wrote_is_never_removed_by_this(filters):
         extras=("Gerente de Tecnologia",), excluidas=("Gerente de Tecnologia",),
     )
     assert "Gerente de Tecnologia" in _textos(queries)
+
+
+# ------------------------------------- termo de gestao que nao traz gestao
+from crivo.pipeline.planner import (  # noqa: E402
+    improdutivas, medir_rendimento, vocabulario_de_gestao,
+)
+
+
+def test_a_management_term_that_brings_analysts_is_demoted():
+    """O caso medido em 23/10/2026: "Coordenador de Cloud", 177 vagas, 1% de gestao."""
+    assert improdutivas({"Coordenador de Cloud": (177, 0, 2)}) == {"Coordenador de Cloud"}
+
+
+def test_the_step_above_is_kept_even_scoring_lower():
+    """Diretor e o degrau acima buscado de proposito; traz gestao, so pontua menos."""
+    assert improdutivas({"Cloud Director": (204, 0, 151)}) == frozenset()
+
+
+def test_a_term_that_does_not_ask_for_management_is_not_judged_by_it():
+    assert improdutivas({"Analista de Cloud": (50, 0, None)}) == frozenset()
+
+
+def test_a_short_history_is_not_judged():
+    assert improdutivas({"Coordenador de SRE": (10, 0, 0)}) == frozenset()
+
+
+def test_the_old_two_number_form_still_works():
+    assert improdutivas({"FinOps Director": (10, 10)}) == {"FinOps Director"}
+
+
+def test_the_yield_counts_management_titles_only_for_management_terms(filters):
+    gestao = vocabulario_de_gestao(filters)
+    linhas = [
+        ("Coordenador de Cloud", "{}", "Analista de Cloud Pleno"),
+        ("Coordenador de Cloud", "{}", "Coordenadora de Infraestrutura"),
+        ("Coordenador de Cloud", '{"tetos": {"outra_trilha": 65}}', "Engenheiro"),
+        ("Analista de Cloud", "{}", "Analista de Cloud"),
+    ]
+    rendimento = medir_rendimento(linhas, gestao)
+    assert rendimento["Coordenador de Cloud"] == (3, 1, 1)
+    assert rendimento["Analista de Cloud"] == (1, 0, None)
+
+
+def test_the_title_vocabulary_ignores_accents_case_and_variants(filters):
+    gestao = vocabulario_de_gestao(filters)
+    titulos = ["Gerência de TI", "Coordenação de Infra", "HEAD of SRE",
+               "Diretora de Tecnologia", "Analista de Cloud"]
+    linhas = [("Gerente de TI", "{}", t) for t in titulos]
+    assert medir_rendimento(linhas, gestao)["Gerente de TI"] == (5, 0, 4)
+
+
+def test_demoting_a_term_also_demotes_its_feminine_form(filters):
+    """Sem isto, "Coordenadora de Cloud" ocupava o lugar do termo rebaixado."""
+    perfil = {"headline": "Coordenador de Cloud", "competencias": ["Kubernetes"]}
+    todas = _textos(plan(perfil, "manager", filters))
+    assert "Coordenadora de Cloud" in todas, "o plano gera as duas formas"
+    rebaixado = _textos(plan(
+        perfil, "manager", filters, limite=len(todas),
+        rendimento={"Coordenador de Cloud": (100, 0, 1)},
+    ))
+    assert rebaixado.index("Coordenadora de Cloud") >= len(todas) - 2
+    assert rebaixado.index("Coordenador de Cloud") >= len(todas) - 2

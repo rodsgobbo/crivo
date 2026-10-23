@@ -124,6 +124,13 @@ COVERAGE: dict[str, list[str]] = {
         "test_web_app::test_a_removed_generated_role_leaves_the_page_and_the_run_alike",
         "test_web_app::test_one_users_removal_does_not_touch_anothers_list",
     ],
+    "7.9": [
+        "test_planner::test_the_demoted_term_leaves_room_for_one_that_works",
+        "test_planner::test_a_management_term_that_brings_analysts_is_demoted",
+        "test_planner::test_the_step_above_is_kept_even_scoring_lower",
+        "test_planner::test_a_term_that_does_not_ask_for_management_is_not_judged_by_it",
+        "test_planner::test_demoting_a_term_also_demotes_its_feminine_form",
+    ],
 
     # ------------------------------------------------------- REQ-8 coleta
     "8.1": ["test_collector::test_a_row_becomes_a_normalized_card"],

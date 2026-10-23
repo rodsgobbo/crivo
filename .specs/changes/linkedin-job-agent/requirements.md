@@ -210,6 +210,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 7.8 WHEN o usuário remove um termo gerado a partir do perfil, THEN the Search Planner SHALL omit esse termo dos planos seguintes antes de aplicar o teto de buscas, de modo que o próximo termo da ordem ocupe o lugar, SHALL never omit um termo escrito pelo próprio usuário, e SHALL restore o termo quando o usuário desfizer a remoção.
 
+7.9 WHEN o histórico de um termo gerado mostra que ele traz quase só vagas de outra carreira, ou que, pedindo um cargo de gestão, traz quase só vagas fora de gestão, THEN the Query Planner SHALL move esse termo, e suas variações de gênero, para depois dos demais antes de aplicar o teto de buscas, sem removê-lo da configuração e sem afetar os termos escritos pelo usuário.
+
 ### REQ-8: Coleta e deduplicação de vagas
 
 **User Story:** As a candidato, I want que o sistema junte os resultados de todas as buscas em uma lista sem repetição, so that eu não leia a mesma vaga várias vezes.
