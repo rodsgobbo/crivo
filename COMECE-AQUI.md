@@ -304,7 +304,8 @@ buscas rodaram. Se o LinkedIn recusou pedidos no meio, aparece um aviso dizendo
 em qual busca parou — a próxima busca começa pelos termos que ficaram de fora.
 
 Vaga que **não aceita mais candidaturas** sai da lista sozinha, e o relatório diz
-quantas saíram. Vaga que o crivo achou mas descartou pelo título fica na lista
+quantas saíram. O crivo confere isso nas vagas com nota de destaque; numa vaga de
+nota mais baixa, o aviso pode só aparecer quando você abrir o anúncio. Vaga que o crivo achou mas descartou pelo título fica na lista
 **Descartadas**, no fim, com o motivo.
 
 ### Atualizar o crivo
@@ -369,6 +370,7 @@ que fazer.
 | A busca ficou parada por horas | O computador provavelmente dormiu. Veja [Não deixe o computador dormir](#não-deixe-o-computador-dormir-durante-uma-busca). |
 | Sei que uma vaga existe e ela não aparece no relatório | Confira, nesta ordem: (1) o cargo dela está em **Cargos procurados**? Se não, acrescente; (2) a busca usou um período que cobre a data da vaga? Use **30 dias**; (3) ela está em **Descartadas**, no fim do relatório? O motivo diz por quê; (4) digite o nome da empresa no filtro **Cargo ou empresa**. Se mesmo assim não estiver, peça ajuda mandando o link da vaga. |
 | Aviso **"O LinkedIn recusou pedidos na busca…"** no relatório | O LinkedIn limitou as buscas do seu computador por um tempo. Não é defeito, e não precisa fazer nada: o relatório sai com o que deu para coletar, e a próxima busca começa pelos termos que ficaram de fora. Evite buscar de novo na mesma hora. |
+| **"O LinkedIn recusou pedidos às…; tente a partir das…"** ao clicar em buscar | Depois de uma recusa, o crivo espera **1 hora** antes de pedir de novo, para não prolongar o bloqueio. Volte no horário que a mensagem diz. A busca não foi gasta. Fazer várias buscas seguidas é o que mais provoca o bloqueio: prefira uma por vez, com intervalo. |
 | O relatório saiu **sem a leitura estratégica** (o texto do topo) | O serviço de IA estava sobrecarregado ou sem cota. O resto do relatório vale normalmente. Cadastre uma segunda chave, de preferência a **Groq** (veja [Chave de IA](#chave-de-ia-recomendado-e-pode-ser-grátis)), para o crivo ter uma reserva. |
 | **"Não foi possível concluir — uma busca precisa de ao menos duas palavras"** | Escreva o cargo inteiro: `Gerente de FinOps` em vez de `FinOps`. |
 

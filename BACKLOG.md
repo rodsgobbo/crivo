@@ -1,10 +1,10 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1060 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1064 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
-uma leva de ajustes de tela — quase tudo saído de uso real. O que ficou em aberto
-está em [Abertos em outubro](#abertos-em-outubro).
+uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
+saíram disso estão em [Resolvidos em outubro](#resolvidos-em-outubro).
 
 Cada item traz a evidência que o sustenta. Item sem evidência é suposição, e
 suposição não entra em roadmap — vira pergunta na seção final.
@@ -644,41 +644,46 @@ não tornou as notas corretas.
 
 ---
 
-## Abertos em outubro
+## Resolvidos em outubro
 
-### 8.1 — A coleta passou a ser barrada no começo · **alto** · M
+As quatro pendências registradas em 23/10/2026, fechadas no mesmo dia.
 
-Em 19/10 e 21/10/2026 o LinkedIn recusou (429) a coleta no 11º e no 4º minuto;
-antes, runs de 30 a 55 minutos passavam sem bloqueio. Uma busca de teste 17 min
-depois ainda levava 429. A piora coincide com a troca para a `python-jobspy`
-1.3.0: o run de 17/10, que passou, foi feito por um executor antigo, ainda com a
-1.1.82. A 1.3.0 manda menos cabeçalhos de navegador (perdeu `authority`,
-`cache-control` e `upgrade-insecure-requests`). **Suspeita, não prova:** pode
-ser também o IP marcado depois de 15–17/10, os dias de uso mais pesado. Os runs
-de 22 e 23/10 passaram sem bloqueio.
+### 8.1 — ~~A coleta passou a ser barrada no começo~~ · ✔ **resolvido em 23/out**
 
-Experimento barato: voltar à 1.1.82 por alguns dias (exige Python < 3.13) e
-comparar pelo resumo da coleta, que agora fica gravado em `runs.coleta`.
+A suspeita era a `python-jobspy` 1.3.0, e os dados posteriores a descartam: com
+ela, três runs completos passaram sem bloqueio (22/10 e dois de 23/10), e o
+quarto — o terceiro run em três horas — foi barrado na décima busca. O padrão é
+**volume num intervalo curto**.
 
-### 8.2 — A expiração por ausência nunca roda · **médio** · P
+E o crivo não freava nesse caso: a recusa da busca chega como resultado, e não
+como exceção, e nunca passava pelo governador. A hora de recuperação não valia
+para a coleta, e nem a tela nem o comando `schedule` davam ao agendador o
+governador que fecha o portão. Agora a recusa grava o bloqueio; o botão de
+buscar recusa até a liberação, dizendo a hora; e o enriquecedor deixa pendente
+o que o bloqueio impediu, em vez de fechar como falha (critério 11.7).
 
-`JobLifecycle.sweep_absences` (critério 21.4) existe e tem teste, mas nenhum
-chamador. Nenhuma vaga do banco real chegou a "expirado" por ausência. O expurgo
-de 30 dias e a reconferência do topo cobrem a maior parte do efeito; ligar a
-regra exige decidir em que etapa ela roda.
+### 8.2 — ~~A expiração por ausência nunca roda~~ · ✔ **aposentada em 23/out**
 
-### 8.3 — A mensagem da cadeia de modelos culpa só o último provedor · **baixo** · P
+Ligá-la esconderia vaga aberta: cada termo traz no máximo 25 resultados, e a
+ausência não prova que a vaga fechou; e reaparecer não desfaz o estado. O que
+ela queria, o expurgo de 30 dias já faz. "Expirado" ficou reservado à vaga que a
+origem declara encerrada, e apagar o e-mail do recrutador (20.8) passou para
+essa via (21.4 reescrito).
 
-Em 22/10 o Google estava sobrecarregado e a Groq respondeu `model_not_found`; a
-página disse "nenhum dos 2 provedores entregou: sobrecarga temporária". A frase
-usa a categoria da exceção final do roteador. Dizer a categoria de cada um exige
-juntar as falhas por destino, e não só a última.
+### 8.3 — ~~A mensagem da cadeia de modelos culpa só o último provedor~~ · ✔ **resolvido em 23/out**
 
-### 8.4 — Vaga encerrada fora do topo continua até o expurgo · **baixo** · P
+O crivo percorre a cadeia destino a destino e guarda o motivo de cada um.
+Motivos diferentes aparecem por provedor; o mesmo motivo, uma vez (26.13).
+Conferido contra os provedores reais: o Google respondeu, e com o primeiro
+destino quebrado de propósito a Groq respondeu.
 
-A marca de vaga fechada é vista quando a descrição é lida e, depois, só nas 20
-do topo. Vaga do meio da lista que fecha depois segue no relatório até sumir
-das buscas.
+### 8.4 — ~~Vaga encerrada fora do topo continua até o expurgo~~ · ✔ **resolvido em 23/out**
+
+A reconferência passa a cobrir toda vaga com nota de destaque e as vindas da
+extensão, com teto de 50 por run (10.9). A ideia de confiar na busca — vaga
+trazida por ela estaria aberta — foi desmentida pelos dados: `li-4480211527`
+veio da busca e estava fechada. Abaixo do limiar e fora do topo a vaga ainda
+fica até o expurgo; reconferir as ~200 vagas antigas de um run custaria horas.
 
 ---
 

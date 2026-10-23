@@ -140,7 +140,7 @@ processo que morre no meio retoma da etapa em que parou.
 | `pontuacao_provisoria` | Nota por título, empresa e sinais; ordena a fila de descrições |
 | `enriquecimento` | Pede a descrição dos 70% do topo (`fracao_enriquecida`). O run espera o processo `enricher`, e a prévia do relatório já existe nesta hora. Vaga que "não aceita mais candidaturas" expira aqui |
 | `pontuacao_final` | Refaz a nota com a descrição |
-| `reconferencia` | Confere de novo se as 20 do topo cuja descrição tem mais de um dia ainda aceitam candidaturas |
+| `reconferencia` | Confere de novo se ainda aceitam candidaturas as vagas com descrição de mais de um dia que estão no topo, têm nota de destaque ou vieram da extensão (até 50 por run) |
 | `julgamento` | O modelo de linguagem relê as do topo (opcional, com chave) |
 | `sintese` | A leitura estratégica do run (opcional, com chave) |
 
@@ -267,7 +267,7 @@ operar precisa saber.
 
 ### Os testes não tocam as origens reais, e o uso real só cobriu parte delas
 
-Os 1060 testes usam fontes e provedores falsos, e uma barreira em
+Os 1064 testes usam fontes e provedores falsos, e uma barreira em
 `tests/conftest.py` reprova o teste que tentar a rede de verdade. Fora deles, a
 coleta e a releitura já rodaram de verdade: runs de 24h a 30 dias contra o
 LinkedIn, Jobicy e We Work Remotely, e um modelo real relendo o topo, registrados
@@ -302,10 +302,12 @@ Não há mais conta operacional: a coleta é toda por rota pública, sem sessão
 Isso remove o risco de perder uma conta, e não remove o risco de bloqueio — ele
 passa a recair sobre o endereço de saída da instalação, e um bloqueio suspende
 os runs de todos os usuários, não apenas de quem o provocou. A contenção reduz
-a chance; não a elimina. Em 19 e 21/10/2026 a coleta foi barrada no quarto e no
-décimo primeiro minuto. O relatório agora diz em qual busca parou e o que ficou
-de fora, e o run seguinte começa por esses termos; a causa ainda não está
-isolada (ver `BACKLOG.md`). Raspar o LinkedIn contraria os Termos de Serviço mesmo
+a chance; não a elimina. O padrão observado em outubro de 2026 é volume num intervalo
+curto: três runs em três horas, e o terceiro barrado na décima busca. Uma recusa
+na coleta agora grava o bloqueio e vale a hora de recuperação para todo o
+sistema — o botão de buscar recusa até a liberação, dizendo a hora, e o
+enriquecedor guarda para depois o que o bloqueio impediu. O relatório diz em
+qual busca parou, e o run seguinte começa pelos termos que ficaram de fora. Raspar o LinkedIn contraria os Termos de Serviço mesmo
 sem sessão, e o risco recai sobre quem opera.
 
 ### O teto de vazão não escala com usuários
