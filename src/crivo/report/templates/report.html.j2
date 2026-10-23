@@ -298,6 +298,14 @@
   <p class="acao-recomendada acao-{{ vaga.acao | replace(' ', '-') }}">
     <strong>{{ vaga.acao }}</strong> — {{ vaga.acao_porque }}
   </p>
+  {# Onde a recomendacao e pedir indicacao, o passo seguinte e escrever a
+     mensagem. POST, sob demanda: gasta o modelo do usuario so se ele pedir. #}
+  {% if vaga.acao == "pedir indicação antes" %}
+  <form method="post" action="/reports/{{ ctx.run_id }}/indicacao/{{ vaga.job_id }}"
+        class="rascunhar">
+    <button class="acao discreta" type="submit">Rascunhar pedido de indicação</button>
+  </form>
+  {% endif %}
 
   {# O que o modelo viu que o cálculo não vê. Só aparece onde houve releitura,
      e diz que a nota mudou de origem -- senão o usuário compara dois números

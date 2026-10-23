@@ -470,6 +470,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 18.20 THE Report Renderer SHALL offer um filtro que mantém apenas as vagas em destaque, pela mesma regra que as marca na lista: vaga nunca mostrada em relatório anterior, sem decisão do usuário e com nota igual ou acima do limiar de destaque.
 
+18.21 WHERE o relatório recomenda pedir indicação, THE Report Renderer SHALL offer um rascunho de mensagem de pedido de indicação, gerado apenas quando o usuário o pede, a partir do perfil confirmado e da vaga, com até 150 palavras, sem enviá-lo, e SHALL display todo número do rascunho que não está no perfil nem na vaga.
+
 ### REQ-19: Isolamento entre usuários
 
 **User Story:** As a candidato, I want certeza de que ninguém mais vê meu currículo nem meu relatório, so that eu confie meus dados profissionais ao serviço.

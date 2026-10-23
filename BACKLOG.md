@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1097 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1108 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -636,13 +636,21 @@ salário nenhum. A regra quase nunca teria o que comparar nas vagas que
 interessam, e o campo seria a "mentira na tela" acima. Reabrir quando uma fonte
 trouxer salário estruturado com frequência.
 
-### 7.5 — Rascunho de pedido de indicação · **médio** · G
+### 7.5 — ~~Rascunho de pedido de indicação~~ · ✔ **feito em 23/out**
 
 Só nas vagas em que o relatório já diz "pedir indicação antes". Até 150
 palavras, a partir da descrição e do perfil confirmado, pelo modelo do usuário e
 aterrado como a síntese, gerado sob demanda e não em todo run. O crivo nunca
 envia. Do `linkedin-interviewer` vem a regra de perguntar uma vez pelos números
 reais e guardar, para a mensagem não inventar feito. Pede requisito.
+
+**Feito em 23/out (critério 18.21)**, com uma troca: em vez de perguntar os
+números reais, o gabarito proíbe inventar e a resposta é **conferida** — todo
+número do rascunho que não está no perfil nem na vaga aparece na página para o
+usuário corrigir. Botão só nas vagas de "pedir indicação antes", por POST (um
+GET seria disparado por pré-carregamento e gastaria o modelo), página com o
+texto para copiar; o crivo não envia. Gerado de verdade para a vaga da Ideen no
+relatório de 23/10: 105 palavras, só fatos do perfil, nenhum número sem origem.
 
 ### 7.6 — Acompanhamento da candidatura · pergunta em aberto
 

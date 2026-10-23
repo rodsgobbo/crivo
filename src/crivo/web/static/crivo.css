@@ -564,6 +564,16 @@ li { margin: 0.15rem 0; }
 .exp .quando { color: var(--suave); font-size: var(--txt-sm); }
 
 /* Trecho do currículo que originou um campo extraído. */
+/* Rascunho de pedido de indicacao: texto para copiar e editar. */
+textarea.rascunho {
+  width: 100%;
+  margin-top: var(--esp-2);
+  font: inherit;
+  line-height: 1.6;
+}
+form.rascunhar { margin: 0 0 var(--esp-2); }
+form.rascunhar .acao { margin-top: 0; }
+
 /* Campo vazio que pesa na nota: mesma cor de "atencao" do resto do app. */
 .nota.aviso-campo {
   margin-top: var(--esp-2);

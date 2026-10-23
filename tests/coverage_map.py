@@ -322,6 +322,13 @@ COVERAGE: dict[str, list[str]] = {
         "test_report::test_only_highlights_keeps_new_untouched_jobs_above_the_threshold",
         "test_web_app::test_the_report_address_can_ask_for_highlights_only",
     ],
+    "18.21": [
+        "test_indicacao::test_the_report_offers_the_draft_only_where_it_recommends_a_referral",
+        "test_indicacao::test_the_route_writes_a_draft_for_a_job_of_this_report",
+        "test_indicacao::test_a_get_does_not_generate",
+        "test_indicacao::test_a_number_that_is_neither_in_the_profile_nor_the_job_is_pointed_out",
+        "test_indicacao::test_there_is_a_fixed_instruction_that_forbids_inventing",
+    ],
     "18.19": [
         "test_resumo_da_coleta::test_a_barred_collection_says_where_it_stopped_and_what_was_left",
         "test_resumo_da_coleta::test_the_page_names_the_sources_for_a_reader",

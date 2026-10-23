@@ -1,0 +1,68 @@
+{# Rascunho de pedido de indicacao, gerado sob demanda pelo modelo do usuario.
+
+   O crivo nunca envia: a pagina mostra o texto para copiar e editar. E o que o
+   modelo escreveu e conferido -- numero que nao esta no perfil nem na vaga e
+   apontado aqui, em vez de passar calado para dentro de uma mensagem com o
+   nome do usuario embaixo. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crivo — pedido de indicação</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/crivo.css">
+</head>
+<body>
+<main>
+{% set atual = "relatorio" %}
+  {% include "_navegacao.html.j2" %}
+
+  <h1>Pedido de indicação</h1>
+  <p class="sub">
+    <a href="{{ ctx.vaga.url }}">{{ ctx.vaga.titulo }}</a>{% if ctx.vaga.empresa %} — {{ ctx.vaga.empresa }}{% endif %}
+  </p>
+
+  {% if ctx.rascunho.falha %}
+    <div class="cartao falhou">
+      <div class="linha">
+        <span class="rotulo">Não foi possível concluir</span>
+        <span class="marca erro">erro</span>
+      </div>
+      <p class="nota">O rascunho não pôde ser escrito: {{ ctx.rascunho.falha }}.</p>
+    </div>
+  {% else %}
+    <div class="cartao">
+      <label class="rotulo" for="rascunho">Rascunho — revise antes de enviar</label>
+      <textarea id="rascunho" class="rascunho" rows="12">{{ ctx.rascunho.texto }}</textarea>
+      <p class="nota">
+        Troque <code>[Nome]</code> pelo nome de quem vai receber, ajuste o tom e
+        envie você mesmo, pelo LinkedIn ou por e-mail. O crivo não envia nada.
+        {{ ctx.rascunho.palavras }} palavras · escrito por {{ ctx.rascunho.provedor or "?" }}.
+      </p>
+
+      {% if ctx.rascunho.numeros_sem_origem %}
+        <p class="nota aviso-campo">
+          <strong>Confira estes números:</strong>
+          {{ ctx.rascunho.numeros_sem_origem | join(", ") }}. Eles não estão no
+          seu perfil nem na vaga — o modelo pode tê-los inventado. Corrija ou
+          apague antes de enviar.
+        </p>
+      {% endif %}
+      {% if ctx.rascunho.longo_demais %}
+        <p class="nota aviso-campo">
+          O texto passou de 150 palavras. Mensagem curta tem mais chance de ser
+          lida: vale cortar.
+        </p>
+      {% endif %}
+    </div>
+
+    <form method="post" action="">
+      <button class="acao discreta" type="submit">Escrever outro rascunho</button>
+    </form>
+  {% endif %}
+
+  <p class="nota"><a href="/reports/{{ ctx.run_id }}">Voltar ao relatório</a></p>
+</main>
+</body>
+</html>

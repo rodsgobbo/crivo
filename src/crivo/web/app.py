@@ -1139,6 +1139,46 @@ def build_reports_router(context: WebContext) -> APIRouter:
             return JSONResponse({"erro": str(exc)}, status_code=404)
         return HTMLResponse(pagina)
 
+    @router.post("/{run_id}/indicacao/{job_id}", response_class=HTMLResponse)
+    def pedido_de_indicacao(request: Request, run_id: str, job_id: str):
+        """Escreve, sob demanda, um rascunho de pedido de indicacao.
+
+        POST, e nao GET: gerar gasta o modelo do usuario, e um GET seria
+        disparado por qualquer pre-carregamento do navegador. So vaga deste
+        run e deste usuario; o perfil e o confirmado mais recente.
+        """
+        from ..report.indicacao import rascunhar
+
+        user_id = context.guard().require(request)
+        repositorio = context.repository()
+        linha = repositorio.execute(
+            """
+            SELECT j.titulo, j.empresa, j.url, d.texto AS descricao
+            FROM scores s
+            JOIN jobs j ON j.job_id = s.job_id AND j.user_id = s.user_id
+            LEFT JOIN job_descriptions d ON d.job_id = s.job_id
+            WHERE s.user_id = ? AND s.run_id = ? AND s.job_id = ?
+            LIMIT 1
+            """,
+            (user_id, run_id, job_id),
+        ).fetchone()
+        if linha is None:
+            return JSONResponse(
+                {"erro": "vaga nao encontrada neste relatorio"}, status_code=404
+            )
+        versao = context.profile_merger().current(user_id)
+        if versao is None:
+            return JSONResponse({"erro": "perfil ainda nao montado"}, status_code=409)
+        vaga = dict(linha)
+        rascunho = rascunhar(
+            context.model_client(user_id), user_id, dict(versao.campos), vaga
+        )
+        return HTMLResponse(
+            _ambiente().get_template("indicacao.html.j2").render(
+                ctx={"vaga": vaga, "rascunho": rascunho, "run_id": run_id}
+            )
+        )
+
     return router
 
 
