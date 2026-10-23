@@ -564,6 +564,15 @@ li { margin: 0.15rem 0; }
 .exp .quando { color: var(--suave); font-size: var(--txt-sm); }
 
 /* Trecho do currículo que originou um campo extraído. */
+/* Campo vazio que pesa na nota: mesma cor de "atencao" do resto do app. */
+.nota.aviso-campo {
+  margin-top: var(--esp-2);
+  padding: var(--esp-2) var(--esp-3);
+  color: var(--pendente);
+  background: var(--pendente-fundo);
+  border-radius: var(--raio-sm);
+}
+
 .origem-trecho {
   margin: var(--esp-2) 0 0;
   padding: var(--esp-2) var(--esp-3);

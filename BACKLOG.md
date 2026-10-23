@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1095 testes passando. De
+Estado em **2026-10-23**. Esquema do banco na v11, 1097 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -249,11 +249,20 @@ sobre a mesma vaga, e a que o relatório mostra era a errada.
 Nenhum teste pegou porque o dublê também escrevia `"remoto"` — validava um
 contrato que a produção não cumpre.
 
-### 1.5 — A extração não captura `idiomas` · **médio** · P
+### 1.5 — ~~A extração não captura `idiomas`~~ · ✔ **reenquadrado e resolvido em 23/out**
 
 A causa de origem de §1.3, que o teto agora contorna sem resolver. Enquanto o
 campo não for preenchido, um candidato sem inglês e um candidato não perguntado
 são indistinguíveis — e o sistema trata os dois como o segundo.
+
+**Não era defeito da extração.** Em 23/out: as três extrações do usuário real
+devolveram `idiomas` vazio, e o texto importado do currículo — 7.201 caracteres
+— não cita idioma nenhum ("idioma", "inglês", "english", "languages"). O modelo
+acertou. O perfil tem "Inglês avançado" porque foi preenchido à mão. O risco de
+verdade era a conferência: ela listava "o texto não afirmou: idiomas" junto dos
+outros campos, sem dizer que este é o que pesa. Agora o campo vazio traz o
+aviso — sem idioma, a vaga que exige inglês passa sem aviso — e um exemplo de
+como escrever, na conferência e no preenchimento à mão.
 
 ### 1.4 — ~~Datas do currículo lidas como `Ago/2025`~~ · **não existe**
 

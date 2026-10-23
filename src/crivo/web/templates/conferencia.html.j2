@@ -79,7 +79,12 @@
               <p class="nota">Um item por linha.</p>
               <textarea id="m-{{ campo }}" name="{{ campo }}"></textarea>
             {% elif campo in ('competencias', 'idiomas') %}
-              <p class="nota">Separe por vírgula.</p>
+              <p class="nota">
+                Separe por vírgula.
+                {%- if campo == 'idiomas' %} Com o nível, por exemplo
+                <code>Inglês avançado</code>: sem idioma informado o crivo não
+                consegue avisar quando uma vaga exige um que você não tem.{% endif %}
+              </p>
               <input type="text" id="m-{{ campo }}" name="{{ campo }}">
             {% else %}
               <input type="text" id="m-{{ campo }}" name="{{ campo }}">
@@ -151,6 +156,18 @@
 
           {% if ctx.extracao.trechos_origem.get(campo) %}
             <p class="origem-trecho">{{ ctx.extracao.trechos_origem[campo] }}</p>
+          {% endif %}
+          {# Idioma e o campo vazio que mais pesa. O crivo nao supoe que alguem
+             nao fala o que nunca foi perguntado, entao sem ele a vaga que exige
+             ingles fluente passa sem aviso. Curriculo que nao cita idioma e
+             comum: o do primeiro usuario real nao citava. #}
+          {% if campo == 'idiomas' and not valor %}
+            <p class="nota aviso-campo">
+              Seu currículo não cita idiomas. Se você fala inglês ou outra língua,
+              escreva aqui com o nível — por exemplo <code>Inglês avançado</code>.
+              Sem isso o crivo não consegue avisar quando uma vaga exige um idioma
+              que você não tem.
+            </p>
           {% endif %}
         </div>
       {% endfor %}

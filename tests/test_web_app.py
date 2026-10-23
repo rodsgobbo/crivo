@@ -1896,3 +1896,34 @@ def test_a_one_word_search_is_refused_with_an_example_built_from_it(cliente):
     assert "Não foi possível concluir" in pagina
     assert "autorização" not in pagina
     assert "Gerente de FinOps" in pagina and "FinOps Manager" in pagina
+
+
+# ------------------------------------------------ idioma vazio na conferencia
+def _conferencia(idiomas):
+    from crivo.resume.parser import CAMPOS
+    from crivo.web.resume import _pagina
+
+    campos = {c: None for c in CAMPOS}
+    campos.update({"nome": "Ana", "experiencias": [], "idiomas": idiomas})
+    return _pagina().get_template("conferencia.html.j2").render(ctx={
+        "campos": CAMPOS, "confirmada": False, "resume_id": "r1", "manual": False,
+        "extracao": {
+            "extraction_id": "e1", "resume_id": "r1", "campos": campos,
+            "correcoes": {}, "efetivo": campos, "trechos_origem": {},
+            "lacunas": ["idiomas"] if not idiomas else [], "provedor": "groq",
+            "modelo": "x", "confirmada": False,
+        },
+    })
+
+
+def test_an_empty_language_field_explains_what_it_costs():
+    """O curriculo do primeiro usuario real nao citava idioma, e a extracao
+    acertou ao devolver vazio. O que faltava era dizer por que preencher: sem
+    idioma, a vaga que exige ingles fluente passa sem aviso."""
+    texto = " ".join(_conferencia(None).split())
+    assert "Seu currículo não cita idiomas" in texto
+    assert "Inglês avançado" in texto
+
+
+def test_a_filled_language_field_has_no_warning():
+    assert "Seu currículo não cita idiomas" not in _conferencia(["Inglês avançado"])
