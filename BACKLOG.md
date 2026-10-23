@@ -1,9 +1,10 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-09-18**. Esquema do banco na v9, 882 testes passando. De
-26/ago para cá entrou uma coisa grande, a extensão que traz os sinais Premium
-(§3.5), três vindas da Fase 5 (§7.1, §7.2, §7.3) e os consertos de 18/set, que
-saíram todos de uso real.
+Estado em **2026-10-23**. Esquema do banco na v11, 1060 testes passando. De
+18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
+vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
+uma leva de ajustes de tela — quase tudo saído de uso real. O que ficou em aberto
+está em [Abertos em outubro](#abertos-em-outubro).
 
 Cada item traz a evidência que o sustenta. Item sem evidência é suposição, e
 suposição não entra em roadmap — vira pergunta na seção final.
@@ -82,6 +83,32 @@ julgamento — ver §1.1.
 > recusa por falta de perfil exigiam que a exceção subisse, e nenhum dos dois
 > dizia por quê. Quem chama `run_once` é um laço `while True` — subir era matar
 > o executor.
+
+### Feito de 2026-09-22 a 2026-10-23
+
+| O quê | Onde |
+|---|---|
+| Guia de instalação e uso para leigos, e para a IA que ajuda (`COMECE-AQUI.md`) | `COMECE-AQUI.md` |
+| Vaga **nova** × **já vista**, e o filtro "só vagas novas" | `report/renderer.py`, `report.html.j2` |
+| Identidade visual: grafite com violeta, e o logo | `web/static/` |
+| 503 temporário do provedor não custa mais a síntese inteira; chave verificada no cadastro | `providers/client.py` |
+| Janela de 3 dias, para o fim de semana | `home.html.j2`, `scheduler.py` |
+| Moeda citada na descrição, e o filtro "só em dólar ou euro" | `report/renderer.py` |
+| Recusa da origem conta como fracasso no governador | `pipeline/governor.py` |
+| Filtro "só na Grande São Paulo", por cidade-âncora e raio | `config/default.toml`, `report/renderer.py` |
+| Descrição só para os 70% do topo da ordem provisória; prévia do relatório 15 min depois da busca | `pipeline/stages.py`, `report/renderer.py` |
+| Frentes internacionais do LinkedIn **desligadas**: a busca sem login ignora o filtro de remoto (267 presenciais × 1 remota em 14/10) | `config/default.toml` |
+| `python-jobspy` 1.3.0; Python 3.12 deixa de ser exigência exata | `pyproject.toml`, `pipeline/sources/guest.py` |
+| Vagas remotas do **Jobicy** e do **We Work Remotely**, só as que contratam do Brasil | `pipeline/sources/remotas.py` |
+| Selo **republicada** (mesma empresa e cargo, visto ≥ 1 dia antes, em até 90 dias), com −10 na nota | `pipeline/republicacao.py` |
+| Expurgo diário das vagas que nenhuma busca traz há 30 dias | `store/expurgo.py` |
+| Log em arquivo por processo; resumo da coleta no relatório (esquema v10) | `__main__.py`, `report/` |
+| Termos que uma coleta barrada não tentou vão na frente do run seguinte | `pipeline/stages.py` |
+| Filtros "só destaques" e "cargo ou empresa" | `report/renderer.py` |
+| Vaga que **não aceita mais candidaturas** sai do relatório; reconferência das 20 do topo | `pipeline/sources/guest.py`, `pipeline/stages.py` |
+| Mistral fora da lista (passou a cobrar); Groq com modelos que a chave alcança, e nome de modelo com barra montado certo | `config/providers.toml`, `providers/client.py` |
+| Cartão "Cargos procurados" sempre visível; × para tirar cargo gerado (esquema v11) | `home.html.j2`, `pipeline/planner.py` |
+| Título de produto que também nomeia tecnologia deixa de ser descartado (vaga da Alelo) | `config/filters.toml` |
 
 ---
 
@@ -614,6 +641,44 @@ Todas de tecnologia — o problema de trilha saiu. Mas **nenhuma alcança 70%**,
 limiar de destaque. As vagas certas continuam pontuando baixo porque são
 exigentes, que é exatamente §1.1. Consertar a trilha tornou a lista honesta;
 não tornou as notas corretas.
+
+---
+
+## Abertos em outubro
+
+### 8.1 — A coleta passou a ser barrada no começo · **alto** · M
+
+Em 19/10 e 21/10/2026 o LinkedIn recusou (429) a coleta no 11º e no 4º minuto;
+antes, runs de 30 a 55 minutos passavam sem bloqueio. Uma busca de teste 17 min
+depois ainda levava 429. A piora coincide com a troca para a `python-jobspy`
+1.3.0: o run de 17/10, que passou, foi feito por um executor antigo, ainda com a
+1.1.82. A 1.3.0 manda menos cabeçalhos de navegador (perdeu `authority`,
+`cache-control` e `upgrade-insecure-requests`). **Suspeita, não prova:** pode
+ser também o IP marcado depois de 15–17/10, os dias de uso mais pesado. Os runs
+de 22 e 23/10 passaram sem bloqueio.
+
+Experimento barato: voltar à 1.1.82 por alguns dias (exige Python < 3.13) e
+comparar pelo resumo da coleta, que agora fica gravado em `runs.coleta`.
+
+### 8.2 — A expiração por ausência nunca roda · **médio** · P
+
+`JobLifecycle.sweep_absences` (critério 21.4) existe e tem teste, mas nenhum
+chamador. Nenhuma vaga do banco real chegou a "expirado" por ausência. O expurgo
+de 30 dias e a reconferência do topo cobrem a maior parte do efeito; ligar a
+regra exige decidir em que etapa ela roda.
+
+### 8.3 — A mensagem da cadeia de modelos culpa só o último provedor · **baixo** · P
+
+Em 22/10 o Google estava sobrecarregado e a Groq respondeu `model_not_found`; a
+página disse "nenhum dos 2 provedores entregou: sobrecarga temporária". A frase
+usa a categoria da exceção final do roteador. Dizer a categoria de cada um exige
+juntar as falhas por destino, e não só a última.
+
+### 8.4 — Vaga encerrada fora do topo continua até o expurgo · **baixo** · P
+
+A marca de vaga fechada é vista quando a descrição é lida e, depois, só nas 20
+do topo. Vaga do meio da lista que fecha depois segue no relatório até sumir
+das buscas.
 
 ---
 

@@ -226,11 +226,13 @@ o que ela pede. A ordem é esta:
 | 3 | **Extraia os campos do currículo** | Clique em **Extrair campos**. Se você ainda não cadastrou uma chave de IA (veja abaixo), o crivo oferece preencher à mão. |
 | 4 | **Confira o que foi extraído** | Clique em **Conferir extração**. **Leia com atenção** e corrija o que estiver errado. Um erro aqui estraga a busca inteira. |
 | 5 | **Monte o seu perfil** | Clique em **Montar meu perfil**. |
-| 6 | **Buscar vagas** | Escolha o período (30, 7 ou 1 dia) e clique em **Buscar vagas agora**. |
+| 6 | **Buscar vagas** | Escolha o período (30, 7, 3 ou 1 dia) e clique em **Buscar vagas agora**. |
 
-Depois do passo 6, espere. A busca leva **de 30 minutos a 1 hora**, e a página
-não precisa ficar aberta — só o terminal. Quando terminar, o relatório aparece em
-**Relatórios**, na página inicial. Clique na data para abrir.
+Depois do passo 6, espere. A página mostra em que etapa a busca está, e ela não
+precisa ficar aberta — só o terminal. Uns **15 minutos** depois, uma **prévia** do
+relatório aparece em **Relatórios**, na página inicial, com notas provisórias. O
+relatório final vem quando o crivo termina de ler as descrições das vagas,
+**de 30 minutos a 1 hora** depois. Clique na data para abrir.
 
 > Há um limite de buscas por dia. Quando acabar, a página mostra
 > **"volte amanhã"**.
@@ -245,7 +247,8 @@ Um jeito gratuito:
 
 1. Entre em <https://aistudio.google.com/apikey> com sua conta Google.
 2. Clique em **Create API key** e copie a chave.
-3. No crivo, na página inicial, abra **Configuração** (lá embaixo).
+3. No crivo, na página inicial, clique em **Instalação concluída** para abrir
+   essa seção.
 4. Em **Credencial de modelo**, escolha **Google AI Studio**, cole a chave e
    clique em **Cadastrar**.
 
@@ -258,6 +261,69 @@ sobrecarregado ou a cota do dia acabou — o que derrubava a análise estratégi
 metade das buscas —, o crivo passa para a Groq sozinho.
 
 > Chave de IA é como senha: não mostre para ninguém.
+
+### Escolher os cargos que o crivo procura
+
+O crivo monta sozinho uns 25 cargos para procurar, a partir do seu perfil. Para
+ver e mudar a lista, abra o cartão **Cargos procurados** na página inicial. Ele
+fica sempre lá, mesmo com uma busca rodando.
+
+- **Acrescentar um cargo:** digite no campo e clique em **Acrescentar busca**. Use
+  pelo menos duas palavras — `Gerente de FinOps`, e não só `FinOps`; uma palavra
+  sozinha traz o mercado inteiro. Os cargos que você escreve nunca são cortados.
+- **Tirar um cargo que não faz sentido:** clique no **×** ao lado dele. O próximo
+  da fila entra no lugar. Ele fica riscado em **Removidos por você**; um clique
+  devolve.
+- **Procurar uma empresa específica:** acrescente o nome dela junto do cargo, como
+  `Alelo Gerente de Tecnologia`. Depois de achar a vaga, tire a busca no **×**
+  para ela não ocupar lugar em toda busca.
+
+O que você muda vale a partir da **próxima** busca.
+
+### Ler o relatório
+
+Cada vaga tem uma nota de 0 a 100% e uma recomendação: **aplicar agora**,
+**pedir indicação antes** ou **descartar**, com o motivo ao lado. O que mais
+aparece:
+
+| Na vaga | Quer dizer |
+|---|---|
+| **barra verde** na lateral | **Destaque**: vaga nova, que você ainda não marcou, com nota 70% ou mais |
+| **nova** / **já vista** | Se a vaga já apareceu num relatório anterior |
+| **republicada** (âmbar) | A mesma empresa já anunciou o mesmo cargo antes, com outro número. A vaga está aberta há mais tempo do que a data diz, e perde 10 pontos |
+| **achada por Jobicy** / **We Work Remotely** | Vaga remota de fora do LinkedIn, de empresa que contrata quem mora no Brasil |
+| **USD**, **EUR** | A descrição cita salário nessa moeda |
+
+**Filtros**, acima da lista: **Cargo ou empresa** (digite `alelo` para ver só as
+da Alelo, ou `gerente sre`), **só destaques**, **só vagas novas**, **só remoto**,
+**só em dólar ou euro**, **só na Grande São Paulo**, **Score mínimo**. Marque e clique
+em **Filtrar**; **Limpar** volta à lista inteira.
+
+Logo abaixo das contagens, o relatório diz **de onde vieram as vagas** e quantas
+buscas rodaram. Se o LinkedIn recusou pedidos no meio, aparece um aviso dizendo
+em qual busca parou — a próxima busca começa pelos termos que ficaram de fora.
+
+Vaga que **não aceita mais candidaturas** sai da lista sozinha, e o relatório diz
+quantas saíram. Vaga que o crivo achou mas descartou pelo título fica na lista
+**Descartadas**, no fim, com o motivo.
+
+### Atualizar o crivo
+
+Quando receber uma versão nova:
+
+1. Feche o crivo com **Ctrl+C**.
+2. Baixe e extraia o ZIP novo, como no [Passo 2](#passo-2-baixar-o-crivo), numa
+   pasta **nova**.
+3. Copie da pasta antiga para a nova o arquivo **`.env`** e a pasta **`data`**. É
+   ali que estão sua configuração, seu currículo, seu perfil e seus relatórios.
+4. Na pasta nova, refaça o [Passo 3](#passo-3-instalar-as-peças-do-crivo).
+5. Abra o crivo pela pasta nova, como na [Parte 2](#parte-2--abrir-o-crivo-toda-vez-que-for-usar).
+
+O banco de dados se atualiza sozinho na primeira abertura. Guarde a pasta antiga
+por alguns dias, até ver que a nova funcionou, e só então apague.
+
+> Feche **todas** as janelas do crivo antes de abrir a versão nova. Uma janela
+> antiga esquecida aberta continua fazendo as buscas com o código velho.
 
 ---
 
@@ -301,9 +367,19 @@ que fazer.
 | **"Acesso bloqueado: erro de autorização"** ao entrar | Você clicou em **Entrar com Google** sem configurar o Google. Use **Entrar sem provedor**, ou siga o [Anexo A](#anexo-a--entrar-com-a-conta-google). |
 | **"Entrar sem provedor"** não aparece | Falta a linha `CRIVO_DEV_LOGIN=1` no `.env`. Adicione, salve, feche o crivo com **Ctrl+C** e abra de novo. |
 | A busca ficou parada por horas | O computador provavelmente dormiu. Veja [Não deixe o computador dormir](#não-deixe-o-computador-dormir-durante-uma-busca). |
+| Sei que uma vaga existe e ela não aparece no relatório | Confira, nesta ordem: (1) o cargo dela está em **Cargos procurados**? Se não, acrescente; (2) a busca usou um período que cobre a data da vaga? Use **30 dias**; (3) ela está em **Descartadas**, no fim do relatório? O motivo diz por quê; (4) digite o nome da empresa no filtro **Cargo ou empresa**. Se mesmo assim não estiver, peça ajuda mandando o link da vaga. |
+| Aviso **"O LinkedIn recusou pedidos na busca…"** no relatório | O LinkedIn limitou as buscas do seu computador por um tempo. Não é defeito, e não precisa fazer nada: o relatório sai com o que deu para coletar, e a próxima busca começa pelos termos que ficaram de fora. Evite buscar de novo na mesma hora. |
+| O relatório saiu **sem a leitura estratégica** (o texto do topo) | O serviço de IA estava sobrecarregado ou sem cota. O resto do relatório vale normalmente. Cadastre uma segunda chave, de preferência a **Groq** (veja [Chave de IA](#chave-de-ia-recomendado-e-pode-ser-grátis)), para o crivo ter uma reserva. |
+| **"Não foi possível concluir — uma busca precisa de ao menos duas palavras"** | Escreva o cargo inteiro: `Gerente de FinOps` em vez de `FinOps`. |
 
 Mudou alguma coisa no `.env`? Feche o crivo com **Ctrl+C** e abra de novo. Ele só
 lê esse arquivo ao abrir.
+
+**O crivo guarda um registro do que fez**, mesmo depois de fechar o terminal, na
+pasta `data`: `crivo-runs.log` (as buscas), `crivo-enricher.log` (a leitura das
+descrições) e `crivo-web.log` (a página). Quando pedir ajuda, as **últimas linhas**
+do `crivo-runs.log` costumam dizer o que aconteceu. As chaves já saem apagadas
+nesses arquivos.
 
 ---
 
@@ -450,6 +526,17 @@ projetos Python.
   que expira sozinha em **15 minutos** (`ja ha um processo de ... ativo`).
   Encerrar com **Ctrl+C** evita isso.
 - Uma busca leva de 30 a 60 minutos. Se o computador suspender, ela congela.
+- Cada processo grava um log em `data/`: `crivo-runs.log`, `crivo-enricher.log`
+  e `crivo-web.log`, até 2 MB cada mais 3 anteriores, com segredos já redigidos.
+  Para diagnosticar uma busca, peça as últimas 40 linhas do `crivo-runs.log`
+  (`Get-Content data\crivo-runs.log -Tail 40`) — e confira que não há chave nelas
+  antes de a pessoa colar.
+- Atualizar é baixar o ZIP novo numa pasta nova, copiar `.env` e `data`, e refazer
+  o Passo 3 (seção **Atualizar o crivo**). O banco migra sozinho na partida. Um
+  processo antigo que ficou aberto continua rodando o código velho e disputa a
+  trava com o novo: antes de abrir a versão nova, todas as janelas antigas fecham.
+- Vaga que nenhuma busca traz há **30 dias** é apagada sozinha (menos as
+  aplicadas). Isso é esperado, e não perda de dado.
 - A seção **Deu errado?** lista os erros conhecidos com a solução. Consulte-a
   antes de propor outra coisa.
 

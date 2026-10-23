@@ -103,11 +103,13 @@ powercfg /requestsoverride PROCESS python.exe SYSTEM DISPLAY
 | Camada | Onde |
 |---|---|
 | Configuração, segredos, redação de log | `config.py`, `secrets_vault.py`, `logging_filters.py` |
-| Banco, isolamento entre usuários, LGPD | `store/` |
+| Banco, isolamento entre usuários, LGPD, expurgo de vagas | `store/` (`expurgo.py`) |
 | Identidade, conexões, superfície HTTP | `web/` |
 | Provedores de modelo e credenciais | `providers/` |
 | Currículo e perfil-alvo | `resume/`, `profile/` |
 | Coleta, pré-filtro, contenção, cota | `pipeline/` |
+| Fontes de vaga: LinkedIn sem login, Jobicy, We Work Remotely | `pipeline/sources/guest.py`, `pipeline/sources/remotas.py` |
+| Vaga republicada | `pipeline/republicacao.py` |
 | Pontuação, lacunas e releitura do topo | `scoring/` |
 | Síntese e aterramento | `synthesis/` |
 | Relatório | `report/` |
@@ -122,6 +124,28 @@ Os caminhos são relativos a `src/crivo/`, exceto `tools/`. Na raiz ficam ainda:
 | `tools/extrator.js`, `tools/bookmarklet.html` | O extrator em forma de bookmarklet, anterior à extensão. Autentica só por cookie, que o navegador retém num POST vindo do LinkedIn — hoje recebe 401; use a extensão |
 | `specagentevagaslinkedin.md` | A especificação original, anterior a `.specs/`; o design a lê como restrição |
 | `jobradar.html`, `_jobradar.txt` | Reconstrução da varredura manual que deu origem ao projeto, com os parâmetros de URL |
+
+## O caminho de uma busca
+
+Um run passa por estas etapas, nesta ordem (`build_stages` em
+`pipeline/stages.py`). Cada uma grava o que fez antes da próxima começar, e um
+processo que morre no meio retoma da etapa em que parou.
+
+| Etapa | O que faz |
+|---|---|
+| `perfil` | Lê o perfil-alvo consolidado do usuário |
+| `planejamento` | Monta até 25 termos: eixos do perfil × nível, âncoras do mercado, os escritos pelo usuário (nunca cortados) menos os que ele removeu (`buscas_excluidas`). Termo de histórico improdutivo vai para o fim |
+| `coleta` | Busca no LinkedIn sem login, sob o governador (8 a 20 s entre requisições). Uma recusa (429) para a coleta ali, e os termos que faltaram vão para o começo do próximo run. Depois consulta Jobicy e We Work Remotely, no máximo uma vez a cada 6 h. Marca a vaga republicada |
+| `prefiltro` | Descarta por título e distância, antes de gastar requisição. O descarte fica gravado com o motivo |
+| `pontuacao_provisoria` | Nota por título, empresa e sinais; ordena a fila de descrições |
+| `enriquecimento` | Pede a descrição dos 70% do topo (`fracao_enriquecida`). O run espera o processo `enricher`, e a prévia do relatório já existe nesta hora. Vaga que "não aceita mais candidaturas" expira aqui |
+| `pontuacao_final` | Refaz a nota com a descrição |
+| `reconferencia` | Confere de novo se as 20 do topo cuja descrição tem mais de um dia ainda aceitam candidaturas |
+| `julgamento` | O modelo de linguagem relê as do topo (opcional, com chave) |
+| `sintese` | A leitura estratégica do run (opcional, com chave) |
+
+Entre dois runs, uma vez por dia, o processo `runs` faz o expurgo das vagas
+sumidas (ver [Operação](#operação)).
 
 ## Preferências, e o que "vazio" significa
 
@@ -198,6 +222,44 @@ A rastreabilidade requisito → teste vive em [`tests/coverage_map.py`](tests/co
 e é verificada por [`tests/test_coverage.py`](tests/test_coverage.py): critério
 sem teste ou teste renomeado quebram a suíte.
 
+## Operação
+
+### Atualizar
+
+```bash
+git pull
+.venv/Scripts/python -m pip install -e .
+```
+
+Depois, `Ctrl+C` no `crivo tudo` e suba de novo. As migrações do banco rodam
+sozinhas na partida. **Feche toda janela antiga do crivo antes**: em 17/10/2026
+um executor de runs de antes da atualização seguiu vivo e fez um run inteiro com
+o código velho — sem fontes remotas e sem marcar republicação —, e nada na tela
+permitia notar. Hoje o processo `runs` imprime na partida a linha
+`[runs] fontes remotas: ...; expurgo de vagas ...`: se ela não aparecer, há outro
+executor segurando a trava.
+
+### Onde ficam os logs
+
+Cada processo grava o próprio log ao lado do banco: `data/crivo-web.log`,
+`data/crivo-runs.log` e `data/crivo-enricher.log`. Cada arquivo vai até 2 MB e
+guarda os 3 anteriores (`.1`, `.2`, `.3`). Segredos saem redigidos, como na tela.
+Quando algo der errado, é o `crivo-runs.log` que diz em qual busca o LinkedIn
+recusou e o que ficou de fora — e o relatório mostra o mesmo resumo logo abaixo
+das contagens.
+
+### Vagas que somem são apagadas depois de 30 dias
+
+Uma vez por dia, entre dois runs, o crivo apaga a vaga que nenhuma busca trouxe
+nos últimos 30 dias, com a nota e a descrição dela. Conta a última vez que a vaga
+apareceu numa busca, e não a data do anúncio: vaga antiga que o LinkedIn ainda
+mostra continua. Vaga em que você se candidatou nunca é apagada.
+
+O preço: relatório antigo perde as vagas apagadas, e o selo "republicada" só
+compara com o que ficou. O prazo é `vagas_sumidas_dias` em `[retention]`
+(`config/default.toml`); 0 desliga. Na primeira vez, em 19/10/2026, a simulação
+numa cópia do banco apagou 2.117 de 5.495 vagas, e o banco foi de 31 para 20 MB.
+
 ## Riscos residuais conhecidos
 
 Registrados no checkpoint final. Nenhum é bloqueio; todos são coisas que quem
@@ -205,10 +267,13 @@ operar precisa saber.
 
 ### Os testes não tocam as origens reais, e o uso real só cobriu parte delas
 
-Os 882 testes usam fontes e provedores falsos. Fora deles, a coleta e a releitura
-já rodaram de verdade: runs de 24h contra o LinkedIn e um modelo real relendo o
-topo, registrados no [`BACKLOG.md`](BACKLOG.md) — e cada um encontrou defeito que
-os testes não previam. Dos fluxos de autorização do Google e do LinkedIn não há
+Os 1060 testes usam fontes e provedores falsos, e uma barreira em
+`tests/conftest.py` reprova o teste que tentar a rede de verdade. Fora deles, a
+coleta e a releitura já rodaram de verdade: runs de 24h a 30 dias contra o
+LinkedIn, Jobicy e We Work Remotely, e um modelo real relendo o topo, registrados
+no [`BACKLOG.md`](BACKLOG.md) — e cada um encontrou defeito que os testes não
+previam. A marca de vaga encerrada foi conferida contra uma página fechada real
+(21/10/2026), e os modelos da Groq contra a chave cadastrada (23/10/2026). Dos fluxos de autorização do Google e do LinkedIn não há
 execução real registrada, e a extensão com o token do extrator ainda não tem run
 observado.
 
@@ -237,7 +302,10 @@ Não há mais conta operacional: a coleta é toda por rota pública, sem sessão
 Isso remove o risco de perder uma conta, e não remove o risco de bloqueio — ele
 passa a recair sobre o endereço de saída da instalação, e um bloqueio suspende
 os runs de todos os usuários, não apenas de quem o provocou. A contenção reduz
-a chance; não a elimina. Raspar o LinkedIn contraria os Termos de Serviço mesmo
+a chance; não a elimina. Em 19 e 21/10/2026 a coleta foi barrada no quarto e no
+décimo primeiro minuto. O relatório agora diz em qual busca parou e o que ficou
+de fora, e o run seguinte começa por esses termos; a causa ainda não está
+isolada (ver `BACKLOG.md`). Raspar o LinkedIn contraria os Termos de Serviço mesmo
 sem sessão, e o risco recai sobre quem opera.
 
 ### O teto de vazão não escala com usuários
@@ -258,6 +326,15 @@ O registro em `config/providers.toml` reflete o que se sabia em agosto de 2026 e
 precisa ser reconferido. A cadeia de fallback e o modo determinístico existem
 para que o desaparecimento de um provedor degrade em vez de quebrar.
 
+E isso já aconteceu duas vezes em outubro de 2026. A **Mistral** passou a cobrar
+pela chave de API e saiu da lista. A **Groq** deixou de dar acesso ao
+`llama-3.3-70b-versatile` a uma chave gratuita nova, embora a página pública dela
+ainda o listasse: a reserva inteira falhou com `model_not_found`. A fonte de
+verdade é a rota `/models` do provedor, consultada com a própria chave, e não a
+documentação. O erro de modelo inexistente tem categoria própria
+(`modelo` em `providers/client.py`), e a página diz que a lista de modelos precisa
+ser atualizada.
+
 ### Rota ATS: fora de escopo por decisão
 
 Greenhouse, Lever, Ashby, Workable, Recruitee e Personio expõem vagas em JSON
@@ -266,27 +343,6 @@ de escopo por decisão**, não por esquecimento: não há endpoint de busca ness
 sistemas, então seria preciso saber o identificador de cada empresa de antemão,
 e montar essa lista é um produto diferente do que este é. Reabrir exige
 requisito novo.
-
-### Onde ficam os logs
-
-Cada processo grava o próprio log ao lado do banco: `data/crivo-web.log`,
-`data/crivo-runs.log` e `data/crivo-enricher.log`. Cada arquivo vai até 2 MB e
-guarda os 3 anteriores (`.1`, `.2`, `.3`). Segredos saem redigidos, como na tela.
-Quando algo der errado, é o `crivo-runs.log` que diz em qual busca o LinkedIn
-recusou e o que ficou de fora — e o relatório mostra o mesmo resumo logo abaixo
-das contagens.
-
-### Vagas que somem são apagadas depois de 30 dias
-
-Uma vez por dia, entre dois runs, o crivo apaga a vaga que nenhuma busca trouxe
-nos últimos 30 dias, com a nota e a descrição dela. Conta a última vez que a vaga
-apareceu numa busca, e não a data do anúncio: vaga antiga que o LinkedIn ainda
-mostra continua. Vaga em que você se candidatou nunca é apagada.
-
-O preço: relatório antigo perde as vagas apagadas, e o selo "republicada" só
-compara com o que ficou. O prazo é `vagas_sumidas_dias` em `[retention]`
-(`config/default.toml`); 0 desliga. Na primeira vez, em 19/10/2026, a simulação
-numa cópia do banco apagou 2.117 de 5.495 vagas, e o banco foi de 31 para 20 MB.
 
 ### Só o LinkedIn entre os portais da biblioteca de coleta
 
