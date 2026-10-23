@@ -482,3 +482,26 @@ def test_the_track_vocabulary_recognizes_the_measured_false_positives(prefilter)
         "Gerente Senior - Investigacao Cibernetica e Resposta Forense",
     ):
         assert "sem nenhum termo" not in _blocker(prefilter, titulo), titulo
+
+
+# ------------------------------------------- gestao de produto x tecnologia
+@pytest.mark.parametrize("titulo", [
+    "Gerente de Produtos",
+    "Coordenador de Produto",
+    "Analista de Produtos Digitais",
+    "Gerente de Produto Sênior",
+])
+def test_product_management_titles_are_still_discarded(prefilter, titulo):
+    assert prefilter.evaluate([card(titulo)], "Sao Paulo, SP").descartados
+
+
+@pytest.mark.parametrize("titulo", [
+    # A vaga da Alelo descartada em 23/10/2026, que o usuario procurava.
+    "Gerente de Produtos, Tecnologia e Operações",
+    "Gerente de Produto e Engenharia",
+    "Coordenador de Produtos de TI",
+    "Product and Technology Manager",
+])
+def test_a_product_title_that_also_names_technology_passes(prefilter, titulo):
+    resultado = prefilter.evaluate([card(titulo)], "Sao Paulo, SP")
+    assert [c.titulo for c in resultado.mantidos] == [titulo]

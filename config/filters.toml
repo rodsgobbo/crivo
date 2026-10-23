@@ -122,7 +122,12 @@ titulos = [
   "produ[çc][ãa]o|log[íi]stic|almoxarif|frigor[íi]fic|abate|charque",
   # Gestao de produto em portugues. O ingles ja caia em "product manager", mas
   # "Coordenador de Produtos" passava inteiro -- e e outra carreira.
-  "(coordenador|gerente|analista)[ae]? de produtos?\\b",
+  #
+  # Exceto quando o titulo TAMBEM nomeia tecnologia: em 23/10/2026 "Gerente de
+  # Produtos, Tecnologia e Operacoes" (Alelo) foi descartada aqui, e era a vaga
+  # que o usuario procurava. O que sobra depois de "produto" decide; a nota e o
+  # teto de trilha cuidam do resto.
+  "(coordenador|gerente|analista)[ae]? de produtos?\\b(?!.*\\b(tecnologia|ti|engenharia|infraestrutura|technology|engineering)\\b)",
   # Seguranca do trabalho. Colide com o eixo "Seguranca", cujas formas incluem
   # "seguranca" solto -- entao a regra de trilha reconhece estes titulos como
   # tecnologia. Observado em coleta real: "Coordenador Seguranca do Trabalho"
