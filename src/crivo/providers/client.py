@@ -225,6 +225,35 @@ def mensagem_da_falha(destinations: list["Destination"], frase: str) -> str:
     return f"{quem}: {frase}"
 
 
+def mensagem_da_cadeia(falhas: list) -> str:
+    """A frase da pagina quando a cadeia inteira caiu, com o motivo de cada um.
+
+    `falhas` traz, por destino tentado, (destino, categoria, transitoria, frase,
+    excecao). Quando todos cairam pelo mesmo motivo, a frase e a de sempre --
+    repetir "sobrecarga" para cada provedor so alongaria a linha. Quando os
+    motivos diferem, cada provedor ganha o seu: e o caso em que juntar escondia
+    o defeito, porque o motivo do ultimo valia por todos.
+    """
+    destinos = [d for d, *_ in falhas]
+    por_provedor: dict[str, str] = {}
+    for destino, _categoria, _transitoria, frase, _exc in falhas:
+        # O ultimo modelo de cada provedor diz por que ele, como um todo, caiu.
+        por_provedor[destino.provider_id] = frase
+    if len(set(por_provedor.values())) == 1:
+        return mensagem_da_falha(destinos, next(iter(por_provedor.values())))
+    detalhe = "; ".join(f"{p}: {f}" for p, f in por_provedor.items())
+    return (
+        f"nenhum dos {len(por_provedor)} provedores da sua cadeia entregou a "
+        f"resposta — {detalhe}"
+    )
+
+
+def _router_da_biblioteca(**kwargs):  # pragma: no cover - exige a biblioteca
+    from litellm import Router  # importado tarde: a biblioteca e pesada
+
+    return Router(**kwargs)
+
+
 @dataclass(frozen=True)
 class Destination:
     """Um destino da cadeia, ja resolvido com credencial e modelo."""
@@ -356,16 +385,28 @@ class LiteLLMRouter:
     TENTATIVAS_POR_DESTINO = 3
 
     def __init__(
-        self, num_retries: int = TENTATIVAS_POR_DESTINO, cooldown_time: int = 60
+        self, num_retries: int = TENTATIVAS_POR_DESTINO, cooldown_time: int = 60,
+        fabrica=None,
     ) -> None:
         self._num_retries = num_retries
         self._cooldown_time = cooldown_time
+        # O roteador da biblioteca, injetavel para o teste: a chamada de verdade
+        # sai pela rede, e nenhum teste deste repositorio sai.
+        self._fabrica = fabrica
 
     def complete(
         self, destinations: list[Destination], system: str, user: str
     ) -> Completion:
-        from litellm import Router  # importado tarde: a biblioteca e pesada
+        """Tenta cada destino da cadeia em ordem, guardando por que cada um caiu.
 
+        A cadeia era entregue inteira a biblioteca, como fallback, e ela devolve
+        so a excecao final. Em 22/10/2026 o Google estava sobrecarregado e a
+        Groq respondeu `model_not_found`; a pagina disse "sobrecarga" para os
+        dois, e o defeito de configuracao ficou escondido atras do provedor que
+        apenas estava ocupado. Percorrer a cadeia aqui e o que permite dizer o
+        motivo de cada um. As retentativas da biblioteca continuam valendo
+        dentro de cada destino.
+        """
         if not destinations:
             raise DeterministicFallback("cadeia de destinos vazia")
 
@@ -375,30 +416,54 @@ class LiteLLMRouter:
         # deixa-la de fora fazia um destino mal formado escapar como erro cru e
         # virar 500 na face web, em vez do modo deterministico previsto.
         try:
-            router = Router(
+            router = (self._fabrica or _router_da_biblioteca)(
                 model_list=model_list,
                 num_retries=self._num_retries,
                 cooldown_time=self._cooldown_time,
-                fallbacks=[{principal: alternativos}] if alternativos else None,
-            )
-            response = router.completion(
-                model=principal,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
             )
         except Exception as exc:
             categoria, transitoria, frase = classificar(exc)
             logger.warning(
-                "cadeia esgotada (%s): %s: %s", categoria, type(exc).__name__, exc
+                "roteador recusou a cadeia (%s): %s: %s",
+                categoria, type(exc).__name__, exc,
             )
             raise ModelError(
                 mensagem_da_falha(destinations, frase),
                 detalhe=f"{type(exc).__name__}: {exc}",
                 transitoria=transitoria,
             ) from exc
-        return _to_completion(response, destinations)
+
+        falhas: list[tuple[Destination, str, bool, str, Exception]] = []
+        for destino, grupo in zip(destinations, [principal, *alternativos]):
+            try:
+                response = router.completion(
+                    model=grupo,
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                )
+            except Exception as exc:
+                categoria, transitoria, frase = classificar(exc)
+                logger.warning(
+                    "destino %s falhou (%s): %s: %s",
+                    grupo, categoria, type(exc).__name__, exc,
+                )
+                falhas.append((destino, categoria, transitoria, frase, exc))
+                continue
+            return _to_completion(response, [destino, *destinations])
+
+        ultima = falhas[-1][4]
+        raise ModelError(
+            mensagem_da_cadeia(falhas),
+            detalhe="; ".join(
+                f"{d.provider_id}/{d.modelo}: {type(e).__name__}: {e}"
+                for d, _c, _t, _f, e in falhas
+            ),
+            # Vale tentar de novo se ALGUM caiu por motivo passageiro: o
+            # proximo run pode encontra-lo de pe.
+            transitoria=any(t for _d, _c, t, _f, _e in falhas),
+        ) from ultima
 
 
 class ModelClient:

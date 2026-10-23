@@ -491,3 +491,93 @@ def test_using_the_client_for_another_users_work_is_refused(env):
     with pytest.raises(ModelError) as err:
         cliente.assert_owner("bruno")
     assert "ana" in str(err.value) and "bruno" in str(err.value)
+
+
+# --------------------------------------------- o motivo de cada provedor
+class _RoteadorDeTeste:
+    """Faz o papel do roteador da biblioteca: cada grupo cai ou responde."""
+
+    def __init__(self, por_grupo):
+        self.por_grupo = por_grupo
+        self.chamados = []
+
+    def __call__(self, **_kwargs):
+        return self
+
+    def completion(self, model, messages):
+        self.chamados.append(model)
+        resultado = self.por_grupo[model]
+        if isinstance(resultado, Exception):
+            raise resultado
+        return resultado
+
+
+def _resposta(modelo):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        model=modelo,
+        choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+        usage=SimpleNamespace(prompt_tokens=3, completion_tokens=2),
+    )
+
+
+GOOGLE = Destination("google-ai-studio", "https://g", "gemini-3.6-flash", "k1")
+GROQ = Destination("groq", "https://q", "openai/gpt-oss-120b", "k2")
+GROQ_PEQUENO = Destination("groq", "https://q", "qwen/qwen3.8-27b", "k2")
+SOBRECARGA = ServiceUnavailableError(GEMINI_503)
+SEM_MODELO = Exception(
+    'litellm.NotFoundError: GroqException - {"error":{"code":"model_not_found"}}'
+)
+
+
+def test_when_each_provider_fails_differently_the_page_says_each_reason():
+    """O caso de 22/10/2026: o Google ocupado escondia a Groq mal configurada."""
+    roteador = _RoteadorDeTeste({
+        "google-ai-studio::gemini-3.6-flash": SOBRECARGA,
+        "groq::openai/gpt-oss-120b": SEM_MODELO,
+    })
+    with pytest.raises(ModelError) as err:
+        LiteLLMRouter(fabrica=roteador).complete([GOOGLE, GROQ], "s", "u")
+    frase = str(err.value)
+    assert frase.startswith("nenhum dos 2 provedores da sua cadeia entregou a resposta")
+    assert "google-ai-studio: sobrecarga" in frase
+    assert "groq: o modelo configurado" in frase
+    assert err.value.transitoria is True, "o Google pode voltar; vale tentar de novo"
+
+
+def test_when_every_provider_fails_the_same_way_the_reason_is_said_once():
+    roteador = _RoteadorDeTeste({
+        "google-ai-studio::gemini-3.6-flash": SOBRECARGA,
+        "groq::openai/gpt-oss-120b": SOBRECARGA,
+    })
+    with pytest.raises(ModelError) as err:
+        LiteLLMRouter(fabrica=roteador).complete([GOOGLE, GROQ], "s", "u")
+    frase = str(err.value)
+    assert frase.count("sobrecarga") == 1
+    assert "google-ai-studio:" not in frase
+
+
+def test_the_next_destination_answers_when_the_first_fails():
+    roteador = _RoteadorDeTeste({
+        "google-ai-studio::gemini-3.6-flash": SOBRECARGA,
+        "groq::openai/gpt-oss-120b": _resposta("openai/gpt-oss-120b"),
+    })
+    resposta = LiteLLMRouter(fabrica=roteador).complete([GOOGLE, GROQ], "s", "u")
+    assert resposta.provedor == "groq"
+    assert roteador.chamados == [
+        "google-ai-studio::gemini-3.6-flash", "groq::openai/gpt-oss-120b",
+    ]
+
+
+def test_a_provider_with_two_models_is_named_once_by_its_last_failure():
+    roteador = _RoteadorDeTeste({
+        "google-ai-studio::gemini-3.6-flash": SOBRECARGA,
+        "groq::openai/gpt-oss-120b": SOBRECARGA,
+        "groq::qwen/qwen3.8-27b": SEM_MODELO,
+    })
+    with pytest.raises(ModelError) as err:
+        LiteLLMRouter(fabrica=roteador).complete([GOOGLE, GROQ, GROQ_PEQUENO], "s", "u")
+    frase = str(err.value)
+    assert frase.count("groq:") == 1
+    assert "groq: o modelo configurado" in frase

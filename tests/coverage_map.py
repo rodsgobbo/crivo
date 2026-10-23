@@ -509,6 +509,11 @@ COVERAGE: dict[str, list[str]] = {
     "26.12": [
         "test_credential_vault::test_the_first_credential_is_seeded_from_the_operator_default"
     ],
+    "26.13": [
+        "test_model_client::test_when_each_provider_fails_differently_the_page_says_each_reason",
+        "test_model_client::test_when_every_provider_fails_the_same_way_the_reason_is_said_once",
+        "test_model_client::test_a_provider_with_two_models_is_named_once_by_its_last_failure",
+    ],
 
     # --------------------------------------------- REQ-27 insights da extensao
     "27.1": ["test_web_app::test_insights_from_the_browser_are_recorded"],

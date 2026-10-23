@@ -627,6 +627,8 @@ Os sinais que o LinkedIn calcula contra o perfil logado — "You'd be a top appl
 
 26.12 WHEN a primeira credencial de um usuário é armazenada, THEN the Credential Vault SHALL create a ordem de tentativa desse usuário a partir da ordem padrão configurada pelo operador.
 
+26.13 IF todos os provedores da cadeia falham, THEN the Job Agent SHALL display, para cada provedor, o motivo da falha dele quando os motivos diferem, e um motivo só quando todos falharam pela mesma razão.
+
 ### REQ-27: Insights de concorrência lidos no navegador do usuário
 
 **User Story:** As a candidato com LinkedIn Premium, I want que o sistema use o que a minha conta enxerga enquanto eu navego, so that a triagem considere sinais como "You'd be a top applicant", que a coleta por rota pública não recebe.
