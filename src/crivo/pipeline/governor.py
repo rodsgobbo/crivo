@@ -113,6 +113,16 @@ class RateGovernor:
             "tentativas": bloco["tentativas"],
         }
 
+    def restante_do_bloqueio(self) -> float:
+        """Segundos ate o bloqueio ativo vencer; zero se nao houver um."""
+        bloco = self.active_block()
+        if bloco is None:
+            return 0.0
+        vence = datetime.fromisoformat(bloco["ocorrido_em"]) + timedelta(
+            seconds=self._recuperacao_s
+        )
+        return max(0.0, (vence - self._now()).total_seconds())
+
     def record_block(self, tentativas: int) -> str:
         """Grava o bloqueio. A partir daqui toda chamada e recusada."""
         block_id = str(uuid.uuid4())

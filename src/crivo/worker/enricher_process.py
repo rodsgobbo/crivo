@@ -151,7 +151,12 @@ class EnricherProcess:
                     logger.warning(
                         "bloqueio de coleta: aguardando o intervalo de recuperacao"
                     )
-                    self._dormir(self._config.collection.intervalo_recuperacao_s)
+                    # O que falta do bloqueio, e nao a hora inteira a partir de
+                    # agora. Em 29/10/2026 um reinicio as 09:02 achou o bloqueio
+                    # das 08:18, que vencia as 09:18, e dormiu ate as 10:02.
+                    self._dormir(
+                        max(self._governor.restante_do_bloqueio(), intervalo_ocioso_s)
+                    )
                 elif not relatorio.houve_trabalho:
                     self._dormir(intervalo_ocioso_s)
         finally:

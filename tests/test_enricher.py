@@ -362,6 +362,32 @@ def test_the_lock_is_released_on_a_clean_exit(env):
     )
 
 
+def test_a_block_found_late_only_waits_what_is_left_of_it(env):
+    """Em 29/10/2026 o reinicio das 09:02 achou o bloqueio das 08:18.
+
+    Ele vencia as 09:18, e o processo dormiu a hora inteira a partir do reinicio:
+    o run so podia voltar as 10:02.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from crivo.pipeline.governor import RateGovernor
+    from crivo.worker.enricher_process import CycleReport
+
+    connection, config, _governor = env
+    agora = datetime(2026, 10, 29, 12, 2, tzinfo=timezone.utc)
+    governador = RateGovernor(connection, config, now=lambda: agora - timedelta(minutes=44))
+    governador.record_block(1)
+
+    processo = _processo(env)
+    processo._governor = RateGovernor(connection, config, now=lambda: agora)
+    processo.run_cycle = lambda: CycleReport(bloqueado=True)
+    dormidas = []
+    processo._dormir = dormidas.append
+    processo.serve_forever(intervalo_ocioso_s=30, ciclos=1)
+
+    assert dormidas == [config.collection.intervalo_recuperacao_s - 44 * 60]
+
+
 # ------------------------------------------- recencia que era jogada fora
 def test_the_posting_age_is_stored_instead_of_discarded(env):
     """O parser ja a extraia e o enriquecedor a perdia.

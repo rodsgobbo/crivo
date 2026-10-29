@@ -220,3 +220,15 @@ def test_an_expired_block_is_marked_released(env):
 def test_without_any_block_there_is_nothing_active(env):
     governor, _clock, _c = env
     assert governor.active_block() is None
+
+
+def test_the_remaining_wait_counts_from_the_block_not_from_now(env):
+    """Em 29/10/2026 um reinicio 44 minutos depois do bloqueio dormiu a hora toda."""
+    governor, clock, _c = env
+    assert governor.restante_do_bloqueio() == 0.0
+    governor.record_block(1)
+    clock.avancar(44 * 60)
+    recuperacao = load_config().collection.intervalo_recuperacao_s
+    assert governor.restante_do_bloqueio() == recuperacao - 44 * 60
+    clock.avancar(recuperacao)
+    assert governor.restante_do_bloqueio() == 0.0
