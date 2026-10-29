@@ -956,3 +956,57 @@ def test_a_refused_search_records_a_block_that_the_next_run_respects(collector):
     assert collector.execute("SELECT COUNT(*) FROM collection_blocks").fetchone()[0] == 1, (
         "a recusa que veio do proprio governador nao grava um segundo bloqueio"
     )
+
+
+class _FonteQueRecusaAntes(FakeSource):
+    """Recusa as primeiras `recusas` buscas de um termo, depois responde."""
+
+    def __init__(self, recusas, por_busca=None):
+        super().__init__(por_busca)
+        self.recusas = recusas
+
+    def search(self, termo, local, janela_horas, quantidade, remoto=False):
+        saida = super().search(termo, local, janela_horas, quantidade, remoto)
+        if self.recusas.get(termo, 0) > 0:
+            self.recusas[termo] -= 1
+            return SearchOutcome(busca=termo, bloqueada=True, falha="status code 429")
+        return saida
+
+
+def test_a_single_refused_search_is_retried_instead_of_blocking(collector):
+    """De 25 a 29/10/2026, um 429 so na coleta custava uma hora toda manha.
+
+    Na descricao o mesmo 429 passava pelo recuo do governador e quase sempre
+    respondia na tentativa seguinte. A busca agora tem o mesmo tratamento.
+    """
+    from crivo.config import load_config
+    from crivo.pipeline.governor import RateGovernor
+
+    governador = RateGovernor(collector, load_config(), sleep=lambda s: None)
+    fonte = _FonteQueRecusaAntes(
+        {"B": 1},
+        {"B": SearchOutcome(busca="B", cards=[card("li-2")]), "C": SearchOutcome(busca="C", cards=[card("li-3")])},
+    )
+    resultado = Collector(collector, fonte, governador).collect("ana", ["A", "B", "C"], AQUI, 24)
+
+    assert governador.active_block() is None
+    assert resultado.bloqueadas == []
+    assert [c[0] for c in fonte.chamadas] == ["A", "B", "B", "C"]
+    assert {c.job_id for c in resultado.cards} == {"li-2", "li-3"}
+
+
+def test_three_refusals_in_a_row_still_block_with_the_origin_reason(collector):
+    from crivo.config import load_config
+    from crivo.pipeline.governor import RateGovernor
+
+    governador = RateGovernor(collector, load_config(), sleep=lambda s: None)
+    fonte = _FonteQueRecusaAntes({"B": 3})
+    resultado = Collector(collector, fonte, governador).collect("ana", ["A", "B", "C"], AQUI, 24)
+
+    bloqueio = governador.active_block()
+    assert bloqueio is not None and int(bloqueio["tentativas"]) == 3
+    assert [c[0] for c in fonte.chamadas] == ["A", "B", "B", "B"]
+    assert resultado.bloqueadas == ["B"]
+    assert collector.execute("SELECT COUNT(*) FROM collection_blocks").fetchone()[0] == 1
+    # O motivo e o da origem, e nao a frase generica do governador.
+    assert "429" in str(resultado.falhas)

@@ -16,9 +16,21 @@ from ..store.repository import Repository
 from .governor import CollectionBlocked
 from .republicacao import SINAL as SINAL_REPUBLICADA
 from .republicacao import Republicacao
-from .sources.guest import Card, JobSource, SearchOutcome
+from .sources.guest import Card, CollectionRefused, JobSource, SearchOutcome
 
 logger = logging.getLogger(__name__)
+
+
+class _BuscaRecusada(CollectionRefused):
+    """A recusa de uma busca, levando o resultado que a fonte devolveu.
+
+    A fonte entrega a recusa como resultado, e o governador so conta excecao.
+    Este tipo faz a ponte e guarda o motivo da origem para o relatorio.
+    """
+
+    def __init__(self, saida: SearchOutcome) -> None:
+        super().__init__(saida.falha or "busca recusada pela origem")
+        self.saida = saida
 
 NOVO = "novo"
 
@@ -241,14 +253,30 @@ class Collector:
         remoto: bool = False,
     ) -> SearchOutcome:
         """Uma busca, sob contencao quando ha governador."""
-        def pedir():
+        def buscar():
             return self._source.search(termo, local, janela_horas, quantidade, remoto)
 
         if self._governor is None:
-            return pedir()
+            return buscar()
+
+        def pedir():
+            # A recusa sobe como excecao para o governador recuar e tentar de
+            # novo. Antes ela voltava como resultado, o governador via sucesso,
+            # e a coleta gravava bloqueio no PRIMEIRO 429: uma hora parada por
+            # manha, de 25 a 29/10/2026, sempre por volta da quarta busca. O
+            # mesmo 429 na descricao passa pelo recuo, e de 17 casos nos logs,
+            # 16 responderam 200 na tentativa seguinte.
+            saida = buscar()
+            if saida.bloqueada:
+                raise _BuscaRecusada(saida)
+            return saida
+
         try:
             return self._governor.run(pedir)
         except CollectionBlocked as exc:
+            recusa = exc.__cause__
+            if isinstance(recusa, _BuscaRecusada):
+                return recusa.saida
             return SearchOutcome(busca=termo, bloqueada=True, falha=str(exc))
 
     def _grava_novos(self, user_id: str, resultado: CollectionResult) -> None:

@@ -114,14 +114,20 @@ def test_a_barred_run_hands_its_pending_terms_to_the_next_one(tmp_path):
     )
 
     class BarraNaSegunda(FonteFalsa):
-        """Recusa a segunda busca do primeiro run, como o LinkedIn em 21/10."""
+        """Recusa a segunda busca do primeiro run, como o LinkedIn em 21/10.
+
+        Recusa em todas as tentativas: um 429 isolado o governador absorve com
+        recuo, e bloqueio de verdade e o portao que continua fechado.
+        """
 
         def __init__(self):
             super().__init__()
             self.barrar = True
+            self.barrada = None
 
         def search(self, termo, local, janela_horas, quantidade, remoto=False):
-            if self.barrar and len(self.buscas) == 1:
+            if self.barrar and (len(self.buscas) == 1 or termo == self.barrada):
+                self.barrada = termo
                 self.buscas.append(termo)
                 return SearchOutcome(busca=termo, bloqueada=True, falha="429")
             return super().search(termo, local, janela_horas, quantidade, remoto)
