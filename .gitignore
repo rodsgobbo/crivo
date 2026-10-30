@@ -20,3 +20,8 @@ demo/saida/
 # modulo em duplicata e divergir na primeira edicao que esquecer uma delas.
 build/
 dist/
+
+# Clone do career-ops-hq/career-ops, o coach de candidatura que complementa o
+# crivo. Tem git proprio e atualiza por `git pull` la dentro. Guarda cv.md e
+# config/profile.yml -- dado pessoal, e o ignore de dentro dele nao vale aqui.
+career-ops/
