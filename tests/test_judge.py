@@ -194,6 +194,59 @@ def test_an_unreadable_answer_does_not_invent_an_order():
     assert resultado.modelo == "gemini"
 
 
+class ClienteEmSequencia(ClienteFalso):
+    """Responde um texto por chamada, na ordem dada."""
+
+    def __init__(self, *respostas):
+        super().__init__()
+        self.respostas = list(respostas)
+
+    def complete(self, task, payload, untrusted=True):
+        resposta = self.respostas.pop(0)
+        if isinstance(resposta, Exception):
+            self.pedidos.append((task, payload))
+            raise resposta
+        self.texto = resposta
+        return super().complete(task, payload, untrusted)
+
+
+def test_jobs_left_without_a_score_are_asked_again_alone():
+    """Em 26/10/2026 o modelo de reserva inventou cinco ids e cinco vagas ficaram sem nota."""
+    cliente = ClienteEmSequencia(
+        "li-0 | 70 | ok\nli-dd73c053f8c5 | 60 | inventada",
+        "li-1 | 80 | casa\nli-2 | 20 | nao casa",
+    )
+    resultado = Judge(cliente, load_config()).judge("ana", PERFIL, vagas())
+
+    assert resultado.notas == {"li-0": 70, "li-1": 80, "li-2": 20}
+    _tarefa, segundo = cliente.pedidos[1]
+    linhas = [l.split()[0] for l in segundo.splitlines() if l.startswith("li-")]
+    assert linhas == ["li-1", "li-2"]
+    # As duas chamadas foram pagas, e as duas entram na conta.
+    assert resultado.tokens_entrada == 200
+
+
+def test_a_complete_answer_is_not_asked_again():
+    cliente = ClienteFalso(texto="li-0 | 1 | a\nli-1 | 2 | b\nli-2 | 3 | c")
+    Judge(cliente, load_config()).judge("ana", PERFIL, vagas())
+    assert len(cliente.pedidos) == 1
+
+
+def test_the_retry_happens_once_and_its_failure_keeps_the_first_answer():
+    cliente = ClienteEmSequencia("li-0 | 70 | ok", ModelError("tempo esgotado"))
+    resultado = Judge(cliente, load_config()).judge("ana", PERFIL, vagas())
+
+    assert resultado.notas == {"li-0": 70}
+    assert resultado.falha is None
+    assert len(cliente.pedidos) == 2
+
+
+def test_the_retry_still_refuses_invented_ids():
+    cliente = ClienteEmSequencia("li-0 | 70 | ok", "li-149554 | 90 | inventada")
+    resultado = Judge(cliente, load_config()).judge("ana", PERFIL, vagas())
+    assert resultado.notas == {"li-0": 70}
+
+
 def test_only_the_top_reaches_the_model():
     """Cada vaga a mais custa contexto sem mudar o que o usuario faz."""
     cliente = ClienteFalso()

@@ -214,9 +214,45 @@ class Judge:
                 tokens_saida=resposta.tokens_saida,
                 falha="resposta sem nenhuma linha reconhecivel",
             )
-        return JudgementResult(
+        resultado = JudgementResult(
             notas=notas, motivos=motivos,
             provedor=resposta.provedor, modelo=resposta.modelo,
             tokens_entrada=resposta.tokens_entrada,
             tokens_saida=resposta.tokens_saida,
+        )
+        faltantes = [v for v in alvo if v["job_id"] not in notas]
+        if faltantes:
+            self._repescar(perfil, faltantes, resultado)
+        return resultado
+
+    def _repescar(
+        self, perfil: dict, faltantes: list[dict], resultado: JudgementResult
+    ) -> None:
+        """Pede de novo, uma vez, so as vagas que a primeira resposta deixou sem nota.
+
+        Em 26/10/2026 o Gemini estava sobrecarregado, o modelo de reserva citou
+        cinco identificadores inventados no lugar de cinco vagas reais, e elas
+        ficaram com a nota deterministica no meio de um topo relido pelo modelo
+        -- sem nada na pagina dizendo que eram de outra regua. Lista curta erra
+        menos identificador, e o filtro de `interpretar` continua valendo aqui.
+
+        Falhar nesta segunda chamada nao desfaz a primeira: o que ja foi lido
+        fica.
+        """
+        corpo = montar_pedido(perfil, faltantes, self._orcamento)
+        try:
+            resposta = self._client.complete(TAREFA, corpo)
+        except (DeterministicFallback, ModelError) as exc:
+            logger.info("repescagem de %s vaga(s) falhou: %s", len(faltantes), exc)
+            return
+        notas, motivos = interpretar(
+            resposta.texto, {v["job_id"] for v in faltantes}
+        )
+        resultado.notas.update(notas)
+        resultado.motivos.update(motivos)
+        resultado.tokens_entrada += resposta.tokens_entrada
+        resultado.tokens_saida += resposta.tokens_saida
+        logger.info(
+            "repescagem: %s de %s vaga(s) sem nota receberam nota (%s)",
+            len(notas), len(faltantes), resposta.modelo,
         )
