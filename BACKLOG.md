@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-11-11**. Esquema do banco na v11, 1136 testes passando. De
+Estado em **2026-11-11**. Esquema do banco na v11, 1138 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -121,6 +121,7 @@ julgamento — ver §1.1.
 | Releitura pede de novo, uma vez, as vagas que ficaram sem nota: em 26/10 o modelo de reserva citou cinco identificadores inventados e cinco das vinte do topo ficaram com a nota determinística no meio de uma lista relida | `scoring/judge.py` |
 | Explicações longas da tela inicial vêm recolhidas para quem já levou uma busca até o fim (Fase 4) | `web/templates/home.html.j2`, `web/app.py`, `web/static/crivo.css` |
 | Canário da página de **busca**: uma página real passa pelo caminho inteiro de leitura, sem rede (§5.3) | `tests/test_busca_real.py`, `tests/fixtures/linkedin/busca/` |
+| "Empresas contratando" deixa de contar vaga descartada ou de outra carreira: 356 → 199 empresas no banco real (§7.2) | `report/renderer.py`, `report.html.j2` |
 
 ---
 
@@ -452,6 +453,21 @@ página por fora dela ou trocar a forma de coletar. E a amostra é uma página, 
 vagas dos EUA. Antes de construir, medir numa coleta de verdade quantos cards
 trazem o sinal e se ele mudaria a ordem provisória.
 
+### 2.9 — Vaga de outra carreira das fontes remotas passa na trilha · **a medir** · P
+
+Achado em 11/nov, ao olhar "Empresas contratando" (§7.2). O Jobicy entrega o
+que tem, e não o que as buscas pedem: só a Welo Global trouxe 50 vagas em 30
+dias, de tradução e de treino de modelo por idioma. **31 delas não recebem o
+teto de outra trilha**, porque o título traz uma palavra do vocabulário que
+reconhece tecnologia — "Norwegian **Tech** Linguistic Tester", "**AI** Trainers
+Network - Uzbek". As notas vão de 36 a 55.
+
+Nenhuma chega a destaque, então o dano é de volume: elas ocupam o relatório, a
+tabela de empresas e a fração de descrições. A medir antes de mexer: quantas
+vagas de fonte remota por run estão nessa situação, e se a saída é apertar o
+vocabulário de trilha (que também vale para o LinkedIn, e "AI" e "tech" casam
+vaga boa) ou filtrar na fonte, pela categoria que o Jobicy informa.
+
 ---
 
 ## 3.5 — Usar a conta LinkedIn Premium do próprio usuário · ✔ **resolvido em 09/set, sem credencial**
@@ -549,6 +565,11 @@ applicant` e a contagem de candidatos já entram. Conexões na empresa e estado
 As correções de 25/ago apareceram no run `a6d5a060`, e o run `1418e378` rodou
 com todas elas (ver "Onde estamos"). A extensão e o token do extrator, de 09/set,
 ainda não têm run observado registrado aqui.
+
+**Vistos em 11/nov**, no banco real: 65 vagas achadas pela extensão, 81 com
+`top_applicant`, um token de extrator emitido. No relatório do run `20a95535`
+(09/nov), seis vagas trazem `top_applicant` — duas delas achadas pela própria
+extensão — e as seis saem como "aplicar agora".
 
 ### 5.2 — ~~Telas redesenhadas nunca abertas num navegador~~ · ✔ **olhadas em 23/out**
 
@@ -657,7 +678,9 @@ mesmo conjunto, declaradas mais histórico (REQ-14.5, REQ-14.6), para que rankin
 e card não discordem na mesma página. Muda lacunas e diferenciais exibidos; não
 muda score.
 
-Ainda não visto num run real.
+**Visto em 11/nov** nos quatro runs reais de 03 a 09/nov, relidos numa cópia do
+banco: o ranking traz de 26 a 29 competências e marca 9 ou 10 como ausentes do
+perfil, e a frase "N de M não aparecem" está na página.
 
 ### 7.2 — ~~Empresas que estão contratando~~ · ✔ **feito em 17/set**
 
@@ -680,7 +703,26 @@ não era: `vagas_relidas`, o tamanho do topo que o modelo relê. O código lia c
 `getattr` e um padrão embutido, e a chave não existia na configuração. Agora
 existe.
 
-Ainda não visto num run real.
+**Visto em 11/nov, e estava errado.** Nos runs reais de novembro a tabela tinha
+**356 empresas**, e o topo não era de quem contrata para o cargo de quem lê:
+
+| empresa | cargos | o que eram |
+|---|---:|---|
+| Canonical | 56 | 57 de 60 vagas vindas do Jobicy |
+| Welo Global | 50 | todas do Jobicy: tradutor de hebraico, linguista de birmanês |
+| Jobbol | 36 | "Engenheiro de Manutenção", "Controlador Operacional" |
+| BairesDev | 35 | — |
+
+A conta incluía tudo o que estava em `jobs`: das 2.843 vagas da janela, 277
+tinham sido descartadas pelo pré-filtro e 863 eram de outra carreira — vagas
+que a própria página já não mostra (pergunta 1). Agora só conta a vaga com nota
+cuja nota mais recente não a marca como de outra carreira: **356 → 199**
+empresas, e a Jobbol cai de 36 para 7.
+
+**Não resolve tudo, e o resto é decisão.** A Welo Global continua no topo, com
+31: "Tech Linguistic Tester" e "AI Trainers Network" passam no vocabulário de
+trilha por causa de "tech" e "AI" (§2.9). E 199 linhas ainda é uma tabela que
+ninguém lê inteira — ver a pergunta 6.
 
 ### 7.3 — ~~Vaga "remota" que é híbrida~~ · ✔ **feito em 17/set**
 
@@ -709,7 +751,18 @@ perfil não tinha campo nenhum: ninguém nunca mandava dado manual. Agora tem o
 seletor de dias, opcional, e a consolidação preserva a escolha quando o botão de
 reconsolidar é usado — sem isso, cada clique apagaria a preferência.
 
-Ainda não visto num run real.
+**Em 11/nov: a regra nunca rodou num run real, e não por defeito.** O perfil
+real não tem a preferência de dias preenchida, e sem ela a regra fica desligada
+por desenho. Nenhuma vaga de nenhum run recebeu o aviso `presenca:`.
+
+O que deu para conferir sem ela é a leitura, contra as descrições reais: das
+440 vagas marcadas como remotas com descrição no banco, 32 dizem "híbrido" e
+**5 dizem quantos dias** — e as cinco frases foram lidas certo ("a minimum of
+four days per week", "2-3 days per week" lido como 3). Duas ressalvas vistas
+ali: a exigência costuma ser condicional ("if located near an office"), e a
+leitura não distingue; como a vaga é marcada e não descartada, o custo é um
+aviso a mais. Para ver a regra agir, basta escolher os dias na tela do perfil e
+rodar uma busca.
 
 ### 7.4 — Faixa salarial · **adiado em 23/out: não há dado para comparar** · M
 
@@ -794,7 +847,10 @@ Em 11/nov não há item "alto" de pé. O que resta:
 |---|---|---|
 | §2.8 sinais do card da busca | medir quantos cards trazem `early applicant` e `Actively Hiring` e se isso mudaria a ordem provisória | uma coleta de verdade, lida por fora da biblioteca |
 | §5.3 canário **vivo** | uma página real conferida de tempos em tempos | requisição recorrente — conta contra o governador |
-| Ver num run real | §7.1, §7.2, §7.3, a extensão e o token do extrator (09/set); as notas recolhidas (11/nov) só foram vistas com estado montado à mão | alguém rodar e olhar |
+| §2.9 outra carreira das fontes remotas | medir quantas passam na trilha por run e escolher entre apertar o vocabulário e filtrar na fonte | medição, depois decisão |
+| §7.3 híbrido disfarçado | a regra nunca rodou: o perfil não tem os dias de escritório preenchidos | o dono escolher os dias no perfil e rodar uma busca |
+| Notas recolhidas (11/nov) | só foram vistas com estado montado à mão | abrir a tela inicial com o servidor de pé |
+| Pergunta 6 | tamanho e critério de "Empresas contratando" | decisão do dono |
 | §7.4 faixa salarial | adiado: 9 descrições em reais entre 2.380 | uma fonte que traga salário estruturado |
 
 O raciocínio: **1.2 e 1.3 eram pequenos e mexiam no topo da lista** — feitos, e
@@ -884,3 +940,9 @@ Coisas que mudam o que se constrói e que só o dono do produto responde.
 5. ~~**Acompanhamento de candidatura entra no crivo?**~~ **Respondida em 23/out: não.**
    O crivo fica na triagem; marcar "Apliquei" basta para ele parar de recomendar
    e não apagar a vaga (§7.7).
+6. **"Empresas contratando" deve mostrar quantas, e contar o quê?** Depois da
+   correção de 11/nov são 199 empresas (§7.2). Medido no banco real, contando só
+   vaga na trilha com nota mínima: nota ≥ 50, 92 empresas; ≥ 60, 51; ≥ 70 (o
+   limiar de destaque), 19 — BairesDev 8, TikTok 3, e o resto com 2. As saídas
+   são um teto de linhas, um piso de nota, ou os dois. Muda o que a tabela
+   afirma, e por isso não foi escolhido sem perguntar.

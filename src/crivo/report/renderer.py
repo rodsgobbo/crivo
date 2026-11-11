@@ -623,6 +623,15 @@ class ReportRenderer:
 
         Atravessa runs de proposito. Contratacao e um movimento de semanas, e
         uma tabela presa ao run de hoje mostraria sempre o mesmo numero baixo.
+
+        So conta a vaga que o relatorio mostraria: com nota, e cuja nota mais
+        recente nao a marca como de outra carreira. Visto nos runs reais de
+        novembro de 2026: a tabela tinha 356 empresas, 277 das 2.843 vagas da
+        janela tinham sido descartadas pelo pre-filtro e outras 863 eram de
+        outra carreira -- a Jobbol aparecia com 36 cargos, entre eles
+        "Engenheiro de Manutencao" e "Controlador Operacional". Uma empresa
+        liderar a lista pelas vagas que a propria pagina esconde nao diz nada
+        sobre quem esta contratando para o cargo de quem le.
         """
         corte = (
             datetime.now(timezone.utc) - timedelta(days=dias)
@@ -631,9 +640,18 @@ class ReportRenderer:
             """
             SELECT empresa, COUNT(DISTINCT titulo) AS vagas,
                    MAX(primeira_vez_em) AS mais_recente
-            FROM jobs
+            FROM jobs j
             WHERE user_id = ? AND empresa IS NOT NULL AND empresa <> ''
               AND primeira_vez_em >= ?
+              AND EXISTS (
+                SELECT 1 FROM scores s
+                WHERE s.user_id = j.user_id AND s.job_id = j.job_id
+                  AND s.rowid = (
+                    SELECT MAX(u.rowid) FROM scores u
+                    WHERE u.user_id = j.user_id AND u.job_id = j.job_id
+                  )
+                  AND json_extract(s.componentes, '$.tetos.outra_trilha') IS NULL
+              )
             GROUP BY empresa
             HAVING vagas >= ?
             ORDER BY vagas DESC, empresa

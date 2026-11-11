@@ -979,6 +979,73 @@ def test_an_opening_outside_the_window_is_not_hiring_today(env):
     assert _empresas(connection) == []
 
 
+def _marcar_trilha(repo, job_id, run_id, fora):
+    """Mais uma nota para a vaga, dizendo se ela e de outra carreira."""
+    if not repo.for_user("ana").select("runs", where="run_id = ?", params=(run_id,)):
+        repo.insert("runs", {
+            "run_id": run_id, "user_id": "ana", "estado": "concluido",
+            "janela": "incremental", "solicitado_em": "2026-08-22T09:00:00+00:00",
+        })
+    repo.for_user("ana").insert(
+        "scores",
+        {
+            "job_id": job_id, "run_id": run_id, "passada": "final", "score": 30,
+            "componentes": json.dumps(
+                {"tetos": {"outra_trilha": 65}} if fora else {"tetos": {}}
+            ),
+            "lacunas": "[]", "diferenciais": "[]", "descricao_disponivel": 1,
+            "sinais_sessao_disponiveis": 1, "criado_em": "2026-08-22",
+        },
+    )
+
+
+def test_a_job_the_report_hides_does_not_make_a_company_hiring(env):
+    """Nos runs de novembro de 2026 a tabela tinha 356 empresas.
+
+    A Jobbol aparecia com 36 cargos, entre eles "Engenheiro de Manutencao": a
+    conta incluia o que o pre-filtro descartou e o que e de outra carreira,
+    que a propria pagina ja nao mostra.
+    """
+    connection, repo = env
+    # Descartada no pre-filtro: existe em `jobs` e nunca recebeu nota.
+    for job_id, titulo in (("li-1", "Engenheiro de Manutencao"),
+                           ("li-2", "Controlador Operacional")):
+        repo.for_user("ana").insert("jobs", {
+            "job_id": job_id, "titulo": titulo, "empresa": "Descartes",
+            "url": "u", "estado": "novo", "primeira_vez_em": _dias_atras(1),
+            "ultima_vez_em": _dias_atras(1),
+        })
+    # Com nota, mas de outra carreira.
+    for job_id, titulo in (("li-3", "Tradutor"), ("li-4", "Revisor")):
+        add_vaga(repo, job_id=job_id, titulo=titulo, empresa="Outra",
+                 primeira_vez_em=_dias_atras(1))
+        _marcar_trilha(repo, job_id, "run-2", fora=True)
+    # O controle: duas vagas que o relatorio mostra.
+    add_vaga(repo, job_id="li-5", titulo="SRE Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(1))
+    add_vaga(repo, job_id="li-6", titulo="Platform Manager", empresa="Acme",
+             primeira_vez_em=_dias_atras(1))
+
+    assert [linha["empresa"] for linha in _empresas(connection)] == ["Acme"]
+
+
+def test_the_latest_score_is_the_one_that_says_the_career(env):
+    """As regras de trilha mudam; vale o que a nota mais recente diz."""
+    connection, repo = env
+    for job_id, titulo in (("li-1", "SRE Manager"), ("li-2", "Platform Manager")):
+        add_vaga(repo, job_id=job_id, titulo=titulo, empresa="Voltou",
+                 primeira_vez_em=_dias_atras(1))
+        _marcar_trilha(repo, job_id, "run-2", fora=True)
+        _marcar_trilha(repo, job_id, "run-3", fora=False)
+    for job_id, titulo in (("li-3", "Tradutor"), ("li-4", "Revisor")):
+        add_vaga(repo, job_id=job_id, titulo=titulo, empresa="Saiu",
+                 primeira_vez_em=_dias_atras(1))
+        _marcar_trilha(repo, job_id, "run-2", fora=False)
+        _marcar_trilha(repo, job_id, "run-3", fora=True)
+
+    assert [linha["empresa"] for linha in _empresas(connection)] == ["Voltou"]
+
+
 def test_the_report_shows_who_is_hiring(env):
     connection, repo = env
     add_vaga(repo, job_id="li-1", titulo="SRE Manager", empresa="Acme",
