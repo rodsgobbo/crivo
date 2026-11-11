@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-11-11**. Esquema do banco na v11, 1132 testes passando. De
+Estado em **2026-11-11**. Esquema do banco na v11, 1136 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -120,6 +120,7 @@ julgamento — ver §1.1.
 | Clone do `career-ops` fica fora do repositório: tem git próprio e guarda dado pessoal | `.gitignore` |
 | Releitura pede de novo, uma vez, as vagas que ficaram sem nota: em 26/10 o modelo de reserva citou cinco identificadores inventados e cinco das vinte do topo ficaram com a nota determinística no meio de uma lista relida | `scoring/judge.py` |
 | Explicações longas da tela inicial vêm recolhidas para quem já levou uma busca até o fim (Fase 4) | `web/templates/home.html.j2`, `web/app.py`, `web/static/crivo.css` |
+| Canário da página de **busca**: uma página real passa pelo caminho inteiro de leitura, sem rede (§5.3) | `tests/test_busca_real.py`, `tests/fixtures/linkedin/busca/` |
 
 ---
 
@@ -337,6 +338,16 @@ dado desatualizado como medição.
 Fica de pé: vaga reusada do cache de descrições não ganha recência nova, então
 a idade só chega para vaga inédita.
 
+**A leitura provável foi confirmada em 11/nov**, com a página de busca
+capturada para o canário (§5.3): janela de 24 horas, dez anúncios, e **os dez**
+trazem a data em `<time class="job-search-card__listdate--new">` — nenhum com a
+classe antiga. A `python-jobspy` 1.3.0, a fixada hoje, não procura mais classe
+nenhuma: lê o `<time>` do card, e as dez datas chegam. No banco, das 311 vagas
+do LinkedIn vistas pela primeira vez desde 01/nov, nenhuma está sem data (o
+enriquecimento também preenche, então o número é do conjunto, não só da busca).
+O caminho barato de 26/ago continua valendo como rede, e
+`test_a_recent_job_keeps_its_date` quebra se a data voltar a sumir.
+
 ### 2.5 — ~~Data envelhecia sozinha~~ · ✔ **feito em 26/ago**
 
 `publicada_em` nunca era atualizada no reaparecimento. Anúncio republicado
@@ -418,6 +429,28 @@ de empresa. E a especificação dá a ele peso **neutro**: lido, não mudaria no
 ordem nem ação recomendada. Seria coluna gravada que nada consome, o mesmo
 "campo que não faz nada" de §7.4. Reabrir se aparecer um uso — por exemplo,
 medir se anúncio pago rende pior.
+
+A página de busca capturada no mesmo dia (§5.3) concorda: dez cards, nenhum
+`Promoted`.
+
+### 2.8 — Sinais que o card da busca traz e ninguém lê · **a medir** · M
+
+Achado em 11/nov, na página real capturada para o canário. Sem sessão, o card
+da busca já traz uma linha de sinal: em dez cards, **cinco** com `Be an early
+applicant` e **três** com `Actively Hiring`. A biblioteca de coleta não devolve
+essa linha, e `Card.flags` chega sempre vazio pela busca.
+
+O `early_applicant` o crivo já tem por outro caminho — a página da vaga
+("Seja um dos 25 primeiros") — mas só para a vaga cuja descrição é lida, os 70%
+do topo da ordem provisória. Vindo do card, ele existiria **antes** dessa
+ordem, que é onde decide quem ganha descrição. `Actively Hiring` não chega por
+caminho nenhum; a especificação dá +5 a um sinal parecido da sessão logada
+(`Actively reviewing applicants`), e não está provado que sejam o mesmo.
+
+Não é pequeno: a busca é lida pela biblioteca, então ler essa linha é reler a
+página por fora dela ou trocar a forma de coletar. E a amostra é uma página, de
+vagas dos EUA. Antes de construir, medir numa coleta de verdade quantos cards
+trazem o sinal e se ele mudaria a ordem provisória.
 
 ---
 
@@ -555,6 +588,20 @@ descrições do banco estavam sem contagem de candidatos**. **Falta** o mesmo
 para a página de busca, que hoje é lida pela biblioteca de coleta, e um canário
 vivo — uma página real conferida de tempos em tempos —, que exigiria
 requisição.
+
+**Feito para a página de busca em 11/nov.** Uma página real em
+`tests/fixtures/linkedin/busca/`, capturada com **uma** requisição, sob o
+governador, sem bloqueio ativo, sem run em curso e dois dias depois da última
+requisição. `tests/test_busca_real.py` a passa pelo caminho inteiro — a
+biblioteca, a tabela dela, `to_card` — trocando só a sessão HTTP: dez cards
+viram dez vagas com identificador, título, empresa, local e data. Conferido
+quebrando de propósito: com o `<time>` trocado por outra marcação, o teste da
+data falha.
+
+Duas ressalvas. A página traz vagas dos EUA: o local pedido na captura foi
+"Brasil", que a origem não resolveu — as buscas do crivo mandam a cidade do
+perfil, e para marcação não muda nada, mas a próxima captura deve usar uma
+cidade. E é uma página só, de um dia só. O canário **vivo** continua faltando.
 
 ---
 
@@ -736,6 +783,7 @@ abordagem sem vaga aberta e os benchmarks sem fonte do `profile-optimizer`.
 7.2  quem está contratando   ✔    7.3  híbrido disfarçado       ✔
 2.7  as buscas não acham o cargo ✔  5.3  canário, página de vaga  ✔
 2.3  filtros de URL        fechado  2.4  Promoted e idade      fechado
+5.3  canário, página de busca ✔
 ```
 
 ### O que sobra
@@ -744,11 +792,10 @@ Em 11/nov não há item "alto" de pé. O que resta:
 
 | Item | O que falta | Depende de |
 |---|---|---|
-| §5.3 canário da **página de busca** | fixture com HTML real da busca e teste que acuse mudança de marcação; hoje ela é lida pela biblioteca de coleta | uma requisição à origem, para capturar a página |
+| §2.8 sinais do card da busca | medir quantos cards trazem `early applicant` e `Actively Hiring` e se isso mudaria a ordem provisória | uma coleta de verdade, lida por fora da biblioteca |
 | §5.3 canário **vivo** | uma página real conferida de tempos em tempos | requisição recorrente — conta contra o governador |
 | Ver num run real | §7.1, §7.2, §7.3, a extensão e o token do extrator (09/set); as notas recolhidas (11/nov) só foram vistas com estado montado à mão | alguém rodar e olhar |
 | §7.4 faixa salarial | adiado: 9 descrições em reais entre 2.380 | uma fonte que traga salário estruturado |
-| Pergunta 4 | confirmar §2.2 com uma requisição | decisão do dono |
 
 O raciocínio: **1.2 e 1.3 eram pequenos e mexiam no topo da lista** — feitos, e
 o efeito foi medido reexecutando as regras sobre as 249 vagas reais do run
@@ -831,8 +878,9 @@ Coisas que mudam o que se constrói e que só o dono do produto responde.
 3. ~~**Qual janela é a padrão?**~~ **Respondida em 23/out: um dia**, marcado por
    padrão na tela. A API sem alcance continua em 30 dias: nenhum contrato muda
    por causa do seletor da tela.
-4. **Vale confirmar §2.2 com uma requisição ao LinkedIn?** É uma só, mas conta
-   contra o mesmo limite que impõe 1 hora de bloqueio se estourar.
+4. ~~**Vale confirmar §2.2 com uma requisição ao LinkedIn?**~~ **Respondida em
+   11/nov pela captura do canário** (§5.3): a mesma requisição serviu às duas
+   coisas, voltou 200 e não gerou bloqueio. A leitura de §2.2 estava certa.
 5. ~~**Acompanhamento de candidatura entra no crivo?**~~ **Respondida em 23/out: não.**
    O crivo fica na triagem; marcar "Apliquei" basta para ele parar de recomendar
    e não apagar a vaga (§7.7).
