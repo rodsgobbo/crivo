@@ -156,6 +156,15 @@ titulos = [
   # Mineracao e seguros: "Gerente - Mining Operations" e "Coordenador
   # Operacoes de Sinistro", no mesmo run.
   "\\bmining operations\\b|minera[çc][ãa]o(?! de dados)|sinistro|ap[óo]lice",
+  # Traducao, linguistica e treino de modelo por idioma. Chegam pelas fontes de
+  # vaga remota, que entregam o que tem e nao o que a busca pede. Observado no
+  # banco real em 11/11/2026: so a Welo Global trouxe 50 vagas em 30 dias, e 31
+  # passavam pela regra de trilha com nota 55 -- "AI Trainers Network - Uzbek"
+  # casa "network", e "Norwegian Tech Linguistic Tester" casa "tech". Contra as
+  # 3.227 vagas do banco, estes padroes pegam 38, todas do Jobicy, e nenhuma
+  # das 2.855 do LinkedIn.
+  "linguist|\\btranslat(or|ion)|\\btradu(tor|[çc][ãa]o)|locali[sz]ation",
+  "\\bai trainers?\\b|quality rater",
 ]
 
 # Regra branda: engenharia de software generica sem termo de infraestrutura no

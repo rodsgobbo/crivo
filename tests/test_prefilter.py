@@ -452,6 +452,37 @@ def test_industrial_and_financial_titles_are_discarded_outright(prefilter):
         assert _blocker(prefilter, titulo) == "DESCARTADA", titulo
 
 
+def test_translation_and_language_training_are_discarded_outright(prefilter):
+    """O que as fontes de vaga remota trazem sem ninguem ter pedido.
+
+    Titulos reais do banco em 11/11/2026, todos da mesma empresa. Os tres
+    primeiros passavam pela regra de trilha com nota 55, por "network" e
+    "tech"; ocupavam o relatorio e a tabela de empresas contratando.
+    """
+    for titulo in (
+        "AI Trainers Network - Uzbek",
+        "AI Trainers Network - Southeast Asia Talent Hub (Ex-Singapore Residents)",
+        "Norwegian Tech Linguistic Tester",
+        "Hebrew Freelance Translator & Copy Editor (Product, Marketing & UI Content)",
+        "English to Spanish (LatAm) for Life Sciences Linguist",
+        "Dutch Sports Localization Specialist (Football)",
+        "Ads Quality Rater - Italian (Brazil)",
+        "Translation Project Manager",
+    ):
+        assert _blocker(prefilter, titulo) == "DESCARTADA", titulo
+
+
+def test_the_language_rejections_do_not_reach_a_technology_title(prefilter):
+    """As palavras que faziam aqueles titulos passarem continuam valendo."""
+    for titulo in (
+        "Network Engineering Manager",
+        "Engineering Manager, AI Infrastructure",
+        "Tech Lead SRE",
+        "Head of Platform Engineering",
+    ):
+        assert _blocker(prefilter, titulo) != "DESCARTADA", titulo
+
+
 def test_the_new_rejections_do_not_reach_a_technology_title(prefilter):
     """Cada padrao novo virou cargo, e nao palavra solta.
 

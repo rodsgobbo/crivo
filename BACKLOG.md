@@ -1,6 +1,6 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-11-11**. Esquema do banco na v11, 1138 testes passando. De
+Estado em **2026-11-11**. Esquema do banco na v11, 1140 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
@@ -122,6 +122,7 @@ julgamento — ver §1.1.
 | Explicações longas da tela inicial vêm recolhidas para quem já levou uma busca até o fim (Fase 4) | `web/templates/home.html.j2`, `web/app.py`, `web/static/crivo.css` |
 | Canário da página de **busca**: uma página real passa pelo caminho inteiro de leitura, sem rede (§5.3) | `tests/test_busca_real.py`, `tests/fixtures/linkedin/busca/` |
 | "Empresas contratando" deixa de contar vaga descartada ou de outra carreira: 356 → 199 empresas no banco real (§7.2) | `report/renderer.py`, `report.html.j2` |
+| Tradução, linguística e treino de modelo por idioma caem no título (§2.9) | `config/filters.toml` |
 
 ---
 
@@ -453,20 +454,32 @@ página por fora dela ou trocar a forma de coletar. E a amostra é uma página, 
 vagas dos EUA. Antes de construir, medir numa coleta de verdade quantos cards
 trazem o sinal e se ele mudaria a ordem provisória.
 
-### 2.9 — Vaga de outra carreira das fontes remotas passa na trilha · **a medir** · P
+### 2.9 — ~~Vaga de outra carreira das fontes remotas passa na trilha~~ · ✔ **medido e feito em 11/nov**
 
 Achado em 11/nov, ao olhar "Empresas contratando" (§7.2). O Jobicy entrega o
 que tem, e não o que as buscas pedem: só a Welo Global trouxe 50 vagas em 30
-dias, de tradução e de treino de modelo por idioma. **31 delas não recebem o
+dias, de tradução e de treino de modelo por idioma. **31 delas não recebiam o
 teto de outra trilha**, porque o título traz uma palavra do vocabulário que
-reconhece tecnologia — "Norwegian **Tech** Linguistic Tester", "**AI** Trainers
-Network - Uzbek". As notas vão de 36 a 55.
+reconhece tecnologia — "Norwegian **Tech** Linguistic Tester", "AI Trainers
+**Network** - Uzbek". Todas com nota 55.
 
-Nenhuma chega a destaque, então o dano é de volume: elas ocupam o relatório, a
-tabela de empresas e a fração de descrições. A medir antes de mexer: quantas
-vagas de fonte remota por run estão nessa situação, e se a saída é apertar o
-vocabulário de trilha (que também vale para o LinkedIn, e "AI" e "tech" casam
-vaga boa) ou filtrar na fonte, pela categoria que o Jobicy informa.
+**Medido antes de mexer, e o problema é menor do que parecia.** Das 326 vagas
+do Jobicy no banco, a regra de trilha já tirava de vista 174 (53%) e o
+pré-filtro descartava 46 (14%); das 106 que passavam, 31 eram essas. O resto é
+vaga de verdade — a melhor nota de fonte remota é um "Engineering Manager" da
+Supabase, com 78. Não era a regra de trilha falhando com as fontes remotas: era
+uma empresa, num despejo só (27 das vagas entraram em 04/nov).
+
+Por isso a saída foi a pequena. Apertar o vocabulário de trilha custaria vaga
+boa do LinkedIn — "network" e "tech" casam cargo certo. Duas entradas em
+`[rejeicao]` de `filters.toml`, pela família: tradução, linguística,
+localização, treino de modelo por idioma e avaliação de anúncio. Contra as
+3.227 vagas do banco, pegam **38, todas do Jobicy, e nenhuma das 2.855 do
+LinkedIn**.
+
+Vale para as próximas coletas: as 38 que já estão no banco continuam lá até o
+expurgo. Filtrar pela categoria que o Jobicy informa seria o passo seguinte, se
+outra família aparecer — exigiria uma chamada à fonte para ver as categorias.
 
 ---
 
@@ -720,9 +733,11 @@ cuja nota mais recente não a marca como de outra carreira: **356 → 199**
 empresas, e a Jobbol cai de 36 para 7.
 
 **Não resolve tudo, e o resto é decisão.** A Welo Global continua no topo, com
-31: "Tech Linguistic Tester" e "AI Trainers Network" passam no vocabulário de
-trilha por causa de "tech" e "AI" (§2.9). E 199 linhas ainda é uma tabela que
-ninguém lê inteira — ver a pergunta 6.
+31: "Tech Linguistic Tester" e "AI Trainers Network" passavam no vocabulário de
+trilha por causa de "tech" e "network". O pré-filtro passou a descartá-las no
+mesmo dia (§2.9), mas as que já estão no banco seguem na tabela até saírem da
+janela de 30 dias. E 199 linhas ainda é uma tabela que ninguém lê inteira —
+ver a pergunta 6.
 
 ### 7.3 — ~~Vaga "remota" que é híbrida~~ · ✔ **feito em 17/set**
 
@@ -847,7 +862,6 @@ Em 11/nov não há item "alto" de pé. O que resta:
 |---|---|---|
 | §2.8 sinais do card da busca | medir quantos cards trazem `early applicant` e `Actively Hiring` e se isso mudaria a ordem provisória | uma coleta de verdade, lida por fora da biblioteca |
 | §5.3 canário **vivo** | uma página real conferida de tempos em tempos | requisição recorrente — conta contra o governador |
-| §2.9 outra carreira das fontes remotas | medir quantas passam na trilha por run e escolher entre apertar o vocabulário e filtrar na fonte | medição, depois decisão |
 | §7.3 híbrido disfarçado | a regra nunca rodou: o perfil não tem os dias de escritório preenchidos | o dono escolher os dias no perfil e rodar uma busca |
 | Notas recolhidas (11/nov) | só foram vistas com estado montado à mão | abrir a tela inicial com o servidor de pé |
 | Pergunta 6 | tamanho e critério de "Empresas contratando" | decisão do dono |
