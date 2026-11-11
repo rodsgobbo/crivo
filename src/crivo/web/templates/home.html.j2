@@ -28,6 +28,22 @@
 <body>
 <main>
 
+{# Explicacao longa: aberta para quem chega, recolhida para quem ja levou uma
+   busca ate o fim. O texto e o mesmo nos dois casos e continua a um clique --
+   `<details>` e do navegador, sem JavaScript. So entra aqui o que EXPLICA; o
+   que informa estado (quantas buscas restam, quanto falta) fica sempre a
+   vista, fora desta macro. #}
+{% macro explicacao(recolhida, resumo) %}
+  {% if recolhida %}
+    <details class="explica">
+      <summary>{{ resumo }}</summary>
+      <p class="nota">{{ caller() }}</p>
+    </details>
+  {% else %}
+    <p class="nota">{{ caller() }}</p>
+  {% endif %}
+{% endmacro %}
+
 {% set atual = "inicio" %}
   {% include "_navegacao.html.j2" %}
 
@@ -90,16 +106,16 @@
           <strong>{{ enr.prontas }} de {{ enr.total }}</strong> descrições
           lidas — faltam {{ enr.pendentes }}.
           {% if enr.pendentes %}
-            Entre uma vaga e outra há 8 a 20 segundos de espera, imposta para
-            não ser barrado pela origem: estime
+            Estime
             <strong>{{ (enr.pendentes * 8 / 60) | round | int }} a
             {{ (enr.pendentes * 20 / 60) | round | int }} minutos</strong>.
           {% endif %}
         </p>
-        <p class="nota">
-          Pode fechar esta aba: quem trabalha é o processo que lê as vagas, não
-          o navegador.
-        </p>
+        {% call explicacao(ctx.ja_usou, "Por que demora") %}
+          Entre uma vaga e outra há 8 a 20 segundos de espera, imposta para
+          não ser barrado pela origem. Pode fechar esta aba: quem trabalha é o
+          processo que lê as vagas, não o navegador.
+        {% endcall %}
       {% else %}
         <p class="nota">
           Esta página se atualiza sozinha a cada 10 segundos.
@@ -123,11 +139,11 @@
               action="/runs/{{ ctx.run_ativo.run_id }}/cancelar">
           <button class="acao discreta" type="submit">Cancelar esta busca</button>
         </form>
-        <p class="nota">
+        {% call explicacao(ctx.ja_usou, "O que acontece se eu cancelar") %}
           Cancelar não descarta o que já veio: as vagas coletadas até aqui
           continuam no seu histórico, e a cota do dia só é cobrada se a busca
           chegou a trazer alguma coisa.
-        </p>
+        {% endcall %}
       {% endif %}
     </div>
 
@@ -230,10 +246,12 @@
         </form>
         <p class="nota">
           Restam <strong>{{ ctx.buscas_restantes }}</strong>
-          busca{{ "" if ctx.buscas_restantes == 1 else "s" }} hoje. Janela maior
-          traz mais vagas, e o orçamento diário de descrições é o mesmo: com 30
-          dias, boa parte pode ficar sem descrição lida.
+          busca{{ "" if ctx.buscas_restantes == 1 else "s" }} hoje.
         </p>
+        {% call explicacao(ctx.ja_usou, "Qual janela escolher") %}
+          Janela maior traz mais vagas, e o orçamento diário de descrições é o
+          mesmo: com 30 dias, boa parte pode ficar sem descrição lida.
+        {% endcall %}
 
       {% else %}
         {# A acao continua visivel, com o motivo no rotulo. Removê-la fazia a

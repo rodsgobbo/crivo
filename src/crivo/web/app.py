@@ -620,6 +620,16 @@ def _estado_do_sistema(context: WebContext, request: Request) -> dict:
         }
         for linha in linhas
     ]
+    # Quem ja levou uma busca ate o fim ja leu as explicacoes longas da tela:
+    # elas passam a vir recolhidas. Consulta propria, e nao a lista acima --
+    # ela so traz os 8 ultimos, e oito buscas recusadas em seguida fariam um
+    # usuario antigo voltar a ser tratado como novo.
+    estado["ja_usou"] = bool(
+        repositorio.for_user(user_id).select(
+            "runs", where="estado = ?", params=("concluido",),
+            columns="rowid", limit=1,
+        )
+    )
     # O proximo passo e calculado depois de todo o estado estar lido: ele
     # depende de curriculo, extracao e perfil ao mesmo tempo.
     estado["proximo"] = _proximo_passo(estado)

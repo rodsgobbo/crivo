@@ -631,6 +631,12 @@ details.cartao > summary::after {
 details.cartao[open] > summary::after { content: "▾"; }
 details.cartao[open] > summary { margin-bottom: var(--esp-3); }
 
+/* Explicação recolhida para quem já usou: o resumo tem o peso de uma nota, e
+ * não o de um título de cartão -- é ajuda à mão, não uma seção da página. */
+details.explica { margin-top: var(--esp-2); }
+details.explica > summary { color: var(--suave); font-size: var(--txt-sm); }
+details.explica > .nota { margin-top: var(--esp-1); }
+
 .rodape {
   margin-top: var(--esp-12);
   padding-top: var(--esp-4);

@@ -2016,6 +2016,73 @@ def test_the_search_form_starts_on_one_day():
     assert 'value="30d" checked' not in html
 
 
+# --------------------------------- explicacoes recolhidas depois do primeiro uso
+_ENRIQUECENDO = {
+    "run_id": "r1", "estado": "aguardando_enriquecimento",
+    "estagio": "enriquecimento", "rotulo": "lendo as descrições das vagas",
+    "feitos": 6, "total": 10, "decorrido_s": 60,
+    "desde": "2026-10-23T13:00:00+00:00", "cancelando": False,
+    "enriquecimento": {"total": 40, "pendentes": 30, "prontas": 10,
+                       "percentual": 25},
+}
+
+_EXPLICACOES = [
+    ({}, "Janela maior traz mais vagas"),
+    ({"run_ativo": _ENRIQUECENDO}, "Entre uma vaga e outra"),
+    ({"run_ativo": _ENRIQUECENDO}, "Cancelar não descarta"),
+]
+
+
+@pytest.mark.parametrize("situacao, trecho", _EXPLICACOES)
+def test_a_first_time_user_reads_the_explanations_without_clicking(situacao, trecho):
+    html = _pagina_inicial(**situacao)
+    assert trecho in html
+    assert 'class="explica"' not in html
+
+
+@pytest.mark.parametrize("situacao, trecho", _EXPLICACOES)
+def test_a_returning_user_gets_the_explanations_folded_not_removed(situacao, trecho):
+    """Recolher nao e apagar: o texto segue na pagina, dentro do `<details>`."""
+    html = _pagina_inicial(ja_usou=True, **situacao)
+    dentro = html.split('<details class="explica">')[1:]
+    assert any(trecho in bloco.split("</details>")[0] for bloco in dentro)
+
+
+def test_folding_never_hides_what_is_state_and_not_explanation():
+    """Quantas buscas restam e quanto falta sao estado: ficam sempre a vista."""
+    def fora_das_explicacoes(html):
+        partes = html.split('<details class="explica">')
+        return partes[0] + "".join(p.split("</details>", 1)[1] for p in partes[1:])
+
+    buscar = " ".join(fora_das_explicacoes(_pagina_inicial(ja_usou=True)).split())
+    assert "Restam <strong>2</strong> buscas hoje" in buscar
+
+    lendo = " ".join(fora_das_explicacoes(
+        _pagina_inicial(ja_usou=True, run_ativo=_ENRIQUECENDO)
+    ).split())
+    assert "<strong>10 de 40</strong> descrições lidas — faltam 30" in lendo
+    assert "<strong>4 a 10 minutos</strong>" in lendo
+    assert "Cancelar esta busca" in lendo
+
+
+def test_having_finished_a_search_is_what_folds_the_explanations(cliente):
+    c, _i, banco = cliente
+    user_id = entrar(cliente)
+    # A busca em curso e o que poe uma explicacao na pagina: o cartao dela
+    # aparece mesmo para quem ainda nao terminou a instalacao.
+    _enfileirar(banco, user_id)
+    primeira_vez = c.get("/").text
+    assert "Cancelar não descarta" in primeira_vez
+    assert 'class="explica"' not in primeira_vez
+
+    banco().execute(
+        "INSERT INTO runs (run_id, user_id, estado, janela, solicitado_em) "
+        "VALUES ('velho', ?, 'concluido', 'ampla', '2026-08-01')", (user_id,)
+    )
+    banco().commit()
+    assert 'class="explica"' in c.get("/").text
+
+
 def test_the_report_address_can_show_other_careers_again(cliente):
     c, _i, banco = cliente
     user_id = entrar(cliente)

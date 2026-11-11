@@ -1,10 +1,11 @@
 # crivo — backlog e roadmap
 
-Estado em **2026-10-23**. Esquema do banco na v11, 1116 testes passando. De
+Estado em **2026-11-11**. Esquema do banco na v11, 1132 testes passando. De
 18/set para cá: o guia para leigos, vagas remotas de fontes feitas para isso,
 vaga republicada e vaga encerrada, expurgo de vagas sumidas, log em arquivo e
 uma leva de ajustes de tela — quase tudo saído de uso real. As pendências que
-saíram disso estão em [Resolvidos em outubro](#resolvidos-em-outubro).
+saíram disso estão em [Resolvidos em outubro](#resolvidos-em-outubro). O que
+ainda está de pé cabe numa tabela: [O que sobra](#o-que-sobra).
 
 Cada item traz a evidência que o sustenta. Item sem evidência é suposição, e
 suposição não entra em roadmap — vira pergunta na seção final.
@@ -109,6 +110,16 @@ julgamento — ver §1.1.
 | Mistral fora da lista (passou a cobrar); Groq com modelos que a chave alcança, e nome de modelo com barra montado certo | `config/providers.toml`, `providers/client.py` |
 | Cartão "Cargos procurados" sempre visível; × para tirar cargo gerado (esquema v11) | `home.html.j2`, `pipeline/planner.py` |
 | Título de produto que também nomeia tecnologia deixa de ser descartado (vaga da Alelo) | `config/filters.toml` |
+
+### Feito de 2026-10-29 a 2026-11-11
+
+| O quê | Onde |
+|---|---|
+| Um único 429 numa busca gravava bloqueio de uma hora, e de 25 a 29/10 isso parou a coleta toda manhã. A recusa agora sobe como exceção, o governador recua (20s, 40s) e só bloqueia no terceiro fracasso seguido — como já fazia na descrição | `pipeline/collector.py` |
+| Enriquecedor dorme só o que falta do bloqueio, e não o intervalo inteiro a partir de agora: em 29/10 o reinício das 09:02 achou o bloqueio das 08:18 e só voltaria às 10:02 | `pipeline/governor.py`, `worker/enricher_process.py` |
+| Clone do `career-ops` fica fora do repositório: tem git próprio e guarda dado pessoal | `.gitignore` |
+| Releitura pede de novo, uma vez, as vagas que ficaram sem nota: em 26/10 o modelo de reserva citou cinco identificadores inventados e cinco das vinte do topo ficaram com a nota determinística no meio de uma lista relida | `scoring/judge.py` |
+| Explicações longas da tela inicial vêm recolhidas para quem já levou uma busca até o fim (Fase 4) | `web/templates/home.html.j2`, `web/app.py`, `web/static/crivo.css` |
 
 ---
 
@@ -388,9 +399,25 @@ O `jobradar.html` especifica `f_E` (senioridade), `f_WT` (modelo de trabalho) e
 `f_JT` (tipo de vaga). Filtrar na origem é mais barato que filtrar depois: cada
 vaga descartada no pré-filtro já custou a requisição que a trouxe.
 
-### 2.4 — Sinal `Promoted` e idade do anúncio · **médio** · P
+### 2.4 — ~~Sinal `Promoted` e idade do anúncio~~ · **fechado em 11/nov: metade já existia, a outra não tem uso**
 
 Ambos obtidos sem sessão, ambos previstos na especificação, nenhum coletado.
+
+**Conferido em 11/nov, e a frase acima estava errada nas duas metades.**
+
+A **idade** é coletada desde 26/ago: o esquema v7 grava a recência por extenso
+que a página do anúncio traz, e ela preenche `publicada_em` (§2.2). O item
+ficou aberto por não ter sido relido depois disso.
+
+O **`Promoted`** não é "obtido sem sessão" por nenhum caminho que o crivo usa:
+a biblioteca de coleta não devolve esse campo para o LinkedIn (só o Glassdoor
+tem algo parecido), e nenhuma das três páginas reais de vaga em
+`tests/fixtures/linkedin/` traz a palavra. Ele aparece nos cards da sessão
+logada, onde a extensão já o enxerga — e o descarta, como linha que não é nome
+de empresa. E a especificação dá a ele peso **neutro**: lido, não mudaria nota,
+ordem nem ação recomendada. Seria coluna gravada que nada consome, o mesmo
+"campo que não faz nada" de §7.4. Reabrir se aparecer um uso — por exemplo,
+medir se anúncio pago rende pior.
 
 ---
 
@@ -536,9 +563,29 @@ requisição.
 | Item | Tamanho |
 |---|---|
 | ~~Remover busca gerada~~ — **feito em 23/out** (× no cartão Cargos procurados, critério 7.8) | ✔ |
-| Esconder notas explicativas longas depois do primeiro uso | P |
+| ~~Esconder notas explicativas longas depois do primeiro uso~~ — **feito em 11/nov**, ver abaixo | ✔ |
 | ~~Orçamento diário de 400 contra 656 sobreviventes~~ — **obsoleto em 23/out**: com a fração de 70%, o máximo usado num dia foi 331, e todas as descrições pedidas desde 21/10 foram lidas | ✔ |
 | Dois processos `crivo runs` simultâneos — **resolvido** em 25/ago pela trava de instância | ✔ |
+
+**As notas explicativas, em 11/nov.** "Primeiro uso" virou um fato do banco:
+existe ao menos um run concluído. A partir daí, três explicações da tela
+inicial — por que a leitura demora, o que acontece ao cancelar, qual janela
+escolher — passam a vir dentro de um `<details>`, que é do navegador e não pede
+JavaScript. Recolher não é apagar: o texto é o mesmo e fica a um clique.
+
+O que informa **estado** ficou de fora de propósito e continua sempre à vista:
+quantas buscas restam, quantas descrições faltam e a estimativa em minutos. Por
+isso duas notas foram partidas ao meio — a frase de estado e a explicação
+moravam no mesmo parágrafo.
+
+Ficaram como estavam: o relatório, cujas ressalvas existem para quem lê não se
+enganar (§7.2); e as notas de Cargos procurados e de Configuração, que já moram
+dentro de cartão recolhido.
+
+Olhado em 11/nov no Chrome sem janela, em largura de computador: a tela de
+buscar e a de leitura em curso, para quem chega e para quem volta, recolhida e
+aberta. Foi o gabarito real com a folha de estilo real e um estado montado à
+mão — não o banco, nem um run de verdade, nem a largura de celular.
 
 ---
 
@@ -687,12 +734,21 @@ abordagem sem vaga aberta e os benchmarks sem fonte do `profile-optimizer`.
 2.6  cortar buscas de ruído  ✔    1.1  score que premia vago    ✔
 3.5  sinais Premium          ✔    7.1  o que falta no perfil    ✔
 7.2  quem está contratando   ✔    7.3  híbrido disfarçado       ✔
-     ↓
-2.7  as buscas não acham o cargo      ← o único "alto" de pé fora da verificação;
-                                        começa por 2.3, os filtros de URL
-     ↓
-5.3  canário de HTML                  ← agora protege a coleta e a extensão
+2.7  as buscas não acham o cargo ✔  5.3  canário, página de vaga  ✔
+2.3  filtros de URL        fechado  2.4  Promoted e idade      fechado
 ```
+
+### O que sobra
+
+Em 11/nov não há item "alto" de pé. O que resta:
+
+| Item | O que falta | Depende de |
+|---|---|---|
+| §5.3 canário da **página de busca** | fixture com HTML real da busca e teste que acuse mudança de marcação; hoje ela é lida pela biblioteca de coleta | uma requisição à origem, para capturar a página |
+| §5.3 canário **vivo** | uma página real conferida de tempos em tempos | requisição recorrente — conta contra o governador |
+| Ver num run real | §7.1, §7.2, §7.3, a extensão e o token do extrator (09/set); as notas recolhidas (11/nov) só foram vistas com estado montado à mão | alguém rodar e olhar |
+| §7.4 faixa salarial | adiado: 9 descrições em reais entre 2.380 | uma fonte que traga salário estruturado |
+| Pergunta 4 | confirmar §2.2 com uma requisição | decisão do dono |
 
 O raciocínio: **1.2 e 1.3 eram pequenos e mexiam no topo da lista** — feitos, e
 o efeito foi medido reexecutando as regras sobre as 249 vagas reais do run
